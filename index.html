@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        /* Small custom scrollbar for the modal */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
@@ -16,7 +15,7 @@
 </head>
 <body class="bg-gray-100 p-8 font-sans">
 
-    <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
+    <div class="max-w-screen-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6 pb-4 border-b">
             <h1 class="text-2xl font-bold text-gray-800">Comprog Coding Dashboard</h1>
@@ -65,8 +64,9 @@
                         <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">GitHub User</th>
                         <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">Commits</th>
                         <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">Lines Add/Del</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700 w-1/4">Latest Msg</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">AI Grading</th>
+                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700 w-1/6">Latest Msg</th>
+                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700 w-1/4">AI Score & Feedback</th>
+                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">Action</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
@@ -80,7 +80,6 @@
     <div id="settingsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden">
             
-            <!-- Modal Header -->
             <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">Dashboard & AI Configuration</h2>
@@ -89,7 +88,6 @@
                 <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
             </div>
 
-            <!-- Modal Body (Scrollable) -->
             <div class="p-6 overflow-y-auto flex-1">
                 <!-- API Keys Section -->
                 <div class="mb-8 p-4 border rounded-lg bg-blue-50 border-blue-100">
@@ -150,7 +148,6 @@
                         <textarea id="tplGeneralPrompt" rows="2" class="w-full p-2 border rounded focus:ring-purple-500 focus:border-purple-500 bg-gray-50"></textarea>
                     </div>
 
-                    <!-- Dynamic Criteria Section -->
                     <div>
                         <div class="flex justify-between items-end mb-3 border-b pb-2">
                             <label class="block text-sm font-semibold text-gray-700">Grading Criteria Builder</label>
@@ -183,7 +180,7 @@
             <p id="aiStudentName" class="text-sm text-gray-500 mb-4 pb-3 border-b"></p>
             
             <div id="aiLoading" class="text-blue-600 font-medium animate-pulse hidden py-8 text-center">
-                Analyzing code and applying your custom rubric...
+                Analyzing project systems and applying rubric...
             </div>
             
             <div id="aiContent">
@@ -193,7 +190,7 @@
                 <div class="text-center text-sm text-gray-500 mb-6 font-semibold uppercase tracking-wider" id="aiTemplateUsedLabel"></div>
                 
                 <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-                    <h3 class="text-sm font-bold text-gray-700 mb-2 uppercase border-b pb-1">AI Feedback</h3>
+                    <h3 class="text-sm font-bold text-gray-700 mb-2 uppercase border-b pb-1">Personalized Feedback</h3>
                     <p id="aiFeedback" class="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm"></p>
                 </div>
             </div>
@@ -221,28 +218,18 @@
         
         let templates = [];
         let activeTemplateId = null;
-        let editingTemplate = null; // Temp object while modal is open
+        let editingTemplate = null; 
 
         const DEFAULT_TEMPLATES = [
             {
                 id: "default_pct",
-                name: "Standard Homework (Percentage)",
+                name: "Standard Project Grading (Percentage)",
                 scoringType: "percentage",
                 generalPrompt: "",
                 criteria: [
                     { name: "Logic & Functionality", weight: 40, description: "Does the code achieve its intended purpose without errors?" },
                     { name: "Code Quality & Naming", weight: 30, description: "Are variables named well? Is the code indented and readable?" },
                     { name: "Efficiency & Optimization", weight: 30, description: "Are there redundant loops or unnecessary calls?" }
-                ]
-            },
-            {
-                id: "default_pts",
-                name: "Minor Quiz (15 Points Total)",
-                scoringType: "points",
-                generalPrompt: "Focus heavily on how well they handled error catching.",
-                criteria: [
-                    { name: "Error Handling", weight: 10, description: "Did they implement proper try/catch blocks?" },
-                    { name: "Clean Commits", weight: 5, description: "Are commit messages descriptive of the changes?" }
                 ]
             }
         ];
@@ -251,7 +238,6 @@
         // INITIALIZATION
         // ----------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            // Populate Dropdown
             const sectionSelect = document.getElementById('sectionSelect');
             for (const sectionName in SECTIONS_CONFIG) {
                 const option = document.createElement('option');
@@ -260,7 +246,6 @@
                 sectionSelect.appendChild(option);
             }
 
-            // Load Templates from LocalStorage
             const storedTemplates = localStorage.getItem('comprog_grading_templates');
             templates = storedTemplates ? JSON.parse(storedTemplates) : JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
             
@@ -277,7 +262,6 @@
             document.getElementById('modalGithubToken').value = localStorage.getItem('comprog_github_token') || "";
             document.getElementById('modalGeminiKey').value = localStorage.getItem('comprog_gemini_token') || "";
             
-            // Set editing object to a clone of the currently active template
             const templateToLoad = templates.find(t => t.id === activeTemplateId) || templates[0];
             editingTemplate = JSON.parse(JSON.stringify(templateToLoad));
             
@@ -323,7 +307,6 @@
                     { name: "First Criterion", weight: 100, description: "Describe what to grade here." }
                 ]
             };
-            // Add to array temporarily so dropdown shows it
             templates.push(editingTemplate); 
             renderTemplateDropdown();
             document.getElementById('templateSelect').value = newId;
@@ -344,7 +327,6 @@
         }
 
         function syncEditorToData() {
-            // Read DOM back into editingTemplate object
             editingTemplate.name = document.getElementById('tplName').value.trim() || "Unnamed Template";
             editingTemplate.scoringType = document.querySelector('input[name="tplScoreType"]:checked').value;
             editingTemplate.generalPrompt = document.getElementById('tplGeneralPrompt').value;
@@ -395,14 +377,13 @@
                 container.insertAdjacentHTML('beforeend', html);
             });
 
-            // Update label
             const typeLabel = editingTemplate.scoringType === 'percentage' ? '%' : ' pts';
             document.getElementById('tplTotalWeight').textContent = `Total: ${totalWeight}${typeLabel}`;
         }
 
         function updateTemplatePreview() {
             syncEditorToData();
-            renderTemplateEditor(); // re-render to update the total calculation
+            renderTemplateEditor(); 
         }
 
         function addCriterion() {
@@ -426,7 +407,6 @@
             
             syncEditorToData();
             
-            // Overwrite the specific template in our main array
             const tIndex = templates.findIndex(t => t.id === editingTemplate.id);
             if (tIndex >= 0) {
                 templates[tIndex] = editingTemplate;
@@ -575,8 +555,11 @@
 
         function createRowHTML(name, gitUser, count, additions, deletions, lastMsg) {
             const safeGitUser = gitUser.replace(/'/g, "\\'");
+            // Safe ID for HTML injection
+            const idSafeUser = gitUser.replace(/[^a-zA-Z0-9]/g, '_');
+            
             const aiButton = count > 0 
-                ? `<button onclick="gradeCodeWithAI('${safeGitUser}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-3 py-1 rounded text-xs hover:bg-purple-600 hover:text-white transition shadow-sm">Grade via AI</button>`
+                ? `<button onclick="gradeCodeWithAI('${safeGitUser}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-3 py-1 rounded text-xs hover:bg-purple-600 hover:text-white transition shadow-sm whitespace-nowrap">Grade via AI</button>`
                 : `<span class="text-xs text-gray-400 font-semibold italic">No Code Submitted</span>`;
 
             return `
@@ -586,6 +569,9 @@
                     <td class="py-3 px-4 font-bold ${count === 0 ? 'text-red-500' : 'text-green-600'}">${count}</td>
                     <td class="py-3 px-4 text-sm font-mono"><span class="text-green-500">+${additions}</span> <span class="text-gray-300">|</span> <span class="text-red-500">-${deletions}</span></td>
                     <td class="py-3 px-4 text-xs text-gray-600 truncate max-w-xs" title="${lastMsg}">${lastMsg}</td>
+                    <td class="py-3 px-4 text-xs text-gray-700" id="feedback-${idSafeUser}">
+                        <span class="text-gray-400 italic">Not graded</span>
+                    </td>
                     <td class="py-3 px-4">${aiButton}</td>
                 </tr>
             `;
@@ -611,7 +597,7 @@
         }
 
         // ----------------------------------------------------
-        // GEMINI AI INTEGRATION & DYNAMIC PROMPTING
+        // GEMINI AI INTEGRATION (PRO MODEL)
         // ----------------------------------------------------
         async function gradeCodeWithAI(gitUser) {
             const geminiKey = localStorage.getItem('comprog_gemini_token');
@@ -626,20 +612,20 @@
                 return;
             }
 
-            // Retrieve active template
             const activeTpl = templates.find(t => t.id === activeTemplateId) || templates[0];
             const isPercent = activeTpl.scoringType === 'percentage';
             
-            // Build the dynamic string based on user configuration
             let criteriaText = activeTpl.criteria.map(c => `- ${c.name} (${c.weight}${isPercent ? '%' : ' pts'}): ${c.description}`).join('\n');
             let maxScore = isPercent ? 100 : activeTpl.criteria.reduce((sum, c) => sum + Number(c.weight || 0), 0);
 
-            // Construct Final Prompt
+            // Construct Final Prompt tailored to auto-detect system proposals
             const finalPromptText = `
 ${activeTpl.generalPrompt}
 
 You are an expert Computer Programming Professor grading a student's weekly code submissions.
 Review the following GitHub commit patches (diffs). 
+
+CRITICAL INSTRUCTION FOR FEEDBACK: Analyze the code to identify the specific project, system, or features the student is working on. Personalize your 'feedback_summary' to explicitly mention their project context and how their specific code logic contributes to that system proposal.
 
 Grade their work out of a maximum score of ${maxScore}.
 Use the exact following criteria to determine the final score:
@@ -648,11 +634,10 @@ ${criteriaText}
 Student Code:
 ${userData.patches.substring(0, 30000)}
 
-Respond strictly in valid JSON format with exactly two keys: "score" (a number representing the total score) and "feedback_summary" (a string summarizing the grading based on the criteria).
+Respond strictly in valid JSON format with exactly two keys: "score" (a number) and "feedback_summary" (a string summarizing the personalized grading based on the criteria).
 Example: {"score": ${isPercent ? 85 : Math.floor(maxScore * 0.85)}, "feedback_summary": "Your assessment here."}
             `;
 
-            // UI State Update
             document.getElementById('aiModal').classList.remove('hidden');
             document.getElementById('aiStudentName').textContent = `Reviewing commits for: ${gitUser}`;
             document.getElementById('aiLoading').classList.remove('hidden');
@@ -662,7 +647,8 @@ Example: {"score": ${isPercent ? 85 : Math.floor(maxScore * 0.85)}, "feedback_su
             document.getElementById('aiTemplateUsedLabel').textContent = `Using Rubric: ${activeTpl.name}`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+                // Switched to the powerful Gemini 1.5 Pro model
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -674,7 +660,13 @@ Example: {"score": ${isPercent ? 85 : Math.floor(maxScore * 0.85)}, "feedback_su
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
                     const exactError = errorData.error ? errorData.error.message : response.statusText;
-                    throw new Error(`Google API Error (${response.status}): ${exactError}`);
+                    
+                    // Specific warning for the Pro tier RPM limit
+                    if(response.status === 429) {
+                        throw new Error(`Google API Error 429: Too many requests. On the free tier, Gemini Pro limits you to 2 requests per minute. Please wait 60 seconds and try again.`);
+                    } else {
+                        throw new Error(`Google API Error (${response.status}): ${exactError}`);
+                    }
                 }
                 
                 const aiResult = await response.json();
@@ -685,9 +677,19 @@ Example: {"score": ${isPercent ? 85 : Math.floor(maxScore * 0.85)}, "feedback_su
                 document.getElementById('aiScore').textContent = gradeData.score;
                 document.getElementById('aiFeedback').textContent = gradeData.feedback_summary;
 
+                // Dynamically update the main dashboard table with the result
+                const idSafeUser = gitUser.replace(/[^a-zA-Z0-9]/g, '_');
+                const dashboardCell = document.getElementById(`feedback-${idSafeUser}`);
+                if (dashboardCell) {
+                    dashboardCell.innerHTML = `
+                        <div class="mb-1"><strong class="text-purple-700">Score: ${gradeData.score}/${maxScore}</strong></div>
+                        <div class="text-gray-700 leading-relaxed">${gradeData.feedback_summary}</div>
+                    `;
+                }
+
             } catch (err) {
                 document.getElementById('aiScore').textContent = "⚠️";
-                document.getElementById('aiFeedback').textContent = "Failed to generate AI review: " + err.message;
+                document.getElementById('aiFeedback').textContent = err.message;
             } finally {
                 document.getElementById('aiLoading').classList.add('hidden');
                 document.getElementById('aiContent').classList.remove('hidden');
