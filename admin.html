@@ -33,13 +33,13 @@
     </nav>
 
     <!-- Admin Content -->
-    <div class="max-w-screen-xl mx-auto w-full p-6 mt-6 flex-1">
+    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
         <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col h-full border border-gray-200">
             
             <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">System Configuration</h2>
-                    <p class="text-sm text-gray-500 mt-1">Manage database connections, AI keys, and student rosters.</p>
+                    <p class="text-sm text-gray-500 mt-1">Manage database connections, AI keys, sections, rosters, and rubrics.</p>
                 </div>
             </div>
 
@@ -57,17 +57,14 @@
                     <div class="p-5 border rounded-lg bg-gray-50">
                         <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-2"><span>🔥</span> Firebase Connection</h3>
                         <p class="text-xs text-gray-600 mb-4">Paste your Firebase Project JSON configuration here to link your remote database.</p>
-                        <textarea id="firebaseConfigInput" rows="7" class="w-full p-3 border rounded text-xs font-mono focus:ring-purple-500 focus:border-purple-500 bg-white" >const firebaseConfig = {
-    {
-  "apiKey": "AIzaSyDQsL9O5YlizeFA2iFJLt_5hY5V7xfM_qU",
-  "authDomain": "reporeview-e7ca4.firebaseapp.com",
-  "projectId": "reporeview-e7ca4",
-  "storageBucket": "reporeview-e7ca4.firebasestorage.app",
-  "messagingSenderId": "902176956124",
-  "appId": "1:902176956124:web:46d07f47ccbab034e15e19",
-  "measurementId": "G-XPXLNGZCY2"
-}
-  };</textarea>
+                        <textarea id="firebaseConfigInput" rows="7" class="w-full p-3 border rounded text-xs font-mono focus:ring-purple-500 focus:border-purple-500 bg-white" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "reporeview.firebaseapp.com",
+  "projectId": "reporeview",
+  "storageBucket": "reporeview.firebasestorage.app",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}'></textarea>
                     </div>
 
                     <div class="p-5 border rounded-lg bg-gray-50">
@@ -97,55 +94,91 @@
 
                 <!-- TAB 2: STUDENT MANAGEMENT -->
                 <div id="tab-students" class="hidden">
-                    <div class="flex justify-between items-end mb-4">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-800">Firestore Roster</h3>
-                            <p class="text-xs text-gray-500">Students saved here will be globally available across the application.</p>
+                    <!-- Top Controls -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-gray-50 p-4 rounded-lg border">
+                        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Filter by Section</label>
+                                <select id="sectionFilterSelect" onchange="filterStudentsTable()" class="p-2 border rounded font-semibold text-gray-800 bg-white focus:ring-purple-500 text-sm">
+                                    <option value="ALL">All Sections (All Students)</option>
+                                </select>
+                            </div>
+                            <button onclick="openSectionsModal()" class="mt-5 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-semibold hover:bg-gray-100 shadow-sm flex items-center gap-1">
+                                <span>⚙️</span> Manage Sections
+                            </button>
                         </div>
-                        <div class="flex gap-2">
-                            <label class="cursor-pointer bg-blue-100 text-blue-700 border border-blue-300 px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-blue-200 transition">
-                                <span>📁 Bulk Import CSV</span>
+
+                        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                            <button onclick="openAddStudentModal()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-purple-700 transition shadow-sm flex items-center gap-1">
+                                <span>➕</span> Add Student
+                            </button>
+                            <label class="cursor-pointer bg-blue-100 text-blue-700 border border-blue-300 px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-blue-200 transition flex items-center gap-1">
+                                <span>📁</span> Bulk Import CSV
                                 <input type="file" id="csvFileInput" class="hidden" accept=".csv">
                             </label>
-                            <button onclick="clearAllStudents()" class="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm font-bold hover:bg-red-100 transition shadow-sm">⚠️ Clear Database</button>
+                            <button onclick="clearAllStudents()" class="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm font-bold hover:bg-red-100 transition shadow-sm">
+                                ⚠️ Clear Roster
+                            </button>
                         </div>
                     </div>
 
-                    <div id="importLoading" class="hidden text-blue-600 font-semibold animate-pulse mb-4">Writing to Firebase... Please wait.</div>
+                    <div id="importLoading" class="hidden text-blue-600 font-semibold animate-pulse mb-4">Processing operation in Firebase... Please wait.</div>
 
-                    <div class="border rounded-lg overflow-hidden">
+                    <!-- Students Table -->
+                    <div class="border rounded-lg overflow-hidden shadow-sm">
                         <table class="min-w-full bg-white">
                             <thead class="bg-gray-100 border-b-2 border-gray-200">
                                 <tr>
-                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">Section</th>
-                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">Name</th>
-                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">GitHub Username</th>
-                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">Repo URL</th>
-                                    <th class="py-2 px-4 text-center text-xs font-bold text-gray-600 uppercase">Action</th>
+                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Section</th>
+                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Name</th>
+                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Email</th>
+                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">GitHub Username</th>
+                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Repository URL</th>
+                                    <th class="py-3 px-4 text-center text-xs font-bold text-gray-600 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="studentTableBody" class="text-sm">
-                                <!-- Populated dynamically from Firebase -->
-                                <tr><td colspan="5" class="py-4 text-center text-gray-400 italic">Connect Firebase to load students.</td></tr>
+                                <tr><td colspan="6" class="py-4 text-center text-gray-400 italic">Connect Firebase to load students.</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
                 <!-- TAB 3: RUBRICS -->
-                <div id="tab-rubrics" class="hidden">
-                    <div class="mb-6 flex flex-col md:flex-row items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div class="flex-1 w-full">
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Saved Templates</label>
-                            <select id="templateSelect" onchange="changeTemplate()" class="w-full p-2 border rounded font-semibold text-gray-800 focus:ring-purple-500"></select>
+                <div id="tab-rubrics" class="hidden space-y-6">
+                    <!-- Status Banner -->
+                    <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-purple-700">Current AutoGrader Rubric</span>
+                            <h4 id="activeEquippedBanner" class="text-lg font-extrabold text-purple-900">--</h4>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="createNewTemplate()" class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-semibold shadow-sm w-full md:w-auto">➕ New</button>
-                            <button onclick="deleteCurrentTemplate()" class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded text-sm font-semibold shadow-sm w-full md:w-auto">🗑️ Delete</button>
+                        <span class="bg-purple-200 text-purple-800 text-xs px-3 py-1.5 rounded-full font-bold">Equipped for AutoGrader</span>
+                    </div>
+
+                    <!-- Rubric Selector & Actions -->
+                    <div class="flex flex-col md:flex-row items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div class="flex-1 w-full">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Select Template to View/Edit</label>
+                            <select id="templateSelect" onchange="changeTemplate()" class="w-full p-2 border rounded font-semibold text-gray-800 focus:ring-purple-500 bg-white"></select>
+                        </div>
+                        <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                            <button id="equipTemplateBtn" onclick="equipCurrentTemplate()" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-green-700 transition flex items-center gap-1">
+                                <span>🎯</span> Equip as Active Rubric
+                            </button>
+                            <button onclick="createNewTemplate()" class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-semibold shadow-sm hover:bg-gray-100">➕ New</button>
+                            <button onclick="deleteCurrentTemplate()" class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded text-sm font-semibold shadow-sm hover:bg-red-50">🗑️ Delete</button>
                         </div>
                     </div>
 
-                    <div id="templateEditor" class="border rounded-lg p-5 border-gray-200 shadow-sm relative">
+                    <!-- Template Editor -->
+                    <div id="templateEditor" class="border rounded-lg p-5 border-gray-200 shadow-sm relative bg-white">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Editing Template:</h3>
+                                <span id="editorStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full font-bold"></span>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Template Name</label>
@@ -154,14 +187,14 @@
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Scoring Mode</label>
                                 <div class="flex gap-4 mt-2">
-                                    <label><input type="radio" name="tplScoreType" value="percentage" onchange="updateTemplatePreview()"> Percentage (%)</label>
-                                    <label><input type="radio" name="tplScoreType" value="points" onchange="updateTemplatePreview()"> Custom Points</label>
+                                    <label class="cursor-pointer flex items-center gap-1.5"><input type="radio" name="tplScoreType" value="percentage" onchange="updateTemplatePreview()"> Percentage (%)</label>
+                                    <label class="cursor-pointer flex items-center gap-1.5"><input type="radio" name="tplScoreType" value="points" onchange="updateTemplatePreview()"> Custom Points</label>
                                 </div>
                             </div>
                         </div>
                         <div class="mb-6">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">General Prompt Instructions</label>
-                            <textarea id="tplGeneralPrompt" rows="2" class="w-full p-2 border rounded bg-gray-50" onchange="updateTemplatePreview()"></textarea>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">General Prompt Instructions (Optional)</label>
+                            <textarea id="tplGeneralPrompt" rows="2" class="w-full p-2 border rounded bg-gray-50" onchange="updateTemplatePreview()" placeholder="Optional background context..."></textarea>
                         </div>
                         <div>
                             <div class="flex justify-between items-end mb-3 border-b pb-2">
@@ -172,8 +205,8 @@
                             <button onclick="addCriterion()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded font-semibold text-sm hover:bg-gray-50 transition">➕ Add Another Criterion</button>
                         </div>
                     </div>
-                    <div class="mt-4 flex justify-end">
-                        <button onclick="saveRubrics()" class="bg-purple-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-purple-700 transition">Save Template</button>
+                    <div class="flex justify-end">
+                        <button onclick="saveRubrics()" class="bg-purple-600 text-white px-6 py-2.5 rounded font-bold shadow hover:bg-purple-700 transition">Save Template Changes</button>
                     </div>
                 </div>
 
@@ -181,7 +214,81 @@
         </div>
     </div>
 
-    <!-- Type Module required to import Firebase libraries securely -->
+    <!-- MODAL: ADD / EDIT STUDENT -->
+    <div id="studentModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
+                <h3 id="studentModalTitle" class="text-lg font-bold text-gray-800">Add New Student</h3>
+                <button onclick="closeStudentModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            </div>
+            <form onsubmit="saveStudentForm(event)" class="p-6 space-y-4">
+                <input type="hidden" id="modalStudentDocId">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Section</label>
+                    <select id="modalStudentSection" class="w-full p-2 border rounded focus:ring-purple-500 bg-white" required>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Full Name</label>
+                    <input type="text" id="modalStudentName" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="e.g. Juan Dela Cruz" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Email Address</label>
+                    <input type="email" id="modalStudentEmail" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="e.g. juan@school.edu">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">GitHub Username</label>
+                    <input type="text" id="modalStudentGithub" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="e.g. juan-dev" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Repository URL</label>
+                    <input type="url" id="modalStudentRepo" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="https://github.com/juan-dev/comprog-project" required>
+                </div>
+                <div class="pt-4 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeStudentModal()" class="px-4 py-2 border rounded text-gray-600 font-semibold hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded font-bold hover:bg-purple-700 shadow">Save Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: MANAGE SECTIONS -->
+    <div id="sectionsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">Manage Class Sections</h3>
+                <button onclick="closeSectionsModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                <!-- Add new section input -->
+                <div class="flex gap-2">
+                    <input type="text" id="newSectionInput" placeholder="New Section Name (e.g. IT-301)" class="flex-1 p-2 border rounded text-sm focus:ring-purple-500">
+                    <button onclick="addNewSection()" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-green-700 shadow-sm">Add</button>
+                </div>
+
+                <div class="border rounded-lg overflow-hidden">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-100 border-b">
+                            <tr>
+                                <th class="p-2 text-left text-xs font-bold text-gray-600 uppercase">Section Name</th>
+                                <th class="p-2 text-center text-xs font-bold text-gray-600 uppercase">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sectionsTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-4 border-t bg-gray-50 text-right">
+                <button onclick="closeSectionsModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded font-bold hover:bg-gray-300">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="admin.js"></script>
 </body>
 </html>
