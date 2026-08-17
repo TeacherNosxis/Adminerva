@@ -24,7 +24,6 @@
         <div class="flex justify-between items-center mb-6 pb-4 border-b">
             <h1 class="text-2xl font-bold text-gray-800">Comprog Coding Dashboard</h1>
             
-            <!-- Burger Menu Container -->
             <div class="relative">
                 <button id="burgerBtn" onclick="toggleMenu()" class="p-2 rounded-md hover:bg-gray-100 focus:outline-none transition border border-transparent hover:border-gray-200">
                     <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -120,7 +119,7 @@
                 <div id="tab-security" class="block">
                     <div class="p-5 border rounded-lg bg-blue-50 border-blue-100">
                         <h3 class="text-sm font-bold text-blue-800 uppercase tracking-wider mb-2">API Credentials & Model</h3>
-                        <p class="text-xs text-blue-600 mb-4">Tokens are stored locally. Select your preferred Gemini model below.</p>
+                        <p class="text-xs text-blue-600 mb-4">Tokens are stored locally. Select or type your preferred Gemini model below.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-700 mb-1">GitHub Token</label>
@@ -133,10 +132,14 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">AI Engine Selection</label>
-                            <select id="modalAiModel" class="w-full p-2 border rounded focus:ring-purple-500 bg-white">
-                                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fastest, High Rate Limits)</option>
-                                <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro Latest (Best Logic, Low Rate Limits)</option>
-                            </select>
+                            <input type="text" id="modalAiModel" list="aiModelOptions" class="w-full p-2 border rounded focus:ring-purple-500 bg-white" placeholder="e.g. gemini-1.5-flash-latest">
+                            <datalist id="aiModelOptions">
+                                <option value="gemini-1.5-flash-latest">
+                                <option value="gemini-1.5-pro-latest">
+                                <option value="gemini-1.5-flash">
+                                <option value="gemini-1.5-pro">
+                            </datalist>
+                            <p class="text-[10px] text-gray-500 mt-1 italic">If a model throws a 404 Error, try using the <b>-latest</b> tag.</p>
                         </div>
                     </div>
                 </div>
@@ -368,7 +371,7 @@
             
             document.getElementById('modalGithubToken').value = localStorage.getItem('comprog_github_token') || "";
             document.getElementById('modalGeminiKey').value = localStorage.getItem('comprog_gemini_token') || "";
-            document.getElementById('modalAiModel').value = localStorage.getItem('comprog_ai_model') || "gemini-1.5-flash";
+            document.getElementById('modalAiModel').value = localStorage.getItem('comprog_ai_model') || "gemini-1.5-flash-latest";
             
             renderSectionsEditor();
 
@@ -586,7 +589,7 @@
         function saveSettings() {
             const gitToken = document.getElementById('modalGithubToken').value.trim();
             const geminiKey = document.getElementById('modalGeminiKey').value.trim();
-            const aiModel = document.getElementById('modalAiModel').value;
+            const aiModel = document.getElementById('modalAiModel').value.trim();
             localStorage.setItem('comprog_github_token', gitToken);
             localStorage.setItem('comprog_gemini_token', geminiKey);
             localStorage.setItem('comprog_ai_model', aiModel);
@@ -722,7 +725,7 @@
                 }
 
                 stats[authorUsername].count += 1;
-                stats[authorUsername].allMsgs.push(commit.commit.message); // Storing all messages for the details modal
+                stats[authorUsername].allMsgs.push(commit.commit.message); 
 
                 const detailResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${commit.sha}`, {
                     headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
@@ -806,7 +809,7 @@
 
             const codeBlock = document.getElementById('detCodeBlock');
             codeBlock.textContent = userData.patches || "No raw code changes recorded.";
-            codeBlock.classList.add('hidden'); // Ensure hidden by default
+            codeBlock.classList.add('hidden'); 
             document.getElementById('toggleCodeBtn').textContent = 'Show Code Changes';
 
             document.getElementById('detailsModal').classList.remove('hidden');
@@ -833,7 +836,7 @@
         // ----------------------------------------------------
         async function gradeCodeWithAI(gitUser) {
             const geminiKey = localStorage.getItem('comprog_gemini_token');
-            const aiModel = localStorage.getItem('comprog_ai_model') || 'gemini-1.5-flash';
+            const aiModel = localStorage.getItem('comprog_ai_model') || 'gemini-1.5-flash-latest';
             if (!geminiKey) {
                 alert("Missing Gemini API Key. Please open the settings menu to configure your AI token.");
                 return;
@@ -879,7 +882,6 @@ Example: {"score": ${isPercent ? 85 : Math.floor(maxScore * 0.85)}, "feedback_su
             document.getElementById('aiTemplateUsedLabel').textContent = `Using Rubric: ${activeTpl.name} | Model: ${aiModel}`;
 
             try {
-                // Dynamically fetch using the selected model from local storage
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -894,9 +896,8 @@ Example: {"score": ${isPercent ? 85 : Math.floor(maxScore * 0.85)}, "feedback_su
                     const exactError = errorData.error ? errorData.error.message : response.statusText;
                     if(response.status === 429) {
                         throw new Error(`Google API Error 429: Too many requests. If you are using the Pro model on the free tier, you are limited to 2 requests per minute. Wait 60 seconds or switch to the Flash model in settings.`);
-                    } else if (response.status === 404) {
-                        throw new Error(`Google API Error 404: The selected model (${aiModel}) is not available for your API key. Please open Settings and switch to "Gemini 1.5 Flash".`);
                     } else {
+                        // Dynamically prints the exact Google API Error instead of a hardcoded 404 message
                         throw new Error(`Google API Error (${response.status}): ${exactError}`);
                     }
                 }
