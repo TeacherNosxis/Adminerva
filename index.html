@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprog Coding - GitHub Commit Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8 font-sans">
+
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">Comprog Coding Dashboard</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Your GitHub Token</label>
+                <input type="password" id="githubToken" placeholder="github_pat_..." class="mt-1 p-2 w-full border rounded border-blue-400">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">GitHub Repo URL</label>
+                <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo" class="mt-1 p-2 w-full border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                <input type="date" id="startDate" class="mt-1 p-2 w-full border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">End Date</label>
+                <input type="date" id="endDate" class="mt-1 p-2 w-full border rounded">
+            </div>
+        </div>
+
+        <button onclick="generateReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold">Generate Weekly Report</button>
+        
+        <!-- Status & Error Handling Container -->
+        <div id="loading" class="hidden mt-4 text-blue-600 font-semibold animate-pulse">Processing data, please wait...</div>
+        <div id="errorBox" class="hidden mt-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded shadow-sm">
+            <p class="font-bold">An Error Occurred</p>
+            <p id="errorMessage" class="text-sm"></p>
+        </div>
+
+        <div class="mt-8 overflow-x-auto">
+            <table class="min-w-full bg-white border">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Student Name / Email</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">GitHub User</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Total Commits</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Lines Added</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Lines Deleted</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Latest Commit Msg</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    <!-- Results will populate here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION: ONLY PASTE YOUR CSV LINK HERE
+        // ==========================================
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSl9HdhrngVWYx7lZp6QFAIlNqSc-97qWtF5KDcFusOOBt443pLUXIUGP6qhXYiLMqxHvRq8j4or_Sf/pub?output=csv';
+        // ==========================================
+
+        function showError(message) {
+            const errorBox = document.getElementById('errorBox');
+            const errorMessage = document.getElementById('errorMessage');
+            const loading = document.getElementById('loading');
+            
+            loading.classList.add('hidden');
+            errorBox.classList.remove('hidden');
+            errorMessage.textContent = message;
+            console.error("Dashboard Error:", message);
+        }
+
+        function clearErrors() {
+            document.getElementById('errorBox').classList.add('hidden');
+            document.getElementById('errorMessage').textContent = '';
+        }
+
+        async function generateReport() {
+            clearErrors();
+            
+            const tokenInput = document.getElementById('githubToken').value.trim();
+            const repoUrl = document.getElementById('repoUrl').value.trim();
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            const loading = document.getElementById('loading');
+            const resultsBody = document.getElementById('resultsBody');
+
+            if (!tokenInput || !repoUrl || !startDate || !endDate) {
+                showError("Validation Failed: Please fill out all input fields including your Token.");
+                return;
+            }
+
+            loading.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+
+            try {
+                // 1. Extract Owner and Repo from URL
+                let owner, repo;
+                try {
+                    const urlParts = repoUrl.replace(/\/$/, '').split('/');
+                    repo = urlParts.pop();
+                    owner = urlParts.pop();
+                    if (!owner || !repo) throw new Error("Invalid Repo URL format.");
+                } catch (err) {
+                    throw new Error("Failed to parse the GitHub URL. Make sure it looks like 'https://github.com/owner/repo'.");
+                }
+
+                // 2. Fetch Students from Google Sheet
+                let students = [];
+                try {
+                    students = await fetchStudents();
+                } catch (err) {
+                    throw new Error("Failed to read Google Sheet CSV. Check your CSV link and ensure the file is 'Published to the web'.");
+                }
+
+                // 3. Fetch Commits from GitHub for the timeframe
+                let commits = [];
+                try {
+                    commits = await fetchCommits(owner, repo, startDate, endDate, tokenInput);
+                } catch (err) {
+                    throw new Error(`GitHub API Error (Commits): ${err.message}. Check if your Token has access to this repo.`);
+                }
+
+                // 4. Process individual commit stats (lines added/deleted)
+                let commitDataByUser = {};
+                try {
+                    commitDataByUser = await processCommits(owner, repo, commits, tokenInput);
+                } catch (err) {
+                    throw new Error(`GitHub API Error (Stats): ${err.message}. Failed to fetch specific lines added/deleted.`);
+                }
+
+                // 5. Merge Data and Render Table
+                renderTable(students, commitDataByUser);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function fetchStudents() {
+            return new Promise((resolve, reject) => {
+                if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL === 'YOUR_PUBLISHED_CSV_LINK_HERE') {
+                    reject(new Error("Google Sheet CSV URL is missing in the configuration."));
+                    return;
+                }
+                
+                Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                    download: true,
+                    header: true,
+                    complete: function(results) {
+                        resolve(results.data);
+                    },
+                    error: function(err) {
+                        reject(err);
+                    }
+                });
+            });
+        }
+
+        async function fetchCommits(owner, repo, start, end, token) {
+            const since = new Date(start + 'T00:00:00Z').toISOString();
+            const until = new Date(end + 'T23:59:59Z').toISOString();
+            
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+            }
+            return await response.json();
+        }
+
+        async function processCommits(owner, repo, commits, token) {
+            const stats = {};
+
+            for (let commit of commits) {
+                // Ensure fallback variables exist if GitHub data structure is slightly different
+                const authorUsername = commit.author ? commit.author.login : (commit.commit.author.name || "Unknown");
+                const authorEmail = commit.commit.author.email || "No email available";
+                
+                if (!stats[authorUsername]) {
+                    stats[authorUsername] = { 
+                        count: 0, 
+                        additions: 0, 
+                        deletions: 0, 
+                        lastMsg: commit.commit.message,
+                        email: authorEmail
+                    };
+                }
+
+                stats[authorUsername].count += 1;
+
+                // Make secondary call to get lines added/deleted
+                const detailResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${commit.sha}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json'
+                    }
+                });
+                
+                if (!detailResponse.ok) {
+                    throw new Error(`Failed to fetch details for commit SHA: ${commit.sha}`);
+                }
+
+                const detail = await detailResponse.json();
+                if (detail.stats) {
+                    stats[authorUsername].additions += detail.stats.additions;
+                    stats[authorUsername].deletions += detail.stats.deletions;
+                }
+            }
+            return stats;
+        }
+
+        function createRowHTML(name, gitUser, count, additions, deletions, lastMsg) {
+            return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2 px-4 text-gray-800 font-medium">${name}</td>
+                    <td class="py-2 px-4 text-gray-500">${gitUser}</td>
+                    <td class="py-2 px-4 font-bold ${count === 0 ? 'text-red-500' : 'text-green-600'}">${count}</td>
+                    <td class="py-2 px-4 text-green-500">+${additions}</td>
+                    <td class="py-2 px-4 text-red-500">-${deletions}</td>
+                    <td class="py-2 px-4 text-xs text-gray-600 truncate max-w-xs" title="${lastMsg}">${lastMsg}</td>
+                </tr>
+            `;
+        }
+
+        function renderTable(students, commitData) {
+            const resultsBody = document.getElementById('resultsBody');
+            const processedGitUsers = new Set();
+            
+            // 1. Process and display every student explicitly listed in the Google Sheet
+            students.forEach(student => {
+                if (!student.Name) return; 
+                
+                const gitUser = student.GitHubUsername ? student.GitHubUsername.trim() : "";
+                processedGitUsers.add(gitUser);
+
+                const data = commitData[gitUser] || { count: 0, additions: 0, deletions: 0, lastMsg: "No commits this week" };
+                resultsBody.innerHTML += createRowHTML(student.Name, gitUser, data.count, data.additions, data.deletions, data.lastMsg);
+            });
+
+            // 2. Identify and display anyone who made a commit BUT is missing from the Google Sheet
+            for (const [gitUser, data] of Object.entries(commitData)) {
+                if (!processedGitUsers.has(gitUser)) {
+                    // Default to showing their email address as requested
+                    const displayName = `${data.email} (Not in Sheet)`;
+                    resultsBody.innerHTML += createRowHTML(displayName, gitUser, data.count, data.additions, data.deletions, data.lastMsg);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
