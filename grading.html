@@ -35,9 +35,16 @@
             <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-200">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">Weekly AutoGrader</h2>
-                    <p class="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                        Active Rubric: <span id="activeRubricLabel" class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">Loading...</span>
-                    </p>
+                    <div class="flex items-center gap-3 mt-1">
+                        <p class="text-sm text-gray-500 flex items-center gap-2">
+                            Active Rubric: <span id="activeRubricLabel" class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">Loading...</span>
+                        </p>
+                        <!-- NEW: AI Quota Tracker -->
+                        <div class="bg-gray-100 border border-gray-300 text-xs font-bold text-gray-600 px-3 py-1 rounded shadow-sm flex items-center gap-1.5">
+                            <span>🤖 AI Daily Usage:</span>
+                            <span id="aiQuotaDisplay" class="text-purple-700 font-extrabold">0 / 1500</span>
+                        </div>
+                    </div>
                 </div>
                 <button onclick="publishAllGrades()" id="publishAllBtn" class="hidden bg-green-600 text-white px-5 py-2 rounded font-bold hover:bg-green-700 transition shadow flex items-center gap-2">
                     <span>🚀</span> Publish All to GitHub

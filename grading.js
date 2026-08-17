@@ -89,6 +89,35 @@ function initDateSelects() {
     document.getElementById('weekSelect').value = day <= 7 ? "1" : day <= 14 ? "2" : day <= 21 ? "3" : "4";
     updateDateScope();
 }
+function updateQuotaDisplay() {
+    const today = new Date().toISOString().split('T')[0];
+    let usage = JSON.parse(localStorage.getItem('repoReview_ai_usage') || '{"date": "", "count": 0}');
+    
+    // Reset counter if it is a new day
+    if (usage.date !== today) {
+        usage = { date: today, count: 0 };
+        localStorage.setItem('repoReview_ai_usage', JSON.stringify(usage));
+    }
+    
+    const display = document.getElementById('aiQuotaDisplay');
+    if (display) {
+        display.textContent = `${usage.count} / 1500`;
+        if (usage.count >= 1400) display.classList.add('text-red-600'); // Warning color near limit
+    }
+    return usage;
+}
+
+function incrementAiQuota() {
+    const usage = updateQuotaDisplay();
+    usage.count++;
+    localStorage.setItem('repoReview_ai_usage', JSON.stringify(usage));
+    updateQuotaDisplay();
+}
+
+// Ensure the display updates when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    updateQuotaDisplay();
+});
 
 window.updateDateScope = function() {
     const y = parseInt(document.getElementById('yearSelect').value);
@@ -372,16 +401,33 @@ Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "
     window.showLoader(`AI Analyzing Code for ${student.name}...`, "Applying strict grading rubrics.");
 
     try {
+        // --- NEW: Check daily quota before sending the request ---
+        const currentUsage = updateQuotaDisplay();
+        if (currentUsage.count >= 1500) {
+            throw new Error("Daily AI Quota Reached (1500/1500). Please wait until tomorrow to grade more students.");
+        }
+
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { response_mime_type: "application/json" }
+                generationConfig: { 
+                    response_mime_type: "application/json",
+                    // --- NEW: Force strict determinism to stop score fluctuation ---
+                    temperature: 0.0 
+                }
             })
         });
 
-        if (!response.ok) throw new Error("Gemini API Error: " + response.statusText);
+        if (!response.ok) {
+            // --- NEW: Catch rate limit spam clicks specifically ---
+            if (response.status === 429) throw new Error("Rate Limit Exceeded. You are clicking too fast (Limit: 15 Requests per minute). Wait 60 seconds.");
+            throw new Error("Gemini API Error: " + response.statusText);
+        }
+        
+        // --- NEW: Log the successful API call to local storage ---
+        incrementAiQuota();
         
         const aiResult = await response.json();
         const rawJson = aiResult.candidates[0].content.parts[0].text;
