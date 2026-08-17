@@ -11,7 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ==========================================
-// GLOBAL STATE
+// GLOBAL STATE & LOADER
 // ==========================================
 let db = null;
 let allStudents = [];
@@ -19,6 +19,19 @@ let allSections = [];
 let templates = [];
 let activeTemplateId = null;
 let editingTemplate = null;
+
+window.showLoader = function(msg = "Processing...") {
+    document.getElementById('loaderMessage').textContent = msg;
+    const loader = document.getElementById('globalLoader');
+    loader.classList.remove('hidden');
+    loader.classList.add('flex');
+};
+
+window.hideLoader = function() {
+    const loader = document.getElementById('globalLoader');
+    loader.classList.add('hidden');
+    loader.classList.remove('flex');
+};
 
 // ==========================================
 // INITIALIZATION
@@ -107,8 +120,10 @@ function initFirebase() {
 // SECTIONS MANAGEMENT
 // ----------------------------------------------------
 async function loadSectionsAndStudents() {
+    window.showLoader("Loading Database...");
     await fetchSectionsFromFirebase();
     await fetchStudentsFromFirebase();
+    window.hideLoader();
 }
 
 async function fetchSectionsFromFirebase() {
@@ -117,16 +132,6 @@ async function fetchSectionsFromFirebase() {
         const snap = await getDocs(collection(db, "sections"));
         allSections = [];
         snap.forEach(d => allSections.push({ id: d.id, ...d.data() }));
-
-        // Fallback: If no sections collection exists, infer from students or default
-        if (allSections.length === 0) {
-            const defaultSecs = ["Section 1", "Section 2"];
-            for (let name of defaultSecs) {
-                const docRef = await addDoc(collection(db, "sections"), { name });
-                allSections.push({ id: docRef.id, name });
-            }
-        }
-
         populateSectionDropdowns();
     } catch (e) {
         console.error("Error fetching sections:", e);
@@ -134,7 +139,6 @@ async function fetchSectionsFromFirebase() {
 }
 
 function populateSectionDropdowns() {
-    // 1. Filter dropdown
     const filterSelect = document.getElementById('sectionFilterSelect');
     const curVal = filterSelect.value;
     filterSelect.innerHTML = `<option value="ALL">All Sections (All Students)</option>`;
@@ -149,7 +153,6 @@ function populateSectionDropdowns() {
         filterSelect.value = curVal;
     }
 
-    // 2. Modal student section dropdown
     const modalSelect = document.getElementById('modalStudentSection');
     modalSelect.innerHTML = '';
     allSections.forEach(sec => {
@@ -159,7 +162,6 @@ function populateSectionDropdowns() {
         modalSelect.appendChild(opt);
     });
 
-    // 3. Sections manager modal table
     renderSectionsManagerTable();
 }
 
@@ -196,24 +198,32 @@ window.addNewSection = async function() {
         return alert("This section already exists.");
     }
 
+    if (!db) return alert("Firebase is not connected.");
+
+    window.showLoader("Saving new section to Firebase...");
     try {
         const docRef = await addDoc(collection(db, "sections"), { name });
         allSections.push({ id: docRef.id, name });
         document.getElementById('newSectionInput').value = '';
         populateSectionDropdowns();
     } catch (e) {
-        alert("Failed to add section: " + e.message);
+        alert("Failed to add section. Have you created the Firestore Database in the console? Error: " + e.message);
+    } finally {
+        window.hideLoader();
     }
 };
 
 window.deleteSectionDoc = async function(id, name) {
     if (confirm(`Delete section '${name}'? (Students assigned to this section will remain in the database).`)) {
+        window.showLoader("Deleting section...");
         try {
             await deleteDoc(doc(db, "sections", id));
             allSections = allSections.filter(s => s.id !== id);
             populateSectionDropdowns();
         } catch (e) {
             alert("Error deleting section: " + e.message);
+        } finally {
+            window.hideLoader();
         }
     }
 };
@@ -224,7 +234,6 @@ window.deleteSectionDoc = async function(id, name) {
 async function fetchStudentsFromFirebase() {
     if (!db) return;
     const tbody = document.getElementById('studentTableBody');
-    tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-500 animate-pulse">Loading roster from Firebase...</td></tr>`;
 
     try {
         const querySnapshot = await getDocs(collection(db, "students"));
@@ -261,7 +270,7 @@ window.filterStudentsTable = function() {
         : allStudents.filter(s => s.section === filter);
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-400 italic">No students found for this filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-400 italic">No students found.</td></tr>`;
         return;
     }
 
@@ -298,7 +307,6 @@ window.openAddStudentModal = function() {
     document.getElementById('modalStudentGithub').value = "";
     document.getElementById('modalStudentRepo').value = "";
     
-    // Default to currently selected filter section if available
     const activeFilter = document.getElementById('sectionFilterSelect').value;
     if (activeFilter !== "ALL") {
         document.getElementById('modalStudentSection').value = activeFilter;
@@ -339,14 +347,13 @@ window.saveStudentForm = async function(event) {
         repoUrl: document.getElementById('modalStudentRepo').value.trim()
     };
 
+    window.showLoader("Saving student profile...");
     try {
         if (docId) {
-            // Update existing
             await updateDoc(doc(db, "students", docId), studentData);
             const index = allStudents.findIndex(s => s.id === docId);
             if (index !== -1) allStudents[index] = { id: docId, ...studentData };
         } else {
-            // Add new
             const newDoc = await addDoc(collection(db, "students"), studentData);
             allStudents.push({ id: newDoc.id, ...studentData });
         }
@@ -354,24 +361,30 @@ window.saveStudentForm = async function(event) {
         closeStudentModal();
         filterStudentsTable();
     } catch (e) {
-        alert("Failed to save student: " + e.message);
+        alert("Failed to save student. Ensure Firestore rules are set to allow writes. Error: " + e.message);
+    } finally {
+        window.hideLoader();
     }
 };
 
 window.deleteStudent = async function(docId) {
     if (confirm("Are you sure you want to remove this student?")) {
+        window.showLoader("Deleting student...");
         try {
             await deleteDoc(doc(db, "students", docId));
             allStudents = allStudents.filter(s => s.id !== docId);
             filterStudentsTable();
         } catch (e) {
             alert("Error deleting document: " + e.message);
+        } finally {
+            window.hideLoader();
         }
     }
 };
 
 window.clearAllStudents = async function() {
     if (confirm("WARNING: This will delete ALL students from the database. Proceed?")) {
+        window.showLoader("Wiping roster from database...");
         try {
             const querySnapshot = await getDocs(collection(db, "students"));
             const batch = writeBatch(db);
@@ -379,9 +392,10 @@ window.clearAllStudents = async function() {
             await batch.commit();
             allStudents = [];
             filterStudentsTable();
-            alert("Roster cleared.");
         } catch (e) {
             alert("Error clearing roster: " + e.message);
+        } finally {
+            window.hideLoader();
         }
     }
 };
@@ -402,8 +416,7 @@ function handleCsvUpload(event) {
             const data = results.data;
             if (data.length === 0) return alert("CSV file contains no records.");
 
-            const loadingInd = document.getElementById('importLoading');
-            loadingInd.classList.remove('hidden');
+            window.showLoader(`Importing ${data.length} students to Firebase...`);
 
             try {
                 const batch = writeBatch(db);
@@ -420,13 +433,13 @@ function handleCsvUpload(event) {
                 }
 
                 await batch.commit();
-                alert(`Successfully imported ${data.length} students to Firebase!`);
                 await loadSectionsAndStudents();
+                alert(`Successfully imported ${data.length} students to Firebase!`);
             } catch (err) {
                 console.error("Batch write failed", err);
                 alert("Failed to write to Firebase: " + err.message);
             } finally {
-                loadingInd.classList.add('hidden');
+                window.hideLoader();
                 event.target.value = '';
             }
         }
@@ -508,7 +521,6 @@ window.equipCurrentTemplate = function() {
     
     renderTemplateDropdown();
     updateRubricEquippedUI();
-    alert(`'${editingTemplate.name}' is now EQUIPPED and will be used by the AutoGrader!`);
 };
 
 window.changeTemplate = function() {
