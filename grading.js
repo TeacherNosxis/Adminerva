@@ -14,7 +14,6 @@ let firestoreGradesMap = {}; // Maps studentId -> saved firebase grades
 
 let activeStartDateStr = "";
 let activeEndDateStr = "";
-
 // ==========================================
 // LOADER UTILS
 // ==========================================
@@ -382,26 +381,30 @@ ${activeTemplate.generalPrompt}
 You are a strict Computer Programming Professor grading a student's weekly commits. Review the following GitHub diff patches.
 
 CRITICAL INSTRUCTIONS:
-1. DO NOT use conversational filler or flowery language. Be blunt and direct.
-2. The 'feedback_summary' MUST follow this format exactly:
-   - Provide exactly 1 sentence of factual praise acknowledging functional code.
-   - Use bullet points to list missing logic, syntax errors, and inefficiencies based strictly on the criteria.
-   - Include 1 bullet point for 'Optional Suggestions' (best practices).
+1. DO NOT use conversational filler. Be blunt and direct.
+2. Evaluate the code against the provided criteria and assign a specific score for each.
+3. Output MUST be strictly in the following JSON format:
+{
+    "total_score": <number>,
+    "breakdown": [
+        { "criterion": "<Name of Criterion>", "score": <number>, "max": <number> }
+    ],
+    "feedback_criteria": "<Bullet points explaining the deductions and errors based strictly on the criteria>",
+    "additional_feedback": "<1-2 sentences of factual praise, missing logic, or extra context>",
+    "optional_suggestion": "<1 bullet point for best practices>"
+}
 
-Grade out of a maximum score of ${maxScore}.
+Grade out of a maximum total score of ${maxScore}.
 Criteria:
 ${criteriaText}
 
 Student Code:
 ${data.patches.substring(0, 30000)}
-
-Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "<string>"}
 `;
 
     window.showLoader(`AI Analyzing Code for ${student.name}...`, "Applying strict grading rubrics.");
 
     try {
-        // --- NEW: Check daily quota before sending the request ---
         const currentUsage = updateQuotaDisplay();
         if (currentUsage.count >= 1500) {
             throw new Error("Daily AI Quota Reached (1500/1500). Please wait until tomorrow to grade more students.");
@@ -414,33 +417,39 @@ Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
                     response_mime_type: "application/json",
-                    // --- NEW: Force strict determinism to stop score fluctuation ---
                     temperature: 0.0 
                 }
             })
         });
 
         if (!response.ok) {
-            // --- NEW: Catch rate limit spam clicks specifically ---
-            if (response.status === 429) throw new Error("Rate Limit Exceeded. You are clicking too fast (Limit: 15 Requests per minute). Wait 60 seconds.");
+            if (response.status === 429) throw new Error("Rate Limit Exceeded. You are clicking too fast. Wait 60 seconds.");
             throw new Error("Gemini API Error: " + response.statusText);
         }
         
-        // --- NEW: Log the successful API call to local storage ---
         incrementAiQuota();
         
         const aiResult = await response.json();
         const rawJson = aiResult.candidates[0].content.parts[0].text;
         const gradeData = JSON.parse(rawJson);
-        const formattedFeedback = gradeData.feedback_summary.replace(/\n/g, '<br>');
 
-        // Save directly to Firestore
+        // Format the feedback for the Dashboard UI
+        let formattedFeedback = `<div class="space-y-2">`;
+        formattedFeedback += `<div><strong class="text-gray-800">Criteria Breakdown:</strong><br>`;
+        gradeData.breakdown.forEach(b => {
+            formattedFeedback += `<span class="text-gray-600">- ${b.criterion}: ${b.score}/${b.max}</span><br>`;
+        });
+        formattedFeedback += `</div>`;
+        formattedFeedback += `<div><strong class="text-gray-800">Feedback based on criteria:</strong><br><span class="text-gray-600">${gradeData.feedback_criteria.replace(/\n/g, '<br>')}</span></div>`;
+        formattedFeedback += `<div><strong class="text-gray-800">Additional feedback:</strong><br><span class="text-gray-600">${gradeData.additional_feedback.replace(/\n/g, '<br>')}</span></div>`;
+        formattedFeedback += `<div><strong class="text-gray-800">Optional Suggestion:</strong><br><span class="text-gray-600">${gradeData.optional_suggestion.replace(/\n/g, '<br>')}</span></div>`;
+        formattedFeedback += `</div>`;
+
         const y = parseInt(document.getElementById('yearSelect').value);
         const m = parseInt(document.getElementById('monthSelect').value);
         const w = parseInt(document.getElementById('weekSelect').value);
         const quarter = getQuarter(document.getElementById('monthSelect').value);
         
-        // Consistent ID so regrading overwrites the same document
         const gradeDocId = `${student.id}_${y}_m${m}_w${w}`; 
         
         const dbEntry = {
@@ -451,9 +460,10 @@ Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "
             month: m,
             week: w,
             quarter: quarter,
-            score: gradeData.score,
+            score: gradeData.total_score,
             maxScore: maxScore,
-            feedback: formattedFeedback,
+            feedback: formattedFeedback, // Saved for dashboard display
+            rawAiData: gradeData, // Saved as raw JSON so GitHub publisher can build clean markdown
             publishedToGithub: false,
             commitSha: data.commitSha
         };
@@ -479,13 +489,15 @@ Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "
 };
 
 // ==========================================
-// PUBLISHING (GITHUB API)
+// PUBLISHING (GITHUB API) & CONFIRMATION
 // ==========================================
+
+let pendingPublishAction = null; // Tracks if we are confirming a 'single' or 'bulk' publish
+
 async function postCommentToGithub(student, gradeRec) {
     const ghToken = localStorage.getItem('repoReview_github_token');
     let owner, repo;
     
-    // Clean up the URL to extract owner and repo accurately
     try {
         const cleanUrl = student.repoUrl.trim().replace(/\/$/, '').replace('.git', '');
         const urlParts = cleanUrl.split('/');
@@ -496,9 +508,42 @@ async function postCommentToGithub(student, gradeRec) {
         throw new Error(`Could not parse owner/repo from URL: ${student.repoUrl}`);
     }
 
-    // Convert HTML breaks back to markdown for GitHub
-    const mdFeedback = gradeRec.feedback.replace(/<br>/g, '\n');
-    const commentBody = `### 🤖 AutoGrader Weekly Report\n**Score:** ${gradeRec.score} / ${gradeRec.maxScore}\n\n${mdFeedback}\n\n*Graded via RepoReview System*`;
+    // Translate the month index back to the Month Name
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const targetMonthName = monthNames[gradeRec.month];
+    const targetWeek = `Week ${gradeRec.week}`;
+
+    // Generate the current Timestamp
+    const publishTimestamp = new Date().toLocaleString('en-US', { 
+        year: 'numeric', month: 'long', day: 'numeric', 
+        hour: 'numeric', minute: 'numeric', hour12: true 
+    });
+
+    let commentBody = `### ${targetMonthName} ${targetWeek}\n\n`;
+
+    // Construct the detailed Markdown if the new rawAiData exists
+    if (gradeRec.rawAiData) {
+        const ai = gradeRec.rawAiData;
+        
+        // Breakdown
+        ai.breakdown.forEach(b => {
+            commentBody += `**${b.criterion}:** ${b.score}/${b.max}\n`;
+        });
+        
+        // Total
+        commentBody += `\n**Total Score: ${ai.total_score} / ${gradeRec.maxScore}**\n\n`;
+        
+        // Feedback Sections
+        commentBody += `**Feedback based on criteria:**\n${ai.feedback_criteria}\n\n`;
+        commentBody += `**Additional feedback:**\n${ai.additional_feedback}\n\n`;
+        commentBody += `**Optional Suggestion:**\n${ai.optional_suggestion}\n\n`;
+    } else {
+        // Fallback for older grades generated before this update
+        const mdFeedback = gradeRec.feedback.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '');
+        commentBody += `**Score:** ${gradeRec.score} / ${gradeRec.maxScore}\n\n${mdFeedback}\n\n`;
+    }
+
+    commentBody += `*Graded via RepoReview System (${publishTimestamp})*`;
 
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${gradeRec.commitSha}/comments`, {
         method: 'POST',
@@ -512,7 +557,6 @@ async function postCommentToGithub(student, gradeRec) {
     });
 
     if (!res.ok) {
-        // Extract the exact error message from GitHub instead of a generic failure
         const errorData = await res.json().catch(() => ({}));
         const ghErrorMsg = errorData.message || res.statusText;
         throw new Error(`GitHub says: "${ghErrorMsg}"`);
@@ -523,59 +567,98 @@ async function postCommentToGithub(student, gradeRec) {
     firestoreGradesMap[student.id].publishedToGithub = true;
 }
 
-window.publishSingle = async function(studentId) {
+window.publishSingle = function(studentId) {
     const student = currentStudents.find(s => s.id === studentId);
     const gradeRec = firestoreGradesMap[studentId];
 
     if (!gradeRec || !gradeRec.commitSha) return alert("Cannot publish: No valid commit SHA found to attach comment.");
 
-    window.showLoader(`Publishing to GitHub...`, student.name);
-    try {
-        await postCommentToGithub(student, gradeRec);
-        renderGradingTable();
-    } catch (e) {
-        alert("Failed to publish: " + e.message);
-    } finally {
-        window.hideLoader();
-    }
+    // Store the pending action
+    pendingPublishAction = { type: 'single', studentId: studentId };
+
+    // Setup Modal Text
+    document.getElementById('publishConfirmWarning').innerHTML = `You are about to publish the AutoGrader report for <strong class="text-gray-900">${student.name}</strong>. <br><br>Once published, GitHub will instantly email this student the feedback and score below.`;
+    
+    document.getElementById('publishConfirmScore').textContent = `${gradeRec.score} / ${gradeRec.maxScore}`;
+    document.getElementById('publishConfirmFeedback').innerHTML = gradeRec.feedback;
+    
+    // Show Preview Box
+    document.getElementById('publishConfirmPreview').classList.remove('hidden');
+
+    // Link the execute button and open modal
+    document.getElementById('executePublishBtn').onclick = executePublish;
+    document.getElementById('publishConfirmModal').classList.remove('hidden');
 };
 
-window.publishAllGrades = async function() {
-    // Find all students that have grades but are not published yet
+window.publishAllGrades = function() {
     const pendingQueue = currentStudents.filter(s => {
         const g = firestoreGradesMap[s.id];
         return g && g.commitSha && !g.publishedToGithub;
     });
 
-    if (pendingQueue.length === 0) {
-        return alert("No pending grades to publish. Ensure students are graded first.");
-    }
+    if (pendingQueue.length === 0) return alert("No pending grades to publish. Ensure students are graded first.");
 
-    if (!confirm(`You are about to publish ${pendingQueue.length} comments to GitHub. Proceed?`)) return;
+    // Store the pending bulk action
+    pendingPublishAction = { type: 'bulk', queue: pendingQueue };
 
-    window.showLoader("Initializing Batch Publish...", "Connecting to GitHub API...");
+    // Setup Modal Text
+    document.getElementById('publishConfirmWarning').innerHTML = `You are about to batch publish AutoGrader reports to <strong class="text-red-600 text-lg">${pendingQueue.length} student repositories</strong>.<br><br>⚠️ <strong class="text-gray-900">WARNING:</strong> GitHub will instantly blast an email to all ${pendingQueue.length} students containing their individual feedback. Are you absolutely sure the grades are finalized?`;
     
-    let successCount = 0;
+    // Hide Preview Box for Bulk
+    document.getElementById('publishConfirmPreview').classList.add('hidden');
     
-    // Process one by one with a 1.5 second throttle to avoid GitHub spam filters
-    for (let i = 0; i < pendingQueue.length; i++) {
-        const student = pendingQueue[i];
-        const gradeRec = firestoreGradesMap[student.id];
+    // Link the execute button and open modal
+    document.getElementById('executePublishBtn').onclick = executePublish;
+    document.getElementById('publishConfirmModal').classList.remove('hidden');
+};
+
+window.closePublishConfirmModal = function() {
+    document.getElementById('publishConfirmModal').classList.add('hidden');
+    pendingPublishAction = null;
+};
+
+// The function that runs when you click "Yes, Publish" inside the Modal
+async function executePublish() {
+    const action = pendingPublishAction;
+    closePublishConfirmModal(); // Hide modal immediately
+
+    if (action.type === 'single') {
+        const student = currentStudents.find(s => s.id === action.studentId);
+        const gradeRec = firestoreGradesMap[action.studentId];
         
-        window.showLoader(`Publishing: ${i + 1} / ${pendingQueue.length}`, `Target: ${student.name}`);
-        
+        window.showLoader(`Publishing to GitHub...`, student.name);
         try {
             await postCommentToGithub(student, gradeRec);
-            successCount++;
-            
-            // Artificial delay (1.5 seconds)
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            renderGradingTable();
         } catch (e) {
-            console.error(`Failed on ${student.name}:`, e);
+            alert("Failed to publish: " + e.message);
+        } finally {
+            window.hideLoader();
         }
-    }
+    } 
+    else if (action.type === 'bulk') {
+        const pendingQueue = action.queue;
+        window.showLoader("Initializing Batch Publish...", "Connecting to GitHub API...");
+        
+        let successCount = 0;
+        for (let i = 0; i < pendingQueue.length; i++) {
+            const student = pendingQueue[i];
+            const gradeRec = firestoreGradesMap[student.id];
+            
+            window.showLoader(`Publishing: ${i + 1} / ${pendingQueue.length}`, `Target: ${student.name}`);
+            
+            try {
+                await postCommentToGithub(student, gradeRec);
+                successCount++;
+                // Artificial delay (1.5 seconds) to avoid GitHub spam filters
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            } catch (e) {
+                console.error(`Failed on ${student.name}:`, e);
+            }
+        }
 
-    window.hideLoader();
-    renderGradingTable(); // Refresh UI to show green checkmarks
-    alert(`Batch Complete: Published ${successCount} out of ${pendingQueue.length} comments.`);
-};
+        window.hideLoader();
+        renderGradingTable();
+        alert(`Batch Complete: Published ${successCount} out of ${pendingQueue.length} comments.`);
+    }
+}

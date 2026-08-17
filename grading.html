@@ -166,7 +166,31 @@
             </div>
         </div>
     </div>
-
+<!-- PUBLISH CONFIRMATION MODAL -->
+    <div id="publishConfirmModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden flex flex-col">
+            <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-red-600 flex items-center gap-2">⚠️ Confirm Publication</h2>
+                <button onclick="closePublishConfirmModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[65vh]">
+                <p id="publishConfirmWarning" class="text-sm text-gray-700 leading-relaxed mb-4"></p>
+                
+                <!-- Preview box (Only shows for individual publish) -->
+                <div id="publishConfirmPreview" class="hidden bg-gray-50 p-4 rounded border border-gray-200 text-sm shadow-inner mt-4">
+                    <div class="mb-3 font-extrabold text-gray-800 text-lg border-b pb-2">Score: <span id="publishConfirmScore" class="text-purple-600"></span></div>
+                    <div class="font-bold text-gray-800 mb-2 uppercase tracking-wider text-[10px]">Feedback Preview:</div>
+                    <div id="publishConfirmFeedback" class="text-gray-700 text-xs space-y-2"></div>
+                </div>
+            </div>
+            <div class="p-4 border-t bg-gray-100 flex justify-end gap-3">
+                <button onclick="closePublishConfirmModal()" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 transition shadow-sm">Cancel</button>
+                <button id="executePublishBtn" class="bg-red-600 text-white px-6 py-2 rounded font-bold shadow hover:bg-red-700 transition flex items-center gap-2">
+                    <span>🚀</span> Yes, Publish to GitHub
+                </button>
+            </div>
+        </div>
+    </div>
     <script type="module" src="grading.js"></script>
 </body>
 </html>
