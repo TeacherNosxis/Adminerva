@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoReview - Admin Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .tab-active { border-bottom: 2px solid #7e22ce; color: #7e22ce; font-weight: bold; background-color: #f3e8ff; }
+        .tab-inactive { color: #6b7280; }
+        .tab-inactive:hover { background-color: #f9fafb; color: #374151; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Global Navigation -->
+    <nav class="bg-gray-900 text-white shadow-md">
+        <div class="max-w-screen-2xl mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <span>⚡</span> RepoReview
+            </h1>
+            <div class="flex gap-6 text-sm font-semibold">
+                <a href="index.html" class="text-gray-400 hover:text-white transition">Analytics Dashboard</a>
+                <a href="grading.html" class="text-gray-400 hover:text-white transition">AutoGrader</a>
+                <a href="admin.html" class="text-white border-b-2 border-purple-500 pb-1">Admin Hub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Admin Content -->
+    <div class="max-w-screen-xl mx-auto w-full p-6 mt-6 flex-1">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col h-full border border-gray-200">
+            
+            <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">System Configuration</h2>
+                    <p class="text-sm text-gray-500 mt-1">Manage database connections, AI keys, and student rosters.</p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b bg-white">
+                <button onclick="switchAdminTab('security')" id="tabBtn-security" class="flex-1 py-4 text-sm transition tab-active">🔒 Database & AI Keys</button>
+                <button onclick="switchAdminTab('students')" id="tabBtn-students" class="flex-1 py-4 text-sm transition tab-inactive border-l border-r">👨‍🎓 Student Management</button>
+                <button onclick="switchAdminTab('rubrics')" id="tabBtn-rubrics" class="flex-1 py-4 text-sm transition tab-inactive">📋 Grading Rubrics</button>
+            </div>
+
+            <div class="p-6 overflow-y-auto bg-white">
+                
+                <!-- TAB 1: DATABASE & SECURITY -->
+                <div id="tab-security" class="block space-y-6">
+                    <div class="p-5 border rounded-lg bg-gray-50">
+                        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-2"><span>🔥</span> Firebase Connection</h3>
+                        <p class="text-xs text-gray-600 mb-4">Paste your Firebase Project JSON configuration here to link your remote database.</p>
+                        <textarea id="firebaseConfigInput" rows="7" class="w-full p-3 border rounded text-xs font-mono focus:ring-purple-500 focus:border-purple-500 bg-white" >const firebaseConfig = {
+    {
+  "apiKey": "AIzaSyDQsL9O5YlizeFA2iFJLt_5hY5V7xfM_qU",
+  "authDomain": "reporeview-e7ca4.firebaseapp.com",
+  "projectId": "reporeview-e7ca4",
+  "storageBucket": "reporeview-e7ca4.firebasestorage.app",
+  "messagingSenderId": "902176956124",
+  "appId": "1:902176956124:web:46d07f47ccbab034e15e19",
+  "measurementId": "G-XPXLNGZCY2"
+}
+  };</textarea>
+                    </div>
+
+                    <div class="p-5 border rounded-lg bg-gray-50">
+                        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-2"><span>🔑</span> API Credentials</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">GitHub PAT (Read/Write)</label>
+                                <input type="password" id="adminGithubToken" class="w-full p-2 border rounded focus:ring-blue-500 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Gemini API Key</label>
+                                <input type="password" id="adminGeminiKey" class="w-full p-2 border rounded focus:ring-purple-500 bg-white">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">AI Engine Default</label>
+                            <input type="text" id="adminAiModel" list="aiModelOptions" class="w-full p-2 border rounded focus:ring-purple-500 bg-white" placeholder="gemini-3.5-flash">
+                            <datalist id="aiModelOptions">
+                                <option value="gemini-3.5-flash">
+                                <option value="gemini-1.5-flash-latest">
+                            </datalist>
+                        </div>
+                    </div>
+                    
+                    <button onclick="saveAdminSecurity()" class="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 transition shadow">Save Connection & Security Settings</button>
+                </div>
+
+                <!-- TAB 2: STUDENT MANAGEMENT -->
+                <div id="tab-students" class="hidden">
+                    <div class="flex justify-between items-end mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Firestore Roster</h3>
+                            <p class="text-xs text-gray-500">Students saved here will be globally available across the application.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <label class="cursor-pointer bg-blue-100 text-blue-700 border border-blue-300 px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-blue-200 transition">
+                                <span>📁 Bulk Import CSV</span>
+                                <input type="file" id="csvFileInput" class="hidden" accept=".csv">
+                            </label>
+                            <button onclick="clearAllStudents()" class="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm font-bold hover:bg-red-100 transition shadow-sm">⚠️ Clear Database</button>
+                        </div>
+                    </div>
+
+                    <div id="importLoading" class="hidden text-blue-600 font-semibold animate-pulse mb-4">Writing to Firebase... Please wait.</div>
+
+                    <div class="border rounded-lg overflow-hidden">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-gray-100 border-b-2 border-gray-200">
+                                <tr>
+                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">Section</th>
+                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">Name</th>
+                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">GitHub Username</th>
+                                    <th class="py-2 px-4 text-left text-xs font-bold text-gray-600 uppercase">Repo URL</th>
+                                    <th class="py-2 px-4 text-center text-xs font-bold text-gray-600 uppercase">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentTableBody" class="text-sm">
+                                <!-- Populated dynamically from Firebase -->
+                                <tr><td colspan="5" class="py-4 text-center text-gray-400 italic">Connect Firebase to load students.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 3: RUBRICS -->
+                <div id="tab-rubrics" class="hidden">
+                    <div class="mb-6 flex flex-col md:flex-row items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div class="flex-1 w-full">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Saved Templates</label>
+                            <select id="templateSelect" onchange="changeTemplate()" class="w-full p-2 border rounded font-semibold text-gray-800 focus:ring-purple-500"></select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="createNewTemplate()" class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-semibold shadow-sm w-full md:w-auto">➕ New</button>
+                            <button onclick="deleteCurrentTemplate()" class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded text-sm font-semibold shadow-sm w-full md:w-auto">🗑️ Delete</button>
+                        </div>
+                    </div>
+
+                    <div id="templateEditor" class="border rounded-lg p-5 border-gray-200 shadow-sm relative">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Template Name</label>
+                                <input type="text" id="tplName" class="w-full p-2 border rounded" onchange="updateTemplatePreview()">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Scoring Mode</label>
+                                <div class="flex gap-4 mt-2">
+                                    <label><input type="radio" name="tplScoreType" value="percentage" onchange="updateTemplatePreview()"> Percentage (%)</label>
+                                    <label><input type="radio" name="tplScoreType" value="points" onchange="updateTemplatePreview()"> Custom Points</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">General Prompt Instructions</label>
+                            <textarea id="tplGeneralPrompt" rows="2" class="w-full p-2 border rounded bg-gray-50" onchange="updateTemplatePreview()"></textarea>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-end mb-3 border-b pb-2">
+                                <label class="block text-sm font-semibold text-gray-700">Grading Criteria Builder</label>
+                                <span id="tplTotalWeight" class="text-xs font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded">Total: 0</span>
+                            </div>
+                            <div id="criteriaContainer" class="space-y-3 mb-4"></div>
+                            <button onclick="addCriterion()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded font-semibold text-sm hover:bg-gray-50 transition">➕ Add Another Criterion</button>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="saveRubrics()" class="bg-purple-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-purple-700 transition">Save Template</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Type Module required to import Firebase libraries securely -->
+    <script type="module" src="admin.js"></script>
+</body>
+</html>

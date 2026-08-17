@@ -3,263 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprog Coding - AI Dashboard</title>
+    <title>RepoReview - Analytics Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-        .tab-active { border-bottom: 2px solid #7e22ce; color: #7e22ce; font-weight: bold; background-color: #f3e8ff; }
-        .tab-inactive { color: #6b7280; }
-        .tab-inactive:hover { background-color: #f9fafb; color: #374151; }
     </style>
 </head>
-<body class="bg-gray-100 p-8 font-sans">
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
 
-    <div class="max-w-screen-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-6 pb-4 border-b">
-            <h1 class="text-2xl font-bold text-gray-800">Comprog Coding Dashboard</h1>
-            <div class="relative">
-                <button id="burgerBtn" onclick="toggleMenu()" class="p-2 rounded-md hover:bg-gray-100 focus:outline-none transition border border-transparent hover:border-gray-200">
-                    <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-                <div id="burgerDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
-                    <button onclick="openSettings('security')" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 font-medium border-b flex items-center gap-2">
-                        <span>🔒</span> Security & AI
-                    </button>
-                    <button onclick="openSettings('configuration')" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 font-medium border-b flex items-center gap-2">
-                        <span>📁</span> Configuration
-                    </button>
-                    <button onclick="openSettings('rubrics')" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 font-medium flex items-center gap-2">
-                        <span>📋</span> Rubrics
-                    </button>
-                </div>
+    <!-- Global Navigation -->
+    <nav class="bg-gray-900 text-white shadow-md">
+        <div class="max-w-screen-2xl mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <span>⚡</span> RepoReview
+            </h1>
+            <div class="flex gap-6 text-sm font-semibold">
+                <a href="index.html" class="text-white border-b-2 border-purple-500 pb-1">Analytics Dashboard</a>
+                <a href="grading.html" class="text-gray-400 hover:text-white transition">AutoGrader</a>
+                <a href="admin.html" class="text-gray-400 hover:text-white transition">Admin Hub</a>
             </div>
         </div>
-        
-        <!-- Main Dashboard Inputs -->
-        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6 items-end">
+    </nav>
+
+    <!-- Dashboard Content -->
+    <div class="max-w-screen-xl mx-auto w-full p-6 mt-6 flex-1">
+        <div class="mb-8 flex justify-between items-end">
             <div>
-                <label class="block text-sm font-medium text-gray-700">Class Section</label>
-                <select id="sectionSelect" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500"></select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">GitHub Repo URL</label>
-                <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo" class="mt-1 p-2 w-full border rounded focus:ring-blue-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Year</label>
-                <select id="yearSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500"></select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Month</label>
-                <select id="monthSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500">
-                    <option value="0">January</option><option value="1">February</option><option value="2">March</option>
-                    <option value="3">April</option><option value="4">May</option><option value="5">June</option>
-                    <option value="6">July</option><option value="7">August</option><option value="8">September</option>
-                    <option value="9">October</option><option value="10">November</option><option value="11">December</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Week</label>
-                <select id="weekSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500">
-                    <option value="1">Week 1 (1st - 7th)</option>
-                    <option value="2">Week 2 (8th - 14th)</option>
-                    <option value="3">Week 3 (15th - 21st)</option>
-                    <option value="4">Week 4 (22nd - End)</option>
-                </select>
-            </div>
-            <div class="bg-gray-50 border border-gray-200 p-2 rounded text-center">
-                <span class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Date Scope</span>
-                <span id="dateScopeDisplay" class="text-sm font-semibold text-gray-800"></span>
+                <h2 class="text-3xl font-bold text-gray-800">Class Analytics</h2>
+                <p class="text-gray-500 mt-1">High-level overview of your Firebase database and grading progress.</p>
             </div>
         </div>
 
-        <button onclick="generateReport()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-semibold transition shadow">Generate Weekly Report</button>
-        
-        <div id="loading" class="hidden mt-4 text-blue-600 font-semibold animate-pulse">Fetching and processing GitHub data...</div>
-        <div id="errorBox" class="hidden mt-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded shadow-sm">
-            <p class="font-bold">An Error Occurred</p>
-            <p id="errorMessage" class="text-sm"></p>
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Total Students Enrolled</h3>
+                <div class="text-4xl font-extrabold text-blue-600" id="statTotalStudents">--</div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Total Grades Logged</h3>
+                <div class="text-4xl font-extrabold text-purple-600" id="statTotalGrades">--</div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">GitHub Comments Pushed</h3>
+                <div class="text-4xl font-extrabold text-green-600" id="statTotalPublished">--</div>
+            </div>
         </div>
 
-        <div class="mt-8 overflow-x-auto">
-            <table class="min-w-full bg-white border">
-                <thead class="bg-gray-50 border-b-2 border-gray-200">
+        <!-- Recent Activity Table -->
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+            <div class="p-6 border-b bg-gray-50">
+                <h3 class="font-bold text-gray-800">Database Connection Status</h3>
+            </div>
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-100 border-b-2 border-gray-200">
                     <tr>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">Student Name / Email</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">GitHub User</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">Commits</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">Lines Add/Del</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700 w-1/6">Latest Msg</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700 w-1/4">AI Score & Feedback</th>
-                        <th class="py-3 px-4 text-left text-sm font-bold text-gray-700">Actions</th>
+                        <th class="py-3 px-6 text-left text-xs font-bold text-gray-600 uppercase">Student ID</th>
+                        <th class="py-3 px-6 text-left text-xs font-bold text-gray-600 uppercase">Date Scope</th>
+                        <th class="py-3 px-6 text-left text-xs font-bold text-gray-600 uppercase">Score</th>
+                        <th class="py-3 px-6 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
                     </tr>
                 </thead>
-                <tbody id="resultsBody"></tbody>
+                <tbody id="recentGradesBody" class="text-sm">
+                    <tr><td colspan="4" class="py-8 text-center text-gray-500">Loading database records...</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
-    <div id="settingsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden">
-            <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Dashboard Settings</h2>
-                </div>
-                <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
-            </div>
-            <div class="flex border-b bg-white">
-                <button onclick="switchTab('security')" id="tabBtn-security" class="flex-1 py-3 text-sm transition tab-active">🔒 Security & AI</button>
-                <button onclick="switchTab('configuration')" id="tabBtn-configuration" class="flex-1 py-3 text-sm transition tab-inactive border-l border-r">📁 Section Configuration</button>
-                <button onclick="switchTab('rubrics')" id="tabBtn-rubrics" class="flex-1 py-3 text-sm transition tab-inactive">📋 Grading Rubrics</button>
-            </div>
-            <div class="p-6 overflow-y-auto flex-1 bg-white">
-                <!-- TAB 1: SECURITY -->
-                <div id="tab-security" class="block">
-                    <div class="p-5 border rounded-lg bg-blue-50 border-blue-100">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1">GitHub Token</label>
-                                <input type="password" id="modalGithubToken" class="w-full p-2 border rounded focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1">Gemini API Key</label>
-                                <input type="password" id="modalGeminiKey" class="w-full p-2 border rounded focus:ring-purple-500">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">AI Engine Selection</label>
-                            <input type="text" id="modalAiModel" list="aiModelOptions" class="w-full p-2 border rounded focus:ring-purple-500 bg-white">
-                            <datalist id="aiModelOptions">
-                                <option value="gemini-1.5-flash-latest">
-                                <option value="gemini-1.5-pro-latest">
-                                <option value="gemini-2.0-flash-exp">
-                            </datalist>
-                        </div>
-                    </div>
-                </div>
-                <!-- TAB 2: CONFIGURATION -->
-                <div id="tab-configuration" class="hidden">
-                    <div class="mb-4 flex justify-between items-end border-b pb-2">
-                        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Class Sections</h3>
-                        <button onclick="addSection()" class="bg-green-100 text-green-700 border border-green-300 px-3 py-1.5 rounded font-bold">➕ Add Section</button>
-                    </div>
-                    <div id="sectionsContainer" class="space-y-3"></div>
-                </div>
-                <!-- TAB 3: RUBRICS -->
-                <div id="tab-rubrics" class="hidden">
-                    <div class="mb-6 flex flex-col md:flex-row items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div class="flex-1 w-full">
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Saved Templates</label>
-                            <select id="templateSelect" onchange="changeTemplate()" class="w-full p-2 border rounded font-semibold text-gray-800"></select>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="createNewTemplate()" class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-semibold shadow-sm w-full md:w-auto">➕ New</button>
-                            <button onclick="deleteCurrentTemplate()" class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded text-sm font-semibold shadow-sm w-full md:w-auto">🗑️ Delete</button>
-                        </div>
-                    </div>
-                    <div id="templateEditor" class="border rounded-lg p-5 border-gray-200 shadow-sm relative">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">Template Name</label>
-                                <input type="text" id="tplName" class="w-full p-2 border rounded">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">Scoring Mode</label>
-                                <div class="flex gap-4 mt-2">
-                                    <label><input type="radio" name="tplScoreType" value="percentage"> Percentage (%)</label>
-                                    <label><input type="radio" name="tplScoreType" value="points"> Custom Points</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-6">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">General Prompt Instructions</label>
-                            <textarea id="tplGeneralPrompt" rows="2" class="w-full p-2 border rounded bg-gray-50"></textarea>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-end mb-3 border-b pb-2">
-                                <label class="block text-sm font-semibold text-gray-700">Grading Criteria Builder</label>
-                                <span id="tplTotalWeight" class="text-xs font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded">Total: 0</span>
-                            </div>
-                            <div id="criteriaContainer" class="space-y-3 mb-4"></div>
-                            <button onclick="addCriterion()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded font-semibold text-sm">➕ Add Another Criterion</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-4 border-t bg-gray-50 flex justify-end gap-3">
-                <button onclick="closeSettings()" class="bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded font-semibold transition">Cancel</button>
-                <button onclick="saveSettings()" class="bg-green-600 text-white px-6 py-2 rounded font-semibold shadow">Save Configuration</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- STUDENT DETAILS MODAL -->
-    <div id="detailsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">📄 Report Details</h2>
-                    <p id="detailsSubtitle" class="text-sm text-gray-500 mt-1"></p>
-                </div>
-                <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
-            </div>
-            <div class="p-6 overflow-y-auto flex-1 bg-white">
-                <div class="grid grid-cols-3 gap-4 mb-6 text-center shadow-sm">
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Total Commits</div>
-                        <div class="text-2xl font-bold text-gray-800" id="detCommits">0</div>
-                    </div>
-                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <div class="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">Lines Added</div>
-                        <div class="text-2xl font-bold text-green-700" id="detAdded">+0</div>
-                    </div>
-                    <div class="bg-red-50 p-4 rounded-lg border border-red-200">
-                        <div class="text-xs text-red-600 uppercase font-bold tracking-wider mb-1">Lines Deleted</div>
-                        <div class="text-2xl font-bold text-red-700" id="detDeleted">-0</div>
-                    </div>
-                </div>
-                <h3 class="font-bold text-gray-800 mb-3 uppercase text-xs tracking-wider border-b pb-2">Commit History (This Week)</h3>
-                <ul id="detCommitList" class="list-disc list-inside text-sm text-gray-700 mb-8 space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner"></ul>
-                <div class="flex justify-between items-center mb-3 border-b pb-2">
-                    <h3 class="font-bold text-gray-800 uppercase text-xs tracking-wider">Raw Code Changes</h3>
-                    <button onclick="toggleCodeChanges()" id="toggleCodeBtn" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-1.5 rounded font-bold transition shadow-sm">Show Code Changes</button>
-                </div>
-                <pre id="detCodeBlock" class="hidden bg-gray-900 text-green-400 p-5 rounded-lg text-xs overflow-x-auto whitespace-pre-wrap font-mono shadow-inner border border-gray-700"></pre>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI RESULT MODAL -->
-    <div id="aiModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-2xl w-full">
-            <h2 class="text-xl font-bold mb-1 text-purple-700 flex items-center gap-2">🤖 AI Code Review</h2>
-            <p id="aiStudentName" class="text-sm text-gray-500 mb-4 pb-3 border-b"></p>
-            <div id="aiLoading" class="text-blue-600 font-medium animate-pulse hidden py-8 text-center">Analyzing code strictly...</div>
-            <div id="aiContent">
-                <div class="text-5xl font-extrabold text-center mb-2 text-gray-800 mt-4">
-                    <span id="aiScore"></span><span id="aiScoreMax" class="text-2xl text-gray-400">/100</span>
-                </div>
-                <div class="text-center text-sm text-gray-500 mb-6 font-semibold uppercase tracking-wider" id="aiTemplateUsedLabel"></div>
-                <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-inner">
-                    <h3 class="text-sm font-bold text-gray-700 mb-2 uppercase border-b pb-1">AI Feedback</h3>
-                    <div id="aiFeedback" class="text-gray-700 leading-relaxed text-sm"></div>
-                </div>
-            </div>
-            <div class="mt-6 text-right">
-                <button onclick="closeAiModal()" class="bg-gray-200 text-gray-800 px-6 py-2 rounded font-bold transition">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- The Javascript is now Modularized! -->
-    <script src="app.js"></script>
+    <!-- The Analytics Logic -->
+    <script type="module" src="dashboard.js"></script>
 </body>
 </html>
