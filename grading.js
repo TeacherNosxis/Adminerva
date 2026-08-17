@@ -438,8 +438,17 @@ Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "
 async function postCommentToGithub(student, gradeRec) {
     const ghToken = localStorage.getItem('repoReview_github_token');
     let owner, repo;
-    const urlParts = student.repoUrl.replace(/\/$/, '').replace('.git', '').split('/');
-    repo = urlParts.pop(); owner = urlParts.pop();
+    
+    // Clean up the URL to extract owner and repo accurately
+    try {
+        const cleanUrl = student.repoUrl.trim().replace(/\/$/, '').replace('.git', '');
+        const urlParts = cleanUrl.split('/');
+        repo = urlParts.pop(); 
+        owner = urlParts.pop();
+        if (!owner || !repo) throw new Error("Invalid URL format");
+    } catch (e) {
+        throw new Error(`Could not parse owner/repo from URL: ${student.repoUrl}`);
+    }
 
     // Convert HTML breaks back to markdown for GitHub
     const mdFeedback = gradeRec.feedback.replace(/<br>/g, '\n');
@@ -450,12 +459,18 @@ async function postCommentToGithub(student, gradeRec) {
         headers: {
             'Authorization': `Bearer ${ghToken}`,
             'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
         },
         body: JSON.stringify({ body: commentBody })
     });
 
-    if (!res.ok) throw new Error("GitHub API rejected comment.");
+    if (!res.ok) {
+        // Extract the exact error message from GitHub instead of a generic failure
+        const errorData = await res.json().catch(() => ({}));
+        const ghErrorMsg = errorData.message || res.statusText;
+        throw new Error(`GitHub says: "${ghErrorMsg}"`);
+    }
     
     // Mark as published in Firestore
     await setDoc(doc(db, "grades", gradeRec.docId), { publishedToGithub: true }, { merge: true });
