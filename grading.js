@@ -431,6 +431,9 @@ ${data.patches.substring(0, 30000)}
         
         const aiResult = await response.json();
         const rawJson = aiResult.candidates[0].content.parts[0].text;
+        // NEW: Clean the JSON string to remove accidental markdown code blocks
+        rawJson = rawJson.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+        
         const gradeData = JSON.parse(rawJson);
 
         // Format the feedback for the Dashboard UI
