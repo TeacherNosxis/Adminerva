@@ -11,7 +11,6 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-        
         .tab-active { border-bottom: 2px solid #7e22ce; color: #7e22ce; font-weight: bold; background-color: #f3e8ff; }
         .tab-inactive { color: #6b7280; }
         .tab-inactive:hover { background-color: #f9fafb; color: #374151; }
@@ -23,14 +22,12 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-6 pb-4 border-b">
             <h1 class="text-2xl font-bold text-gray-800">Comprog Coding Dashboard</h1>
-            
             <div class="relative">
                 <button id="burgerBtn" onclick="toggleMenu()" class="p-2 rounded-md hover:bg-gray-100 focus:outline-none transition border border-transparent hover:border-gray-200">
                     <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
-                
                 <div id="burgerDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
                     <button onclick="openSettings('security')" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 font-medium border-b flex items-center gap-2">
                         <span>🔒</span> Security & AI
@@ -46,35 +43,31 @@
         </div>
         
         <!-- Main Dashboard Inputs -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-end">
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6 items-end">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Class Section</label>
-                <select id="sectionSelect" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500 focus:border-blue-500"></select>
+                <select id="sectionSelect" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500"></select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">GitHub Repo URL</label>
-                <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo" class="mt-1 p-2 w-full border rounded focus:ring-blue-500 focus:border-blue-500">
+                <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo" class="mt-1 p-2 w-full border rounded focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Year</label>
+                <select id="yearSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500"></select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">Month</label>
-                <select id="monthSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500 focus:border-blue-500">
-                    <option value="0">January</option>
-                    <option value="1">February</option>
-                    <option value="2">March</option>
-                    <option value="3">April</option>
-                    <option value="4">May</option>
-                    <option value="5">June</option>
-                    <option value="6">July</option>
-                    <option value="7">August</option>
-                    <option value="8">September</option>
-                    <option value="9">October</option>
-                    <option value="10">November</option>
-                    <option value="11">December</option>
+                <select id="monthSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500">
+                    <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                    <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                    <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                    <option value="9">October</option><option value="10">November</option><option value="11">December</option>
                 </select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">Week</label>
-                <select id="weekSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500 focus:border-blue-500">
+                <select id="weekSelect" onchange="updateDateScope()" class="mt-1 p-2 w-full border rounded bg-white focus:ring-blue-500">
                     <option value="1">Week 1 (1st - 7th)</option>
                     <option value="2">Week 2 (8th - 14th)</option>
                     <option value="3">Week 3 (15th - 21st)</option>
@@ -115,12 +108,10 @@
 
     <!-- SETTINGS MODAL -->
     <div id="settingsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <!-- Kept exactly the same as previous iteration. Omitted here for brevity, keep your existing HTML for the modal blocks -->
         <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden">
             <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">Dashboard Settings</h2>
-                    <p class="text-sm text-gray-500 mt-1">Configure your environment. All settings are securely saved to your browser.</p>
                 </div>
                 <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
             </div>
@@ -130,37 +121,39 @@
                 <button onclick="switchTab('rubrics')" id="tabBtn-rubrics" class="flex-1 py-3 text-sm transition tab-inactive">📋 Grading Rubrics</button>
             </div>
             <div class="p-6 overflow-y-auto flex-1 bg-white">
+                <!-- TAB 1: SECURITY -->
                 <div id="tab-security" class="block">
                     <div class="p-5 border rounded-lg bg-blue-50 border-blue-100">
-                        <h3 class="text-sm font-bold text-blue-800 uppercase tracking-wider mb-2">API Credentials & Model</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-700 mb-1">GitHub Token</label>
-                                <input type="password" id="modalGithubToken" placeholder="ghp_..." class="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500">
+                                <input type="password" id="modalGithubToken" class="w-full p-2 border rounded focus:ring-blue-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-700 mb-1">Gemini API Key</label>
-                                <input type="password" id="modalGeminiKey" placeholder="AIzaSy..." class="w-full p-2 border rounded focus:ring-purple-500 focus:border-purple-500">
+                                <input type="password" id="modalGeminiKey" class="w-full p-2 border rounded focus:ring-purple-500">
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">AI Engine Selection</label>
-                            <input type="text" id="modalAiModel" list="aiModelOptions" class="w-full p-2 border rounded focus:ring-purple-500 bg-white" placeholder="e.g. gemini-1.5-flash-latest">
+                            <input type="text" id="modalAiModel" list="aiModelOptions" class="w-full p-2 border rounded focus:ring-purple-500 bg-white">
                             <datalist id="aiModelOptions">
-                                <option value="gemini-3.5-flash">
                                 <option value="gemini-1.5-flash-latest">
                                 <option value="gemini-1.5-pro-latest">
+                                <option value="gemini-2.0-flash-exp">
                             </datalist>
                         </div>
                     </div>
                 </div>
+                <!-- TAB 2: CONFIGURATION -->
                 <div id="tab-configuration" class="hidden">
                     <div class="mb-4 flex justify-between items-end border-b pb-2">
                         <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Class Sections</h3>
-                        <button onclick="addSection()" class="bg-green-100 text-green-700 border border-green-300 px-3 py-1.5 rounded hover:bg-green-200 text-sm font-bold">➕ Add Section</button>
+                        <button onclick="addSection()" class="bg-green-100 text-green-700 border border-green-300 px-3 py-1.5 rounded font-bold">➕ Add Section</button>
                     </div>
                     <div id="sectionsContainer" class="space-y-3"></div>
                 </div>
+                <!-- TAB 3: RUBRICS -->
                 <div id="tab-rubrics" class="hidden">
                     <div class="mb-6 flex flex-col md:flex-row items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div class="flex-1 w-full">
@@ -236,7 +229,7 @@
                 <h3 class="font-bold text-gray-800 mb-3 uppercase text-xs tracking-wider border-b pb-2">Commit History (This Week)</h3>
                 <ul id="detCommitList" class="list-disc list-inside text-sm text-gray-700 mb-8 space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner"></ul>
                 <div class="flex justify-between items-center mb-3 border-b pb-2">
-                    <h3 class="font-bold text-gray-800 uppercase text-xs tracking-wider">Raw Code Changes (Patches)</h3>
+                    <h3 class="font-bold text-gray-800 uppercase text-xs tracking-wider">Raw Code Changes</h3>
                     <button onclick="toggleCodeChanges()" id="toggleCodeBtn" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-1.5 rounded font-bold transition shadow-sm">Show Code Changes</button>
                 </div>
                 <pre id="detCodeBlock" class="hidden bg-gray-900 text-green-400 p-5 rounded-lg text-xs overflow-x-auto whitespace-pre-wrap font-mono shadow-inner border border-gray-700"></pre>
@@ -249,7 +242,7 @@
         <div class="bg-white p-6 rounded-lg shadow-2xl max-w-2xl w-full">
             <h2 class="text-xl font-bold mb-1 text-purple-700 flex items-center gap-2">🤖 AI Code Review</h2>
             <p id="aiStudentName" class="text-sm text-gray-500 mb-4 pb-3 border-b"></p>
-            <div id="aiLoading" class="text-blue-600 font-medium animate-pulse hidden py-8 text-center">Analyzing code logically...</div>
+            <div id="aiLoading" class="text-blue-600 font-medium animate-pulse hidden py-8 text-center">Analyzing code strictly...</div>
             <div id="aiContent">
                 <div class="text-5xl font-extrabold text-center mb-2 text-gray-800 mt-4">
                     <span id="aiScore"></span><span id="aiScoreMax" class="text-2xl text-gray-400">/100</span>
@@ -266,380 +259,7 @@
         </div>
     </div>
 
-    <script>
-        // ==========================================
-        // GLOBAL DATA & STATE
-        // ==========================================
-        window.globalCommitData = {};
-        let activeStartDateStr = "";
-        let activeEndDateStr = "";
-        
-        let templates = [];
-        let activeTemplateId = null;
-        let editingTemplate = null; 
-        let sections = [];
-
-        const DEFAULT_TEMPLATES = [
-            {
-                id: "default_pct",
-                name: "Standard Project Grading (Percentage)",
-                scoringType: "percentage",
-                generalPrompt: "",
-                criteria: [
-                    { name: "Logic & Functionality", weight: 40, description: "Does the code achieve its intended purpose without errors?" },
-                    { name: "Code Quality & Naming", weight: 30, description: "Are variables named well? Is the code indented and readable?" },
-                    { name: "Efficiency & Optimization", weight: 30, description: "Are there redundant loops or unnecessary calls?" }
-                ]
-            }
-        ];
-
-        const DEFAULT_SECTIONS = [{ name: "Section 1", url: "" }];
-
-        // ----------------------------------------------------
-        // INITIALIZATION
-        // ----------------------------------------------------
-        document.addEventListener('DOMContentLoaded', () => {
-            const storedSections = localStorage.getItem('comprog_sections');
-            sections = storedSections ? JSON.parse(storedSections) : JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
-            populateDashboardSections();
-
-            const storedTemplates = localStorage.getItem('comprog_grading_templates');
-            templates = storedTemplates ? JSON.parse(storedTemplates) : JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-            
-            activeTemplateId = localStorage.getItem('comprog_active_template_id');
-            if (!templates.find(t => t.id === activeTemplateId)) activeTemplateId = templates[0].id;
-
-            // Set current month/week automatically based on current date
-            const today = new Date();
-            document.getElementById('monthSelect').value = today.getMonth();
-            const day = today.getDate();
-            if (day <= 7) document.getElementById('weekSelect').value = "1";
-            else if (day <= 14) document.getElementById('weekSelect').value = "2";
-            else if (day <= 21) document.getElementById('weekSelect').value = "3";
-            else document.getElementById('weekSelect').value = "4";
-
-            updateDateScope();
-
-            window.addEventListener('click', function(e) {
-                const menu = document.getElementById('burgerDropdown');
-                const btn = document.getElementById('burgerBtn');
-                if (!btn.contains(e.target) && !menu.contains(e.target)) menu.classList.add('hidden');
-            });
-        });
-
-        // ----------------------------------------------------
-        // DATE CALCULATION LOGIC
-        // ----------------------------------------------------
-        function updateDateScope() {
-            const currentYear = new Date().getFullYear();
-            const monthStr = document.getElementById('monthSelect').value;
-            const weekStr = document.getElementById('weekSelect').value;
-            
-            const monthNum = parseInt(monthStr);
-            const weekNum = parseInt(weekStr);
-
-            let startDay = 1, endDay = 7;
-            if (weekNum === 2) { startDay = 8; endDay = 14; }
-            if (weekNum === 3) { startDay = 15; endDay = 21; }
-            if (weekNum === 4) { 
-                startDay = 22; 
-                endDay = new Date(currentYear, monthNum + 1, 0).getDate(); // Last day of month
-            }
-
-            // Format YYYY-MM-DD
-            const sDate = new Date(currentYear, monthNum, startDay);
-            const eDate = new Date(currentYear, monthNum, endDay);
-            
-            activeStartDateStr = sDate.toISOString().split('T')[0];
-            activeEndDateStr = eDate.toISOString().split('T')[0];
-
-            // Display formatting
-            const options = { month: 'short', day: 'numeric', year: 'numeric' };
-            document.getElementById('dateScopeDisplay').textContent = `${sDate.toLocaleDateString('en-US', options)} — ${eDate.toLocaleDateString('en-US', options)}`;
-        }
-
-        // ----------------------------------------------------
-        // UI, MENU & SETTINGS LOGIC 
-        // (Truncated matching previously provided functions to save space, assuming they are identical)
-        // ----------------------------------------------------
-        function toggleMenu() { document.getElementById('burgerDropdown').classList.toggle('hidden'); }
-        function populateDashboardSections() {
-            const sectionSelect = document.getElementById('sectionSelect');
-            sectionSelect.innerHTML = '';
-            sections.forEach(sec => {
-                const option = document.createElement('option');
-                option.value = sec.url; option.textContent = sec.name;
-                sectionSelect.appendChild(option);
-            });
-        }
-        function openSettings(tabId) { /* Existing Settings Logic */ document.getElementById('settingsModal').classList.remove('hidden'); switchTab(tabId); }
-        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
-        function switchTab(tabId) { /* Existing Tab Logic */ }
-        function renderSectionsEditor() { /* Existing Section Render */ }
-        function syncSectionsToData() { /* Existing Section Sync */ }
-        function addSection() { /* Existing Add Section */ }
-        function removeSection(index) { /* Existing Remove Section */ }
-        function renderTemplateDropdown() { /* Existing Template Dropdown */ }
-        function changeTemplate() { /* Existing Change Template */ }
-        function createNewTemplate() { /* Existing Create Template */ }
-        function deleteCurrentTemplate() { /* Existing Delete Template */ }
-        function syncEditorToData() { /* Existing Editor Sync */ }
-        function renderTemplateEditor() { /* Existing Editor Render */ }
-        function updateTemplatePreview() { /* Existing Preview Update */ }
-        function addCriterion() { /* Existing Add Criterion */ }
-        function removeCriterion(index) { /* Existing Remove Criterion */ }
-        function saveSettings() { /* Existing Save Settings */ closeSettings(); }
-
-        function showError(message) {
-            const errorBox = document.getElementById('errorBox');
-            document.getElementById('errorMessage').textContent = message;
-            document.getElementById('loading').classList.add('hidden');
-            errorBox.classList.remove('hidden');
-        }
-        function clearErrors() {
-            document.getElementById('errorBox').classList.add('hidden');
-            document.getElementById('errorMessage').textContent = '';
-        }
-
-        // ----------------------------------------------------
-        // LOCAL STORAGE IDENTIFIER HELPER
-        // ----------------------------------------------------
-        function getGradeStorageKey(gitUser) {
-            const repoUrl = document.getElementById('repoUrl').value.trim();
-            const safeRepo = repoUrl.replace(/[^a-zA-Z0-9]/g, '_');
-            const month = document.getElementById('monthSelect').value;
-            const week = document.getElementById('weekSelect').value;
-            return `grade_${safeRepo}_m${month}_w${week}_${gitUser}`;
-        }
-
-        // ----------------------------------------------------
-        // REPORT GENERATION & TABLE RENDERING
-        // ----------------------------------------------------
-        async function generateReport() {
-            clearErrors();
-            const tokenInput = localStorage.getItem('comprog_github_token');
-            if (!tokenInput) return showError("Missing GitHub Token.");
-            
-            const repoUrl = document.getElementById('repoUrl').value.trim();
-            const csvUrl = document.getElementById('sectionSelect').value;
-
-            if (!repoUrl) return showError("Validation Failed: Please fill out the Repo URL.");
-
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('resultsBody').innerHTML = '';
-            window.globalCommitData = {};
-
-            try {
-                let owner, repo;
-                try {
-                    const urlParts = repoUrl.replace(/\/$/, '').replace('.git', '').split('/');
-                    repo = urlParts.pop(); owner = urlParts.pop();
-                    if (!owner || !repo) throw new Error();
-                } catch (err) { throw new Error("Failed to parse GitHub URL."); }
-
-                let students = [];
-                if (csvUrl) students = await fetchStudents(csvUrl);
-
-                // Use the dynamically generated ISO strings
-                const commits = await fetchCommits(owner, repo, activeStartDateStr, activeEndDateStr, tokenInput);
-                const commitDataByUser = await processCommits(owner, repo, commits, tokenInput);
-                window.globalCommitData = commitDataByUser;
-                renderTable(students, commitDataByUser);
-            } catch (error) {
-                showError(error.message);
-            } finally {
-                document.getElementById('loading').classList.add('hidden');
-            }
-        }
-
-        function fetchStudents(url) {
-            return new Promise((resolve, reject) => {
-                Papa.parse(url, { download: true, header: true, complete: (results) => resolve(results.data), error: (err) => reject(new Error("Failed to read CSV.")) });
-            });
-        }
-
-        async function fetchCommits(owner, repo, start, end, token) {
-            const since = new Date(start + 'T00:00:00Z').toISOString();
-            const until = new Date(end + 'T23:59:59Z').toISOString();
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status} from GitHub.`);
-            return await response.json();
-        }
-
-        async function processCommits(owner, repo, commits, token) {
-            const stats = {};
-            for (let commit of commits) {
-                const authorUsername = commit.author ? commit.author.login : (commit.commit.author.name || "Unknown");
-                if (!stats[authorUsername]) {
-                    stats[authorUsername] = { count: 0, additions: 0, deletions: 0, lastMsg: commit.commit.message, allMsgs: [], email: commit.commit.author.email, patches: "" };
-                }
-                stats[authorUsername].count += 1;
-                stats[authorUsername].allMsgs.push(commit.commit.message); 
-
-                const detailResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${commit.sha}`, { headers: { 'Authorization': `Bearer ${token}` }});
-                if (detailResponse.ok) {
-                    const detail = await detailResponse.json();
-                    if (detail.stats) { stats[authorUsername].additions += detail.stats.additions; stats[authorUsername].deletions += detail.stats.deletions; }
-                    if (detail.files) detail.files.forEach(file => { if (file.patch) stats[authorUsername].patches += `\n--- ${file.filename} ---\n${file.patch}\n`; });
-                }
-            }
-            return stats;
-        }
-
-        function createRowHTML(name, gitUser, count, additions, deletions, lastMsg) {
-            const safeGitUser = gitUser.replace(/'/g, "\\'");
-            const idSafeUser = gitUser.replace(/[^a-zA-Z0-9]/g, '_');
-            
-            // Check LocalStorage for saved grades
-            const storageKey = getGradeStorageKey(gitUser);
-            const savedDataStr = localStorage.getItem(storageKey);
-            let feedbackHtml = `<span class="text-gray-400 italic">Not graded</span>`;
-            let gradeBtnText = "Grade via AI";
-
-            if (savedDataStr) {
-                const savedData = JSON.parse(savedDataStr);
-                feedbackHtml = `
-                    <div class="mb-1"><strong class="text-purple-700">Score: ${savedData.score}</strong></div>
-                    <div class="text-gray-700 leading-relaxed">${savedData.feedback}</div>
-                `;
-                gradeBtnText = "Regrade via AI"; // Update button text if overriding
-            }
-            
-            const actionButtons = count > 0 
-                ? `<div class="flex flex-col gap-2">
-                    <button onclick="openDetailsModal('${safeGitUser}')" class="bg-blue-100 text-blue-700 border border-blue-300 font-semibold px-3 py-1.5 rounded text-xs hover:bg-blue-600 hover:text-white transition shadow-sm text-left flex items-center gap-1"><span>📄</span> View Details</button>
-                    <button onclick="gradeCodeWithAI('${safeGitUser}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-3 py-1.5 rounded text-xs hover:bg-purple-600 hover:text-white transition shadow-sm text-left flex items-center gap-1"><span>🤖</span> ${gradeBtnText}</button>
-                   </div>`
-                : `<span class="text-xs text-gray-400 font-semibold italic">No Code Submitted</span>`;
-
-            return `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="py-3 px-4 text-gray-800 font-medium">${name}</td>
-                    <td class="py-3 px-4 text-gray-500 text-sm">${gitUser}</td>
-                    <td class="py-3 px-4 font-bold ${count === 0 ? 'text-red-500' : 'text-green-600'}">${count}</td>
-                    <td class="py-3 px-4 text-sm font-mono"><span class="text-green-500">+${additions}</span> <span class="text-gray-300">|</span> <span class="text-red-500">-${deletions}</span></td>
-                    <td class="py-3 px-4 text-xs text-gray-600 truncate max-w-xs" title="${lastMsg}">${lastMsg}</td>
-                    <td class="py-3 px-4 text-xs text-gray-700" id="feedback-${idSafeUser}">${feedbackHtml}</td>
-                    <td class="py-3 px-4">${actionButtons}</td>
-                </tr>
-            `;
-        }
-
-        function renderTable(students, commitData) {
-            const resultsBody = document.getElementById('resultsBody');
-            const processedGitUsers = new Set();
-            students.forEach(student => {
-                if (!student.Name) return; 
-                const gitUser = student.GitHubUsername ? student.GitHubUsername.trim() : "";
-                processedGitUsers.add(gitUser);
-                const data = commitData[gitUser] || { count: 0, additions: 0, deletions: 0, lastMsg: "No commits this week", allMsgs: [], patches: "" };
-                resultsBody.innerHTML += createRowHTML(student.Name, gitUser, data.count, data.additions, data.deletions, data.lastMsg);
-            });
-            for (const [gitUser, data] of Object.entries(commitData)) {
-                if (!processedGitUsers.has(gitUser)) resultsBody.innerHTML += createRowHTML(`${data.email} (Not in Sheet)`, gitUser, data.count, data.additions, data.deletions, data.lastMsg);
-            }
-        }
-
-        function openDetailsModal(gitUser) { /* Existing Details Logic */ }
-        function closeDetailsModal() { /* Existing Close Details */ }
-        function toggleCodeChanges() { /* Existing Code Toggle */ }
-
-        // ----------------------------------------------------
-        // STRICT GEMINI AI INTEGRATION
-        // ----------------------------------------------------
-        async function gradeCodeWithAI(gitUser) {
-            const geminiKey = localStorage.getItem('comprog_gemini_token');
-            const aiModel = localStorage.getItem('comprog_ai_model') || 'gemini-1.5-flash-latest';
-            if (!geminiKey) return alert("Missing Gemini API Key.");
-
-            const userData = window.globalCommitData[gitUser];
-            if (!userData || !userData.patches) return alert("No readable code changes found.");
-
-            const activeTpl = templates.find(t => t.id === activeTemplateId) || templates[0];
-            const isPercent = activeTpl.scoringType === 'percentage';
-            let criteriaText = activeTpl.criteria.map(c => `- ${c.name} (${c.weight}${isPercent ? '%' : ' pts'}): ${c.description}`).join('\n');
-            let maxScore = isPercent ? 100 : activeTpl.criteria.reduce((sum, c) => sum + Number(c.weight || 0), 0);
-
-            // Revised Strict AI Prompt
-            const finalPromptText = `
-${activeTpl.generalPrompt}
-
-You are a strict Computer Programming Professor grading a student's weekly commits. Review the following GitHub diff patches. Identify the specific project/system the student is building.
-
-CRITICAL INSTRUCTIONS:
-1. DO NOT use conversational filler, flowery language, or sugar-coating. Be blunt and concise.
-2. The 'feedback_summary' MUST follow this format exactly:
-   - Provide 1 to 2 sentences max of factual praise acknowledging functional code and context.
-   - Use bullet points to list missing logic, syntax errors, and inefficiencies based on the criteria.
-
-Grade out of a maximum score of ${maxScore}.
-Criteria:
-${criteriaText}
-
-Student Code:
-${userData.patches.substring(0, 30000)}
-
-Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "<string>"}
-            `;
-
-            document.getElementById('aiModal').classList.remove('hidden');
-            document.getElementById('aiStudentName').textContent = `Reviewing commits for: ${gitUser}`;
-            document.getElementById('aiLoading').classList.remove('hidden');
-            document.getElementById('aiContent').classList.add('hidden');
-            
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: finalPromptText }] }],
-                        generationConfig: { response_mime_type: "application/json" }
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`Google API Error (${response.status}): ${errorData.error ? errorData.error.message : response.statusText}`);
-                }
-                
-                const aiResult = await response.json();
-                const gradeData = JSON.parse(aiResult.candidates[0].content.parts[0].text);
-
-                // Format the output in the modal. We use innerHTML to allow bullet points (\n to <br>)
-                document.getElementById('aiScore').textContent = gradeData.score;
-                document.getElementById('aiScoreMax').textContent = `/${maxScore}`;
-                const formattedFeedback = gradeData.feedback_summary.replace(/\n/g, '<br>');
-                document.getElementById('aiFeedback').innerHTML = formattedFeedback;
-
-                // Update the Dashboard Row
-                const idSafeUser = gitUser.replace(/[^a-zA-Z0-9]/g, '_');
-                const dashboardCell = document.getElementById(`feedback-${idSafeUser}`);
-                if (dashboardCell) {
-                    dashboardCell.innerHTML = `
-                        <div class="mb-1"><strong class="text-purple-700">Score: ${gradeData.score}/${maxScore}</strong></div>
-                        <div class="text-gray-700 leading-relaxed text-xs">${formattedFeedback}</div>
-                    `;
-                }
-
-                // SAVE TO LOCAL STORAGE
-                const storageKey = getGradeStorageKey(gitUser);
-                const dataToSave = {
-                    score: `${gradeData.score}/${maxScore}`,
-                    feedback: formattedFeedback
-                };
-                localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-
-            } catch (err) {
-                document.getElementById('aiScore').textContent = "⚠️";
-                document.getElementById('aiFeedback').textContent = err.message;
-            } finally {
-                document.getElementById('aiLoading').classList.add('hidden');
-                document.getElementById('aiContent').classList.remove('hidden');
-            }
-        }
-        function closeAiModal() { document.getElementById('aiModal').classList.add('hidden'); }
-    </script>
+    <!-- The Javascript is now Modularized! -->
+    <script src="app.js"></script>
 </body>
 </html>
