@@ -3,38 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprog Coding - GitHub Commit Checker</title>
+    <title>Comprog Coding - AI Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-100 p-8 font-sans">
 
-    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
+    <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
         <h1 class="text-2xl font-bold mb-6 text-gray-800">Comprog Coding Dashboard</h1>
         
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Your GitHub Token</label>
-                <input type="password" id="githubToken" placeholder="github_pat_..." class="mt-1 p-2 w-full border rounded border-blue-400">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <!-- New Section Dropdown -->
+            <div class="lg:col-span-1">
+                <label class="block text-sm font-medium text-gray-700">Class Section</label>
+                <select id="sectionSelect" class="mt-1 p-2 w-full border rounded bg-white">
+                    <!-- Options populated by JS -->
+                </select>
             </div>
-            <div>
+            <div class="lg:col-span-1">
+                <label class="block text-sm font-medium text-gray-700">GitHub Token</label>
+                <input type="password" id="githubToken" placeholder="ghp_..." class="mt-1 p-2 w-full border rounded border-blue-400">
+            </div>
+            <div class="lg:col-span-1">
+                <label class="block text-sm font-medium text-gray-700">Gemini API Key</label>
+                <input type="password" id="geminiApiKey" placeholder="AIzaSy..." class="mt-1 p-2 w-full border rounded border-purple-400">
+            </div>
+            <div class="lg:col-span-1">
                 <label class="block text-sm font-medium text-gray-700">GitHub Repo URL</label>
                 <input type="text" id="repoUrl" placeholder="https://github.com/owner/repo" class="mt-1 p-2 w-full border rounded">
             </div>
-            <div>
+            <div class="lg:col-span-1">
                 <label class="block text-sm font-medium text-gray-700">Start Date</label>
                 <input type="date" id="startDate" class="mt-1 p-2 w-full border rounded">
             </div>
-            <div>
+            <div class="lg:col-span-1">
                 <label class="block text-sm font-medium text-gray-700">End Date</label>
                 <input type="date" id="endDate" class="mt-1 p-2 w-full border rounded">
             </div>
         </div>
 
-        <button onclick="generateReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold">Generate Weekly Report</button>
+        <button onclick="generateReport()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold transition">Generate Weekly Report</button>
         
         <!-- Status & Error Handling Container -->
-        <div id="loading" class="hidden mt-4 text-blue-600 font-semibold animate-pulse">Processing data, please wait...</div>
+        <div id="loading" class="hidden mt-4 text-blue-600 font-semibold animate-pulse">Processing GitHub data, please wait...</div>
         <div id="errorBox" class="hidden mt-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded shadow-sm">
             <p class="font-bold">An Error Occurred</p>
             <p id="errorMessage" class="text-sm"></p>
@@ -46,10 +57,10 @@
                     <tr>
                         <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Student Name / Email</th>
                         <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">GitHub User</th>
-                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Total Commits</th>
-                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Lines Added</th>
-                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Lines Deleted</th>
-                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Latest Commit Msg</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Commits</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Lines Add/Del</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700 w-1/4">Latest Msg</th>
+                        <th class="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">AI Grading</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
@@ -59,22 +70,62 @@
         </div>
     </div>
 
+    <!-- AI Result Modal -->
+    <div id="aiModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <h2 class="text-xl font-bold mb-2 text-purple-700">AI Code Review</h2>
+            <p id="aiStudentName" class="text-sm text-gray-500 mb-4"></p>
+            <div id="aiLoading" class="text-blue-600 animate-pulse hidden">Analyzing code logic and syntax...</div>
+            <div id="aiContent">
+                <div class="text-4xl font-bold text-center mb-4 text-gray-800"><span id="aiScore"></span>/100</div>
+                <p id="aiFeedback" class="text-gray-700 leading-relaxed"></p>
+            </div>
+            <div class="mt-6 text-right">
+                <button onclick="closeModal()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==========================================
-        // CONFIGURATION: ONLY PASTE YOUR CSV LINK HERE
+        // CONFIGURATION: ADD YOUR CLASS SECTIONS HERE
+        // Paste the unique published CSV link for each Google Sheet Tab
         // ==========================================
-        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSl9HdhrngVWYx7lZp6QFAIlNqSc-97qWtF5KDcFusOOBt443pLUXIUGP6qhXYiLMqxHvRq8j4or_Sf/pub?output=csv';
+        const SECTIONS_CONFIG = {
+            "Section 1": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSl9HdhrngVWYx7lZp6QFAIlNqSc-97qWtF5KDcFusOOBt443pLUXIUGP6qhXYiLMqxHvRq8j4or_Sf/pub?gid=0&single=true&output=csv",
+            "Section 2": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSl9HdhrngVWYx7lZp6QFAIlNqSc-97qWtF5KDcFusOOBt443pLUXIUGP6qhXYiLMqxHvRq8j4or_Sf/pub?gid=614496166&single=true&output=csv",
+            "Section 3": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSl9HdhrngVWYx7lZp6QFAIlNqSc-97qWtF5KDcFusOOBt443pLUXIUGP6qhXYiLMqxHvRq8j4or_Sf/pub?gid=1064545751&single=true&output=csv",
+            "Section 4": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSl9HdhrngVWYx7lZp6QFAIlNqSc-97qWtF5KDcFusOOBt443pLUXIUGP6qhXYiLMqxHvRq8j4or_Sf/pub?gid=1813659836&single=true&output=csv",
+            "Section 5": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSl9HdhrngVWYx7lZp6QFAIlNqSc-97qWtF5KDcFusOOBt443pLUXIUGP6qhXYiLMqxHvRq8j4or_Sf/pub?gid=782027368&single=true&output=csv"
+        };
         // ==========================================
+
+        // Global store for the current session's commit data so the AI can read it later
+        window.globalCommitData = {};
+
+        // Load Settings on Page Load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Populate Dropdown
+            const sectionSelect = document.getElementById('sectionSelect');
+            for (const sectionName in SECTIONS_CONFIG) {
+                const option = document.createElement('option');
+                option.value = SECTIONS_CONFIG[sectionName];
+                option.textContent = sectionName;
+                sectionSelect.appendChild(option);
+            }
+
+            // Restore Tokens from LocalStorage
+            const savedGit = localStorage.getItem('comprog_github_token');
+            const savedGemini = localStorage.getItem('comprog_gemini_token');
+            if (savedGit) document.getElementById('githubToken').value = savedGit;
+            if (savedGemini) document.getElementById('geminiApiKey').value = savedGemini;
+        });
 
         function showError(message) {
             const errorBox = document.getElementById('errorBox');
-            const errorMessage = document.getElementById('errorMessage');
-            const loading = document.getElementById('loading');
-            
-            loading.classList.add('hidden');
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('loading').classList.add('hidden');
             errorBox.classList.remove('hidden');
-            errorMessage.textContent = message;
-            console.error("Dashboard Error:", message);
         }
 
         function clearErrors() {
@@ -86,83 +137,62 @@
             clearErrors();
             
             const tokenInput = document.getElementById('githubToken').value.trim();
+            const geminiInput = document.getElementById('geminiApiKey').value.trim();
             const repoUrl = document.getElementById('repoUrl').value.trim();
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
+            const csvUrl = document.getElementById('sectionSelect').value;
             
-            const loading = document.getElementById('loading');
-            const resultsBody = document.getElementById('resultsBody');
+            // Save Tokens securely to LocalStorage
+            if(tokenInput) localStorage.setItem('comprog_github_token', tokenInput);
+            if(geminiInput) localStorage.setItem('comprog_gemini_token', geminiInput);
 
             if (!tokenInput || !repoUrl || !startDate || !endDate) {
-                showError("Validation Failed: Please fill out all input fields including your Token.");
+                showError("Validation Failed: Please fill out all required fields (GitHub Token, Repo, Dates).");
                 return;
             }
 
-            loading.classList.remove('hidden');
-            resultsBody.innerHTML = '';
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultsBody').innerHTML = '';
+            window.globalCommitData = {}; // reset
 
             try {
-                // 1. Extract Owner and Repo from URL
                 let owner, repo;
                 try {
-                    const urlParts = repoUrl.replace(/\/$/, '').split('/');
+                    const urlParts = repoUrl.replace(/\/$/, '').replace('.git', '').split('/');
                     repo = urlParts.pop();
                     owner = urlParts.pop();
-                    if (!owner || !repo) throw new Error("Invalid Repo URL format.");
+                    if (!owner || !repo) throw new Error();
                 } catch (err) {
                     throw new Error("Failed to parse the GitHub URL. Make sure it looks like 'https://github.com/owner/repo'.");
                 }
 
-                // 2. Fetch Students from Google Sheet
                 let students = [];
-                try {
-                    students = await fetchStudents();
-                } catch (err) {
-                    throw new Error("Failed to read Google Sheet CSV. Check your CSV link and ensure the file is 'Published to the web'.");
+                if (csvUrl && csvUrl !== "YOUR_SECTION_1_CSV_LINK_HERE") {
+                    students = await fetchStudents(csvUrl);
+                } else {
+                    console.warn("No valid CSV URL. Proceeding with GitHub data only.");
                 }
 
-                // 3. Fetch Commits from GitHub for the timeframe
-                let commits = [];
-                try {
-                    commits = await fetchCommits(owner, repo, startDate, endDate, tokenInput);
-                } catch (err) {
-                    throw new Error(`GitHub API Error (Commits): ${err.message}. Check if your Token has access to this repo.`);
-                }
-
-                // 4. Process individual commit stats (lines added/deleted)
-                let commitDataByUser = {};
-                try {
-                    commitDataByUser = await processCommits(owner, repo, commits, tokenInput);
-                } catch (err) {
-                    throw new Error(`GitHub API Error (Stats): ${err.message}. Failed to fetch specific lines added/deleted.`);
-                }
-
-                // 5. Merge Data and Render Table
+                const commits = await fetchCommits(owner, repo, startDate, endDate, tokenInput);
+                const commitDataByUser = await processCommits(owner, repo, commits, tokenInput);
+                window.globalCommitData = commitDataByUser; // Store for AI to use
                 renderTable(students, commitDataByUser);
 
             } catch (error) {
                 showError(error.message);
             } finally {
-                loading.classList.add('hidden');
+                document.getElementById('loading').classList.add('hidden');
             }
         }
 
-        function fetchStudents() {
+        function fetchStudents(url) {
             return new Promise((resolve, reject) => {
-                if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL === 'YOUR_PUBLISHED_CSV_LINK_HERE') {
-                    reject(new Error("Google Sheet CSV URL is missing in the configuration."));
-                    return;
-                }
-                
-                Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                Papa.parse(url, {
                     download: true,
                     header: true,
-                    complete: function(results) {
-                        resolve(results.data);
-                    },
-                    error: function(err) {
-                        reject(err);
-                    }
+                    complete: (results) => resolve(results.data),
+                    error: (err) => reject(new Error("Failed to read Google Sheet CSV. Check if published."))
                 });
             });
         }
@@ -179,9 +209,7 @@
                 }
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status} - ${response.statusText} from GitHub.`);
             return await response.json();
         }
 
@@ -189,52 +217,53 @@
             const stats = {};
 
             for (let commit of commits) {
-                // Ensure fallback variables exist if GitHub data structure is slightly different
                 const authorUsername = commit.author ? commit.author.login : (commit.commit.author.name || "Unknown");
                 const authorEmail = commit.commit.author.email || "No email available";
                 
                 if (!stats[authorUsername]) {
                     stats[authorUsername] = { 
-                        count: 0, 
-                        additions: 0, 
-                        deletions: 0, 
-                        lastMsg: commit.commit.message,
-                        email: authorEmail
+                        count: 0, additions: 0, deletions: 0, 
+                        lastMsg: commit.commit.message, email: authorEmail, patches: ""
                     };
                 }
 
                 stats[authorUsername].count += 1;
 
-                // Make secondary call to get lines added/deleted
                 const detailResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${commit.sha}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/vnd.github+json'
-                    }
+                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
                 });
                 
-                if (!detailResponse.ok) {
-                    throw new Error(`Failed to fetch details for commit SHA: ${commit.sha}`);
-                }
-
-                const detail = await detailResponse.json();
-                if (detail.stats) {
-                    stats[authorUsername].additions += detail.stats.additions;
-                    stats[authorUsername].deletions += detail.stats.deletions;
+                if (detailResponse.ok) {
+                    const detail = await detailResponse.json();
+                    if (detail.stats) {
+                        stats[authorUsername].additions += detail.stats.additions;
+                        stats[authorUsername].deletions += detail.stats.deletions;
+                    }
+                    // Capture the actual code written (diff/patch)
+                    if (detail.files) {
+                        detail.files.forEach(file => {
+                            if (file.patch) stats[authorUsername].patches += `\n--- ${file.filename} ---\n${file.patch}\n`;
+                        });
+                    }
                 }
             }
             return stats;
         }
 
         function createRowHTML(name, gitUser, count, additions, deletions, lastMsg) {
+            const safeGitUser = gitUser.replace(/'/g, "\\'");
+            const aiButton = count > 0 
+                ? `<button onclick="gradeCodeWithAI('${safeGitUser}')" class="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition">Ask AI to Grade</button>`
+                : `<span class="text-xs text-gray-400">No Code</span>`;
+
             return `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="py-2 px-4 text-gray-800 font-medium">${name}</td>
                     <td class="py-2 px-4 text-gray-500">${gitUser}</td>
                     <td class="py-2 px-4 font-bold ${count === 0 ? 'text-red-500' : 'text-green-600'}">${count}</td>
-                    <td class="py-2 px-4 text-green-500">+${additions}</td>
-                    <td class="py-2 px-4 text-red-500">-${deletions}</td>
+                    <td class="py-2 px-4"><span class="text-green-500">+${additions}</span> / <span class="text-red-500">-${deletions}</span></td>
                     <td class="py-2 px-4 text-xs text-gray-600 truncate max-w-xs" title="${lastMsg}">${lastMsg}</td>
+                    <td class="py-2 px-4">${aiButton}</td>
                 </tr>
             `;
         }
@@ -243,25 +272,91 @@
             const resultsBody = document.getElementById('resultsBody');
             const processedGitUsers = new Set();
             
-            // 1. Process and display every student explicitly listed in the Google Sheet
             students.forEach(student => {
                 if (!student.Name) return; 
-                
                 const gitUser = student.GitHubUsername ? student.GitHubUsername.trim() : "";
                 processedGitUsers.add(gitUser);
-
-                const data = commitData[gitUser] || { count: 0, additions: 0, deletions: 0, lastMsg: "No commits this week" };
+                const data = commitData[gitUser] || { count: 0, additions: 0, deletions: 0, lastMsg: "No commits this week", patches: "" };
                 resultsBody.innerHTML += createRowHTML(student.Name, gitUser, data.count, data.additions, data.deletions, data.lastMsg);
             });
 
-            // 2. Identify and display anyone who made a commit BUT is missing from the Google Sheet
             for (const [gitUser, data] of Object.entries(commitData)) {
                 if (!processedGitUsers.has(gitUser)) {
-                    // Default to showing their email address as requested
-                    const displayName = `${data.email} (Not in Sheet)`;
-                    resultsBody.innerHTML += createRowHTML(displayName, gitUser, data.count, data.additions, data.deletions, data.lastMsg);
+                    resultsBody.innerHTML += createRowHTML(`${data.email} (Not in Sheet)`, gitUser, data.count, data.additions, data.deletions, data.lastMsg);
                 }
             }
+        }
+
+        // ==========================================
+        // GEMINI AI INTEGRATION
+        // ==========================================
+        async function gradeCodeWithAI(gitUser) {
+            const geminiKey = document.getElementById('geminiApiKey').value.trim();
+            if (!geminiKey) {
+                alert("Please enter your Gemini API Key at the top to use the AI Grader.");
+                return;
+            }
+
+            const userData = window.globalCommitData[gitUser];
+            if (!userData || !userData.patches) {
+                alert("No readable code changes found for this user.");
+                return;
+            }
+
+            // Open Modal in Loading State
+            document.getElementById('aiModal').classList.remove('hidden');
+            document.getElementById('aiStudentName').textContent = `Reviewing commits for: ${gitUser}`;
+            document.getElementById('aiLoading').classList.remove('hidden');
+            document.getElementById('aiContent').classList.add('hidden');
+
+            const promptText = `
+            You are an expert Computer Programming Professor grading a student's weekly code submissions.
+            Review the following GitHub commit patches (diffs). 
+            
+            Grade their work out of 100 based on:
+            1. Logic & Functionality (40%)
+            2. Code Quality & Cleanliness (30%)
+            3. Efficiency (30%)
+
+            Student Code:
+            ${userData.patches.substring(0, 30000)} // Truncating to ensure it fits safely
+
+            Respond strictly in valid JSON format with no markdown formatting around it. 
+            Example: {"score": 85, "feedback_summary": "Good logic, but variable names could be more descriptive."}
+            `;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: promptText }] }],
+                        generationConfig: { response_mime_type: "application/json" }
+                    })
+                });
+
+                if (!response.ok) throw new Error("AI API request failed. Check your API key.");
+                
+                const aiResult = await response.json();
+                const aiResponseText = aiResult.candidates[0].content.parts[0].text;
+                
+                // Parse the JSON returned by Gemini
+                const gradeData = JSON.parse(aiResponseText);
+
+                document.getElementById('aiScore').textContent = gradeData.score;
+                document.getElementById('aiFeedback').textContent = gradeData.feedback_summary;
+
+            } catch (err) {
+                document.getElementById('aiScore').textContent = "Error";
+                document.getElementById('aiFeedback').textContent = "Failed to generate AI review: " + err.message;
+            } finally {
+                document.getElementById('aiLoading').classList.add('hidden');
+                document.getElementById('aiContent').classList.remove('hidden');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('aiModal').classList.add('hidden');
         }
     </script>
 </body>
