@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoReview - AutoGrader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Global Navigation -->
+    <nav class="bg-gray-900 text-white shadow-md">
+        <div class="max-w-screen-2xl mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <span>⚡</span> RepoReview
+            </h1>
+            <div class="flex gap-6 text-sm font-semibold">
+                <a href="index.html" class="text-gray-400 hover:text-white transition">Analytics Dashboard</a>
+                <a href="grading.html" class="text-white border-b-2 border-purple-500 pb-1">AutoGrader</a>
+                <a href="admin.html" class="text-gray-400 hover:text-white transition">Admin Hub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
+        <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            
+            <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-200">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Weekly AutoGrader</h2>
+                    <p class="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                        Active Rubric: <span id="activeRubricLabel" class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">Loading...</span>
+                    </p>
+                </div>
+                <button onclick="publishAllGrades()" id="publishAllBtn" class="hidden bg-green-600 text-white px-5 py-2 rounded font-bold hover:bg-green-700 transition shadow flex items-center gap-2">
+                    <span>🚀</span> Publish All to GitHub
+                </button>
+            </div>
+            
+            <!-- Filters & Date Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Class Section</label>
+                    <select id="sectionSelect" class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Year</label>
+                    <select id="yearSelect" onchange="updateDateScope()" class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Month</label>
+                    <select id="monthSelect" onchange="updateDateScope()" class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white">
+                        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Week</label>
+                    <select id="weekSelect" onchange="updateDateScope()" class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white">
+                        <option value="1">Week 1 (1st - 7th)</option><option value="2">Week 2 (8th - 14th)</option>
+                        <option value="3">Week 3 (15th - 21st)</option><option value="4">Week 4 (22nd - End)</option>
+                    </select>
+                </div>
+                <div class="bg-white border border-gray-300 p-2 rounded text-center shadow-sm">
+                    <span class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Target Scope</span>
+                    <span id="dateScopeDisplay" class="text-xs font-bold text-gray-800"></span>
+                </div>
+            </div>
+
+            <button onclick="fetchSectionCommits()" class="bg-blue-600 text-white px-6 py-2.5 rounded font-bold hover:bg-blue-700 shadow-sm transition">
+                Fetch GitHub Commits
+            </button>
+
+            <!-- Grading Table -->
+            <div class="mt-8 overflow-x-auto border rounded-lg shadow-sm">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100 border-b-2 border-gray-200">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Student</th>
+                            <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Commits</th>
+                            <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Lines</th>
+                            <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase w-1/5">Latest Msg</th>
+                            <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase w-1/4">AI Score & Feedback</th>
+                            <th class="py-3 px-4 text-center text-xs font-bold text-gray-600 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradingTableBody">
+                        <tr><td colspan="6" class="py-8 text-center text-gray-400 italic">Select a section and fetch commits to begin.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL LOADING OVERLAY -->
+    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"></div>
+        <p id="loaderMessage" class="text-white font-bold text-xl tracking-wider mb-2">Processing...</p>
+        <p id="loaderSubMessage" class="text-blue-300 font-semibold text-sm"></p>
+    </div>
+
+    <!-- STUDENT DETAILS MODAL -->
+    <div id="detailsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800" id="detailsTitle">Commit Details</h2>
+                <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 bg-white">
+                <div class="grid grid-cols-3 gap-4 mb-6 text-center shadow-sm">
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Total Commits</div>
+                        <div class="text-2xl font-bold text-gray-800" id="detCommits">0</div>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-lg border border-green-200">
+                        <div class="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">Lines Added</div>
+                        <div class="text-2xl font-bold text-green-700" id="detAdded">+0</div>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-lg border border-red-200">
+                        <div class="text-xs text-red-600 uppercase font-bold tracking-wider mb-1">Lines Deleted</div>
+                        <div class="text-2xl font-bold text-red-700" id="detDeleted">-0</div>
+                    </div>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-2 uppercase text-xs tracking-wider border-b pb-2">Commit History</h3>
+                <ul id="detCommitList" class="list-disc list-inside text-sm text-gray-700 mb-6 space-y-1 bg-gray-50 p-4 rounded border shadow-inner max-h-48 overflow-y-auto"></ul>
+                <div class="flex justify-between items-center mb-2 border-b pb-2">
+                    <h3 class="font-bold text-gray-800 uppercase text-xs tracking-wider">Raw Code Changes</h3>
+                </div>
+                <pre id="detCodeBlock" class="bg-gray-900 text-green-400 p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap font-mono shadow-inner border border-gray-700 max-h-96 overflow-y-auto"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI RESULT MODAL -->
+    <div id="aiModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-2xl w-full">
+            <h2 class="text-xl font-bold mb-1 text-purple-700 flex items-center gap-2">🤖 AI Code Review</h2>
+            <p id="aiStudentName" class="text-sm text-gray-500 mb-4 pb-3 border-b"></p>
+            <div id="aiContent">
+                <div class="text-5xl font-extrabold text-center mb-2 text-gray-800 mt-4">
+                    <span id="aiScore"></span><span id="aiScoreMax" class="text-2xl text-gray-400">/100</span>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-inner mb-6 mt-4">
+                    <h3 class="text-xs font-bold text-gray-700 mb-2 uppercase border-b pb-1">Feedback & Suggestions</h3>
+                    <div id="aiFeedback" class="text-gray-700 leading-relaxed text-sm"></div>
+                </div>
+            </div>
+            <div class="text-right flex justify-end gap-3">
+                <button onclick="closeAiModal()" class="bg-gray-200 text-gray-800 px-6 py-2 rounded font-bold transition hover:bg-gray-300">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="grading.js"></script>
+</body>
+</html>
