@@ -544,7 +544,10 @@ ${data.patches.substring(0, 15000)}
                                     required: ["criterion", "score", "max"]
                                 }
                             },
-                            feedback_criteria: { type: "STRING" },
+                            feedback_criteria: { 
+    type: "STRING", 
+    description: "MUST use \n- for bullet points separating each criterion." 
+},
                             additional_feedback: { type: "STRING" },
                             optional_suggestion: { type: "STRING" }
                         },
