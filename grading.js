@@ -523,7 +523,7 @@ ${data.patches.substring(0, 15000)}
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
-                    response_mime_type: "application/json",
+                    responseMimeType: "application/json",
                     temperature: 0.0,
                     topK: 1,   // NEW: Clamps down on AI randomness
                     topP: 0.1, // NEW: Forces strictly deterministic text selection
@@ -555,8 +555,10 @@ ${data.patches.substring(0, 15000)}
         });
 
         if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            const errMsg = errData.error?.message || response.statusText || "Unknown formatting error from API.";
             if (response.status === 429) throw new Error("Rate Limit Exceeded. You are clicking too fast. Wait 60 seconds.");
-            throw new Error("Gemini API Error: " + response.statusText);
+            throw new Error(errMsg);
         }
         
         incrementAiQuota();
