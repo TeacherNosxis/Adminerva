@@ -280,42 +280,50 @@ function renderGradingTable() {
         let gradeBtnTxt = "Grade via AI";
         let publishBtnHtml = "";
 
+        // Tighter action buttons
+        let actionBtns = ghData.count > 0 
+            ? `<div class="flex flex-col gap-1.5 w-full">
+                <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
+                <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>
+               </div>`
+            : `<span class="text-[10px] text-gray-400 font-bold block text-center">No Data</span>`;
+
         if (dbGrade) {
             feedbackHtml = `
-                <div class="mb-1"><strong class="text-purple-700">Score: ${dbGrade.score}/${dbGrade.maxScore}</strong></div>
-                <div class="text-gray-700 text-xs leading-relaxed max-h-16 overflow-y-auto">${dbGrade.feedback}</div>
+                <div class="mb-1 flex items-center gap-2">
+                    <strong class="text-purple-700 text-sm">Score: ${dbGrade.score}/${dbGrade.maxScore}</strong>
+                </div>
+                <div class="text-gray-700 text-[11px] leading-relaxed max-h-24 overflow-y-auto pr-1">${dbGrade.feedback}</div>
             `;
-            gradeBtnTxt = "Regrade via AI";
             
+            // Inject the Edit Grade button into the action buttons stack
+            actionBtns += `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left mt-1.5 w-full">✏️ Manual Edit</button>`;
+
             if (dbGrade.publishedToGithub) {
-                publishBtnHtml = `<span class="bg-green-100 text-green-700 border border-green-300 font-bold px-3 py-1.5 rounded text-xs block text-center mt-2 shadow-sm">✅ Published</span>`;
+                publishBtnHtml = `<span class="bg-green-100 text-green-700 border border-green-300 font-bold px-2 py-1 rounded text-[10px] block text-center mt-2 shadow-sm">✅ Published</span>`;
             } else if (dbGrade.commitSha) {
-                publishBtnHtml = `<button onclick="publishSingle('${student.id}')" class="w-full bg-blue-100 text-blue-700 border border-blue-300 font-semibold px-3 py-1.5 rounded text-xs hover:bg-blue-600 hover:text-white transition shadow-sm mt-2">🚀 Publish to Repo</button>`;
+                publishBtnHtml = `<button onclick="publishSingle('${student.id}')" class="w-full bg-blue-100 text-blue-700 border border-blue-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-blue-600 hover:text-white transition shadow-sm mt-2">🚀 Publish</button>`;
             }
         }
 
         let commitDisplay = ghData.error 
-            ? `<span class="text-red-500 text-xs font-bold">${ghData.error}</span>`
-            : `<span class="${ghData.count === 0 ? 'text-red-500' : 'text-green-600'} font-bold">${ghData.count}</span>`;
+            ? `<span class="text-red-500 text-[10px] font-bold leading-tight block">${ghData.error}</span>`
+            : `<span class="${ghData.count === 0 ? 'text-red-500' : 'text-green-600'} font-bold text-sm">${ghData.count}</span>`;
 
-        let actionBtns = ghData.count > 0 
-            ? `<div class="flex flex-col gap-2 w-full">
-                <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-3 py-1.5 rounded text-xs hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
-                <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-3 py-1.5 rounded text-xs hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>
-               </div>`
-            : `<span class="text-xs text-gray-400 font-bold block text-center">No Data</span>`;
-
+        // Notice the px-2 and py-2 for tighter spacing
         const tr = `
             <tr class="border-b hover:bg-gray-50">
-                <td class="py-3 px-4">
-                    <div class="font-bold text-gray-800">${student.name}</div>
-                    <div class="text-xs text-gray-500">${student.githubUsername}</div>
+                <td class="py-2 px-2 align-top">
+                    <div class="font-bold text-gray-800 text-xs">${student.name}</div>
+                    <div class="text-[10px] text-gray-500 truncate w-32" title="${student.githubUsername}">${student.githubUsername}</div>
                 </td>
-                <td class="py-3 px-4">${commitDisplay}</td>
-                <td class="py-3 px-4 text-xs font-mono"><span class="text-green-600">+${ghData.additions}</span> | <span class="text-red-500">-${ghData.deletions}</span></td>
-                <td class="py-3 px-4 text-xs text-gray-600 truncate max-w-[200px]" title="${ghData.latestMsg}">${ghData.latestMsg}</td>
-                <td class="py-3 px-4 text-xs" id="fb-${student.id}">${feedbackHtml}</td>
-                <td class="py-3 px-4 align-top">
+                <td class="py-2 px-2 text-center align-top">${commitDisplay}</td>
+                <td class="py-2 px-2 text-center align-top text-[10px] font-mono whitespace-nowrap"><span class="text-green-600">+${ghData.additions}</span><br><span class="text-red-500">-${ghData.deletions}</span></td>
+                <td class="py-2 px-2 text-[10px] text-gray-600 align-top">
+                    <div class="max-h-16 overflow-y-auto leading-snug">${ghData.latestMsg}</div>
+                </td>
+                <td class="py-2 px-2 align-top" id="fb-${student.id}">${feedbackHtml}</td>
+                <td class="py-2 px-2 align-top">
                     ${actionBtns}
                     <div id="pub-${student.id}">${publishBtnHtml}</div>
                 </td>
@@ -344,7 +352,53 @@ window.openDetails = function(studentId) {
 };
 window.closeDetailsModal = function() { document.getElementById('detailsModal').classList.add('hidden'); };
 window.closeAiModal = function() { document.getElementById('aiModal').classList.add('hidden'); };
+window.openEditModal = function(studentId) {
+    const gradeRec = firestoreGradesMap[studentId];
+    if (!gradeRec) return;
+    
+    document.getElementById('editStudentId').value = studentId;
+    document.getElementById('editTotalScore').value = gradeRec.score;
+    document.getElementById('editFeedbackText').value = gradeRec.feedback;
+    document.getElementById('editGradeModal').classList.remove('hidden');
+};
 
+window.closeEditModal = function() {
+    document.getElementById('editGradeModal').classList.add('hidden');
+};
+
+window.saveEditedGrade = async function() {
+    const studentId = document.getElementById('editStudentId').value;
+    const newScore = parseInt(document.getElementById('editTotalScore').value);
+    const newFeedback = document.getElementById('editFeedbackText').value.trim();
+
+    const gradeRec = firestoreGradesMap[studentId];
+    if(!gradeRec) return;
+
+    window.showLoader("Saving Manual Override...");
+    try {
+        // We set rawAiData to null so the postCommentToGithub function stops using 
+        // the original AI JSON structure and defaults back to the edited text.
+        const updatedData = {
+            score: newScore,
+            feedback: newFeedback,
+            rawAiData: null 
+        };
+
+        await setDoc(doc(db, "grades", gradeRec.docId), updatedData, { merge: true });
+
+        // Update local map
+        firestoreGradesMap[studentId].score = newScore;
+        firestoreGradesMap[studentId].feedback = newFeedback;
+        firestoreGradesMap[studentId].rawAiData = null;
+
+        closeEditModal();
+        renderGradingTable();
+    } catch(e) {
+        alert("Error saving manual edit: " + e.message);
+    } finally {
+        window.hideLoader();
+    }
+};
 // ==========================================
 // STRICT AI GRADING
 // ==========================================
@@ -409,6 +463,27 @@ ${data.patches.substring(0, 30000)}
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
                     response_mime_type: "application/json",
+                    // NEW: Force the Gemini API to strictly adhere to this exact JSON structure
+                    response_schema: {
+                        type: "OBJECT",
+                        properties: {
+                            total_score: { type: "INTEGER" },
+                            breakdown: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        criterion: { type: "STRING" },
+                                        score: { type: "INTEGER" },
+                                        max: { type: "INTEGER" }
+                                    }
+                                }
+                            },
+                            feedback_criteria: { type: "STRING" },
+                            additional_feedback: { type: "STRING" },
+                            optional_suggestion: { type: "STRING" }
+                        }
+                    },
                     temperature: 0.0 
                 }
             })
