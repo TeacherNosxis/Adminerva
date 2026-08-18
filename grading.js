@@ -492,26 +492,29 @@ window.gradeCode = async function(studentId) {
     const criteriaText = activeTemplate.criteria.map(c => `- ${c.name} (${c.weight}${isPct ? '%' : ' pts'}): ${c.description}`).join('\n');
     const maxScore = isPct ? 100 : activeTemplate.criteria.reduce((sum, c) => sum + Number(c.weight || 0), 0);
 
+    // We isolate the active template and force the AI to ignore its old formatting rules
     const prompt = `
+[START OF RUBRIC PERSONA]
 ${activeTemplate.generalPrompt}
-You are a strict Computer Programming Professor grading a student's weekly commits. Review the following GitHub diff patches.
+[END OF RUBRIC PERSONA]
 
-CRITICAL INSTRUCTIONS:
-1. DO NOT use conversational filler. Be blunt and direct.
-2. Evaluate the code against the provided criteria and assign a specific score for each.
-3. Output MUST be strictly in the following JSON format. Do NOT wrap it in markdown blocks.
-4. CODE QUOTATION RULE: If you quote the student's code in your feedback, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
-5. BE CONCISE. DO NOT REPEAT OR OUTPUT THE STUDENT'S CODE IN YOUR JSON RESPONSE. Limit explanations to 2-3 sentences.
-6. If possible avoid code qoutation and just refer which part of the students code you are talking about.
+CRITICAL SYSTEM INSTRUCTIONS:
+1. IGNORE any formatting instructions that may exist in the "Rubric Persona" above. 
+2. You MUST output ONLY a valid JSON object. Do NOT write "Score: X" outside the JSON.
+3. DO NOT use conversational filler. Be blunt and direct.
+4. Evaluate the code against the provided criteria and assign a specific score for each.
+5. Output MUST be strictly in the following JSON format. Do NOT wrap it in markdown blocks.
+6. CODE QUOTATION RULE: If you quote the student's code, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
+7. DO NOT REPEAT THE STUDENT'S CODE. Limit your feedback to concise, actionable sentences.
 
 {
     "total_score": <number>,
     "breakdown": [
         { "criterion": "<Name of Criterion>", "score": <number>, "max": <number> }
     ],
-    "feedback_criteria": "<Bullet points explaining the deductions and errors based strictly on the criteria>",
-    "additional_feedback": "<1-3 sentences of factual praise, missing logic, or extra context>",
-    "optional_suggestion": "<2 bullet point for best practices>"
+    "feedback_criteria": "<Bullet points explaining the deductions based on criteria>",
+    "additional_feedback": "<1-2 sentences of factual praise or missing logic>",
+    "optional_suggestion": "<1 bullet point for best practices>"
 }
 
 Grade out of a maximum total score of ${maxScore}.
@@ -519,11 +522,10 @@ Criteria:
 ${criteriaText}
 
 Student Code:
-${data.patches.substring(0, 30000)}
+${data.patches.substring(0, 15000)}
 `;
 
     window.showLoader(`AI Analyzing Code for ${student.name}...`, "Applying strict grading rubrics.");
-
     try {
         const currentUsage = updateQuotaDisplay();
         if (currentUsage.count >= 1500) {
