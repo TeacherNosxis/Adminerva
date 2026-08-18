@@ -294,6 +294,7 @@ function renderGradingTable() {
         let gradeBtnTxt = "Grade via AI";
         let publishBtnHtml = "";
 
+        // The ONLY place the Edit button should exist is safely inside this flex container
         let actionBtns = ghData.count > 0 
             ? `<div class="flex flex-col gap-1.5 w-full">
                 <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
@@ -310,9 +311,6 @@ function renderGradingTable() {
                 <div class="text-gray-700 text-[11px] leading-relaxed max-h-24 overflow-y-auto pr-1">${dbGrade.feedback}</div>
             `;
             
-            // Inject the Edit Grade button into the action buttons stack
-            actionBtns += `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left mt-1.5 w-full">✏️ Manual Edit</button>`;
-
             if (dbGrade.publishedToGithub) {
                 publishBtnHtml = `<span class="bg-green-100 text-green-700 border border-green-300 font-bold px-2 py-1 rounded text-[10px] block text-center mt-2 shadow-sm">✅ Published</span>`;
             } else if (dbGrade.commitSha) {
@@ -324,7 +322,6 @@ function renderGradingTable() {
             ? `<span class="text-red-500 text-[10px] font-bold leading-tight block">${ghData.error}</span>`
             : `<span class="${ghData.count === 0 ? 'text-red-500' : 'text-green-600'} font-bold text-sm">${ghData.count}</span>`;
 
-        // Notice the px-2 and py-2 for tighter spacing
         const tr = `
             <tr class="border-b hover:bg-gray-50">
                 <td class="py-2 px-2 align-top">
@@ -492,30 +489,17 @@ window.gradeCode = async function(studentId) {
     const criteriaText = activeTemplate.criteria.map(c => `- ${c.name} (${c.weight}${isPct ? '%' : ' pts'}): ${c.description}`).join('\n');
     const maxScore = isPct ? 100 : activeTemplate.criteria.reduce((sum, c) => sum + Number(c.weight || 0), 0);
 
-    // We isolate the active template and force the AI to ignore its old formatting rules
     const prompt = `
 [START OF RUBRIC PERSONA]
 ${activeTemplate.generalPrompt}
 [END OF RUBRIC PERSONA]
 
 CRITICAL SYSTEM INSTRUCTIONS:
-1. IGNORE any formatting instructions that may exist in the "Rubric Persona" above. 
-2. You MUST output ONLY a valid JSON object. Do NOT write "Score: X" outside the JSON.
-3. DO NOT use conversational filler. Be blunt and direct.
-4. Evaluate the code against the provided criteria and assign a specific score for each.
-5. Output MUST be strictly in the following JSON format. Do NOT wrap it in markdown blocks.
-6. CODE QUOTATION RULE: If you quote the student's code, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
-7. DO NOT REPEAT THE STUDENT'S CODE. Limit your feedback to concise, actionable sentences.
-
-{
-    "total_score": <number>,
-    "breakdown": [
-        { "criterion": "<Name of Criterion>", "score": <number>, "max": <number> }
-    ],
-    "feedback_criteria": "<Bullet points explaining the deductions based on criteria>",
-    "additional_feedback": "<1-2 sentences of factual praise or missing logic>",
-    "optional_suggestion": "<1 bullet point for best practices>"
-}
+1. DO NOT use conversational filler. Be blunt and direct.
+2. Evaluate the code against the provided criteria and assign a specific score for each.
+3. CODE QUOTATION RULE: If you quote the student's code, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
+4. DO NOT REPEAT THE STUDENT'S CODE. Limit your feedback to concise, actionable sentences.
+5. You MUST provide detailed text for the feedback_criteria, additional_feedback, and optional_suggestion fields.
 
 Grade out of a maximum total score of ${maxScore}.
 Criteria:
@@ -526,6 +510,7 @@ ${data.patches.substring(0, 15000)}
 `;
 
     window.showLoader(`AI Analyzing Code for ${student.name}...`, "Applying strict grading rubrics.");
+
     try {
         const currentUsage = updateQuotaDisplay();
         if (currentUsage.count >= 1500) {
@@ -539,6 +524,10 @@ ${data.patches.substring(0, 15000)}
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
                     response_mime_type: "application/json",
+                    temperature: 0.0,
+                    topK: 1,   // NEW: Clamps down on AI randomness
+                    topP: 0.1, // NEW: Forces strictly deterministic text selection
+                    // NEW: We explicitly mark every single field as 'required' so the AI cannot skip them
                     response_schema: {
                         type: "OBJECT",
                         properties: {
@@ -551,15 +540,16 @@ ${data.patches.substring(0, 15000)}
                                         criterion: { type: "STRING" },
                                         score: { type: "INTEGER" },
                                         max: { type: "INTEGER" }
-                                    }
+                                    },
+                                    required: ["criterion", "score", "max"]
                                 }
                             },
                             feedback_criteria: { type: "STRING" },
                             additional_feedback: { type: "STRING" },
                             optional_suggestion: { type: "STRING" }
-                        }
-                    },
-                    temperature: 0.0 
+                        },
+                        required: ["total_score", "breakdown", "feedback_criteria", "additional_feedback", "optional_suggestion"]
+                    }
                 }
             })
         });
