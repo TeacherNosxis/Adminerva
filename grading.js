@@ -14,8 +14,9 @@ let firestoreGradesMap = {}; // Maps studentId -> saved firebase grades
 
 let activeStartDateStr = "";
 let activeEndDateStr = "";
+
 // ==========================================
-// LOADER UTILS
+// LOADER UTILS & QUOTA
 // ==========================================
 window.showLoader = function(msg, subMsg = "") {
     document.getElementById('loaderMessage').textContent = msg;
@@ -35,6 +36,30 @@ function getQuarter(monthStr) {
     return "Q4";
 }
 
+function updateQuotaDisplay() {
+    const today = new Date().toISOString().split('T')[0];
+    let usage = JSON.parse(localStorage.getItem('repoReview_ai_usage') || '{"date": "", "count": 0}');
+    
+    if (usage.date !== today) {
+        usage = { date: today, count: 0 };
+        localStorage.setItem('repoReview_ai_usage', JSON.stringify(usage));
+    }
+    
+    const display = document.getElementById('aiQuotaDisplay');
+    if (display) {
+        display.textContent = `${usage.count} / 1500`;
+        if (usage.count >= 1400) display.classList.add('text-red-600');
+    }
+    return usage;
+}
+
+function incrementAiQuota() {
+    const usage = updateQuotaDisplay();
+    usage.count++;
+    localStorage.setItem('repoReview_ai_usage', JSON.stringify(usage));
+    updateQuotaDisplay();
+}
+
 // ==========================================
 // INITIALIZATION
 // ==========================================
@@ -42,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFirebase();
     initRubric();
     initDateSelects();
+    updateQuotaDisplay();
 });
 
 function initFirebase() {
@@ -88,35 +114,6 @@ function initDateSelects() {
     document.getElementById('weekSelect').value = day <= 7 ? "1" : day <= 14 ? "2" : day <= 21 ? "3" : "4";
     updateDateScope();
 }
-function updateQuotaDisplay() {
-    const today = new Date().toISOString().split('T')[0];
-    let usage = JSON.parse(localStorage.getItem('repoReview_ai_usage') || '{"date": "", "count": 0}');
-    
-    // Reset counter if it is a new day
-    if (usage.date !== today) {
-        usage = { date: today, count: 0 };
-        localStorage.setItem('repoReview_ai_usage', JSON.stringify(usage));
-    }
-    
-    const display = document.getElementById('aiQuotaDisplay');
-    if (display) {
-        display.textContent = `${usage.count} / 1500`;
-        if (usage.count >= 1400) display.classList.add('text-red-600'); // Warning color near limit
-    }
-    return usage;
-}
-
-function incrementAiQuota() {
-    const usage = updateQuotaDisplay();
-    usage.count++;
-    localStorage.setItem('repoReview_ai_usage', JSON.stringify(usage));
-    updateQuotaDisplay();
-}
-
-// Ensure the display updates when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    updateQuotaDisplay();
-});
 
 window.updateDateScope = function() {
     const y = parseInt(document.getElementById('yearSelect').value);
@@ -140,7 +137,6 @@ window.updateDateScope = function() {
     const opts = { month: 'short', day: 'numeric', year: 'numeric' };
     document.getElementById('dateScopeDisplay').textContent = `${sDate.toLocaleDateString('en-US', opts)} - ${eDate.toLocaleDateString('en-US', opts)}`;
     
-    // Clear table if date changes to prevent grading wrong weeks
     document.getElementById('gradingTableBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-400 italic">Date changed. Please fetch commits again.</td></tr>`;
     document.getElementById('publishAllBtn').classList.add('hidden');
 };
@@ -177,7 +173,6 @@ window.fetchSectionCommits = async function() {
     window.showLoader(`Fetching students in ${section}...`);
 
     try {
-        // 1. Get Students in Section
         const qStudents = query(collection(db, "students"), where("section", "==", section));
         const stuSnap = await getDocs(qStudents);
         currentStudents = [];
@@ -188,7 +183,6 @@ window.fetchSectionCommits = async function() {
             return window.hideLoader();
         }
 
-        // 2. Fetch existing Firebase Grades for this exact Week
         window.showLoader("Syncing historical grades from Firebase...");
         firestoreGradesMap = {};
         const qGrades = query(
@@ -201,7 +195,6 @@ window.fetchSectionCommits = async function() {
             firestoreGradesMap[g.studentId] = { docId: d.id, ...g };
         });
 
-        // 3. Fetch GitHub Commits
         commitDataMap = {};
         let processed = 0;
         
@@ -236,12 +229,10 @@ window.fetchSectionCommits = async function() {
                 const commits = await response.json();
                 commitDataMap[student.id].count = commits.length;
                 if (commits.length > 0) {
-                    // Grab the SHA of the most recent commit in this window for commenting
                     commitDataMap[student.id].commitSha = commits[0].sha;
                     commitDataMap[student.id].latestMsg = commits[0].commit.message;
                     commitDataMap[student.id].allMsgs = commits.map(c => c.commit.message);
                     
-                    // Fetch code diffs (Only checking first 5 to prevent overload)
                     const limit = Math.min(commits.length, 5);
                     for (let i = 0; i < limit; i++) {
                         const detailRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${commits[i].sha}`, { headers: { 'Authorization': `Bearer ${ghToken}` }});
@@ -253,7 +244,6 @@ window.fetchSectionCommits = async function() {
                             }
                             if (detail.files) {
                                 detail.files.forEach(file => {
-                                    // Skip giant non-code files
                                     if (file.patch && !file.filename.match(/\.(png|jpg|exe|zip|svg|lock)$/i)) {
                                         commitDataMap[student.id].patches += `\n--- ${file.filename} ---\n${file.patch}\n`;
                                     }
@@ -383,7 +373,9 @@ You are a strict Computer Programming Professor grading a student's weekly commi
 CRITICAL INSTRUCTIONS:
 1. DO NOT use conversational filler. Be blunt and direct.
 2. Evaluate the code against the provided criteria and assign a specific score for each.
-3. Output MUST be strictly in the following JSON format:
+3. Output MUST be strictly in the following JSON format. Do NOT wrap it in markdown blocks.
+4. You MUST escape all double quotes (\\") inside string values. Use strictly \\n for newlines.
+
 {
     "total_score": <number>,
     "breakdown": [
@@ -431,19 +423,16 @@ ${data.patches.substring(0, 30000)}
         
         const aiResult = await response.json();
         
-        // FIX: Changed 'const' to 'let' so the regex cleaner can reassign the variable safely
+        // Ensure this is properly parsed and isolated from cache errors
         let rawJson = aiResult.candidates[0].content.parts[0].text;
-        
-        // Clean the JSON string to remove accidental markdown code blocks
         rawJson = rawJson.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         
         const gradeData = JSON.parse(rawJson);
 
-        // NEW UI FORMAT: Structured exactly as requested for the dashboard
+        // Dashboard HTML formatting
         let formattedFeedback = `<div class="space-y-1">`;
         formattedFeedback += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} / ${maxScore}</div>`;
         
-        // Loop through the breakdown to display Criteria 1, Criteria 2, etc.
         gradeData.breakdown.forEach(b => {
             formattedFeedback += `<div class="text-gray-700 font-semibold">${b.criterion}: ${b.score}/${b.max}</div>`;
         });
@@ -471,25 +460,23 @@ ${data.patches.substring(0, 30000)}
             quarter: quarter,
             score: gradeData.total_score,
             maxScore: maxScore,
-            feedback: formattedFeedback, // Saved for dashboard display
-            rawAiData: gradeData, // Saved as raw JSON so GitHub publisher can build clean markdown
+            feedback: formattedFeedback, 
+            rawAiData: gradeData, 
             publishedToGithub: false,
             commitSha: data.commitSha
         };
 
         await setDoc(doc(db, "grades", gradeDocId), dbEntry);
         
-        // Update Local State
         firestoreGradesMap[student.id] = { docId: gradeDocId, ...dbEntry };
         
-        // Show Modal
         document.getElementById('aiStudentName').textContent = `Graded: ${student.name}`;
-        document.getElementById('aiScore').textContent = gradeData.score;
+        document.getElementById('aiScore').textContent = gradeData.total_score;
         document.getElementById('aiScoreMax').textContent = `/${maxScore}`;
         document.getElementById('aiFeedback').innerHTML = formattedFeedback;
         document.getElementById('aiModal').classList.remove('hidden');
 
-        renderGradingTable(); // Refresh UI with new data
+        renderGradingTable(); 
     } catch (err) {
         alert("AI Grading failed: " + err.message);
     } finally {
@@ -501,7 +488,7 @@ ${data.patches.substring(0, 30000)}
 // PUBLISHING (GITHUB API) & CONFIRMATION
 // ==========================================
 
-let pendingPublishAction = null; // Tracks if we are confirming a 'single' or 'bulk' publish
+let pendingPublishAction = null; 
 
 async function postCommentToGithub(student, gradeRec) {
     const ghToken = localStorage.getItem('repoReview_github_token');
@@ -517,12 +504,10 @@ async function postCommentToGithub(student, gradeRec) {
         throw new Error(`Could not parse owner/repo from URL: ${student.repoUrl}`);
     }
 
-    // Translate the month index back to the Month Name
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const targetMonthName = monthNames[gradeRec.month];
     const targetWeek = `Week ${gradeRec.week}`;
 
-    // Generate the current Timestamp
     const publishTimestamp = new Date().toLocaleString('en-US', { 
         year: 'numeric', month: 'long', day: 'numeric', 
         hour: 'numeric', minute: 'numeric', hour12: true 
@@ -530,26 +515,25 @@ async function postCommentToGithub(student, gradeRec) {
 
     let commentBody = `### ${targetMonthName} ${targetWeek}\n\n`;
 
-    // Construct the detailed Markdown if the new rawAiData exists
+    // Construct the Markdown exactly as requested
     if (gradeRec.rawAiData) {
         const ai = gradeRec.rawAiData;
         
-        // Breakdown
+        // 1. Total First
+        commentBody += `**Total: ${ai.total_score} / ${gradeRec.maxScore}**\n`;
+        
+        // 2. Breakdown Second
         ai.breakdown.forEach(b => {
             commentBody += `**${b.criterion}:** ${b.score}/${b.max}\n`;
         });
         
-        // Total
-        commentBody += `\n**Total Score: ${ai.total_score} / ${gradeRec.maxScore}**\n\n`;
-        
-        // Feedback Sections
-        commentBody += `**Feedback based on criteria:**\n${ai.feedback_criteria}\n\n`;
+        // 3. Feedback Sections
+        commentBody += `\n**Feedback based on criteria:**\n${ai.feedback_criteria}\n\n`;
         commentBody += `**Additional feedback:**\n${ai.additional_feedback}\n\n`;
         commentBody += `**Optional Suggestion:**\n${ai.optional_suggestion}\n\n`;
     } else {
-        // Fallback for older grades generated before this update
         const mdFeedback = gradeRec.feedback.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '');
-        commentBody += `**Score:** ${gradeRec.score} / ${gradeRec.maxScore}\n\n${mdFeedback}\n\n`;
+        commentBody += `**Total: ${gradeRec.score} / ${gradeRec.maxScore}**\n\n${mdFeedback}\n\n`;
     }
 
     commentBody += `*Graded via RepoReview System (${publishTimestamp})*`;
@@ -571,7 +555,6 @@ async function postCommentToGithub(student, gradeRec) {
         throw new Error(`GitHub says: "${ghErrorMsg}"`);
     }
     
-    // Mark as published in Firestore
     await setDoc(doc(db, "grades", gradeRec.docId), { publishedToGithub: true }, { merge: true });
     firestoreGradesMap[student.id].publishedToGithub = true;
 }
@@ -582,19 +565,15 @@ window.publishSingle = function(studentId) {
 
     if (!gradeRec || !gradeRec.commitSha) return alert("Cannot publish: No valid commit SHA found to attach comment.");
 
-    // Store the pending action
     pendingPublishAction = { type: 'single', studentId: studentId };
 
-    // Setup Modal Text
     document.getElementById('publishConfirmWarning').innerHTML = `You are about to publish the AutoGrader report for <strong class="text-gray-900">${student.name}</strong>. <br><br>Once published, GitHub will instantly email this student the feedback and score below.`;
     
     document.getElementById('publishConfirmScore').textContent = `${gradeRec.score} / ${gradeRec.maxScore}`;
     document.getElementById('publishConfirmFeedback').innerHTML = gradeRec.feedback;
     
-    // Show Preview Box
     document.getElementById('publishConfirmPreview').classList.remove('hidden');
 
-    // Link the execute button and open modal
     document.getElementById('executePublishBtn').onclick = executePublish;
     document.getElementById('publishConfirmModal').classList.remove('hidden');
 };
@@ -607,16 +586,12 @@ window.publishAllGrades = function() {
 
     if (pendingQueue.length === 0) return alert("No pending grades to publish. Ensure students are graded first.");
 
-    // Store the pending bulk action
     pendingPublishAction = { type: 'bulk', queue: pendingQueue };
 
-    // Setup Modal Text
     document.getElementById('publishConfirmWarning').innerHTML = `You are about to batch publish AutoGrader reports to <strong class="text-red-600 text-lg">${pendingQueue.length} student repositories</strong>.<br><br>⚠️ <strong class="text-gray-900">WARNING:</strong> GitHub will instantly blast an email to all ${pendingQueue.length} students containing their individual feedback. Are you absolutely sure the grades are finalized?`;
     
-    // Hide Preview Box for Bulk
     document.getElementById('publishConfirmPreview').classList.add('hidden');
     
-    // Link the execute button and open modal
     document.getElementById('executePublishBtn').onclick = executePublish;
     document.getElementById('publishConfirmModal').classList.remove('hidden');
 };
@@ -626,10 +601,9 @@ window.closePublishConfirmModal = function() {
     pendingPublishAction = null;
 };
 
-// The function that runs when you click "Yes, Publish" inside the Modal
 async function executePublish() {
     const action = pendingPublishAction;
-    closePublishConfirmModal(); // Hide modal immediately
+    closePublishConfirmModal();
 
     if (action.type === 'single') {
         const student = currentStudents.find(s => s.id === action.studentId);
@@ -659,7 +633,6 @@ async function executePublish() {
             try {
                 await postCommentToGithub(student, gradeRec);
                 successCount++;
-                // Artificial delay (1.5 seconds) to avoid GitHub spam filters
                 await new Promise(resolve => setTimeout(resolve, 1500));
             } catch (e) {
                 console.error(`Failed on ${student.name}:`, e);
