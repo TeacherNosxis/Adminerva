@@ -280,11 +280,11 @@ function renderGradingTable() {
         let gradeBtnTxt = "Grade via AI";
         let publishBtnHtml = "";
 
-        // Tighter action buttons
         let actionBtns = ghData.count > 0 
             ? `<div class="flex flex-col gap-1.5 w-full">
                 <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
                 <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>
+                ${dbGrade ? `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left w-full">✏️ Manual Edit</button>` : ''}
                </div>`
             : `<span class="text-[10px] text-gray-400 font-bold block text-center">No Data</span>`;
 
@@ -420,6 +420,7 @@ window.gradeCode = async function(studentId) {
     const criteriaText = activeTemplate.criteria.map(c => `- ${c.name} (${c.weight}${isPct ? '%' : ' pts'}): ${c.description}`).join('\n');
     const maxScore = isPct ? 100 : activeTemplate.criteria.reduce((sum, c) => sum + Number(c.weight || 0), 0);
 
+    // FIX 2a: The updated prompt forcing single quotes/backticks
     const prompt = `
 ${activeTemplate.generalPrompt}
 You are a strict Computer Programming Professor grading a student's weekly commits. Review the following GitHub diff patches.
@@ -428,7 +429,7 @@ CRITICAL INSTRUCTIONS:
 1. DO NOT use conversational filler. Be blunt and direct.
 2. Evaluate the code against the provided criteria and assign a specific score for each.
 3. Output MUST be strictly in the following JSON format. Do NOT wrap it in markdown blocks.
-4. You MUST escape all double quotes (\\") inside string values. Use strictly \\n for newlines.
+4. CODE QUOTATION RULE: If you quote the student's code in your feedback, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (") anywhere inside your feedback text, as it will break the system.
 
 {
     "total_score": <number>,
@@ -463,7 +464,7 @@ ${data.patches.substring(0, 30000)}
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
                     response_mime_type: "application/json",
-                    // NEW: Force the Gemini API to strictly adhere to this exact JSON structure
+                    // FIX 2b: The strict Schema enforcement ensuring proper JSON formatting
                     response_schema: {
                         type: "OBJECT",
                         properties: {
@@ -498,13 +499,11 @@ ${data.patches.substring(0, 30000)}
         
         const aiResult = await response.json();
         
-        // Ensure this is properly parsed and isolated from cache errors
         let rawJson = aiResult.candidates[0].content.parts[0].text;
         rawJson = rawJson.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         
         const gradeData = JSON.parse(rawJson);
 
-        // Dashboard HTML formatting
         let formattedFeedback = `<div class="space-y-1">`;
         formattedFeedback += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} / ${maxScore}</div>`;
         
@@ -517,7 +516,6 @@ ${data.patches.substring(0, 30000)}
         formattedFeedback += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Optional Suggestion:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${gradeData.optional_suggestion.replace(/\n/g, '<br>')}</span></div>`;
         formattedFeedback += `</div>`;
 
-        // Save directly to Firestore
         const y = parseInt(document.getElementById('yearSelect').value);
         const m = parseInt(document.getElementById('monthSelect').value);
         const w = parseInt(document.getElementById('weekSelect').value);
