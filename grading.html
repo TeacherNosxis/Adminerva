@@ -194,22 +194,40 @@
             </div>
         </div>
     </div>
+    <!-- EDIT GRADE MODAL -->
     <div id="editGradeModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl max-w-3xl w-full flex flex-col">
+        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh]">
             <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">✏️ Manual Grade Override</h2>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                <!-- Total Score is now Read-Only at the top -->
+                <div class="text-2xl font-extrabold text-purple-700">Total: <span id="editTotalScoreDisplay">0</span> <span class="text-gray-400 text-lg">/ <span id="editMaxScoreDisplay">100</span></span></div>
             </div>
-            <div class="p-6 overflow-y-auto max-h-[70vh] flex-1 space-y-4">
+            <div class="p-6 overflow-y-auto flex-1 space-y-6">
                 <input type="hidden" id="editStudentId">
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Total Score</label>
-                    <input type="number" id="editTotalScore" class="w-32 p-2 border rounded focus:ring-purple-500 font-bold text-lg text-purple-700">
+                <input type="hidden" id="editMaxScore">
+
+                <!-- Dynamic Criteria Section -->
+                <div class="bg-gray-50 p-4 rounded border border-gray-200 shadow-inner">
+                    <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3 border-b pb-2">Criteria Scores</h3>
+                    <div id="editCriteriaContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Dynamic inputs will populate here -->
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Feedback Text (HTML Supported)</label>
-                    <textarea id="editFeedbackText" rows="12" class="w-full p-3 border rounded text-sm font-mono bg-gray-50 focus:ring-purple-500 leading-relaxed"></textarea>
-                    <p class="text-[10px] text-gray-500 mt-1">Note: You are editing the raw layout. Use &lt;br&gt; for line breaks. This exact text will be formatted and pushed to GitHub.</p>
+
+                <!-- Clean Textarea Section (No HTML required) -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Feedback based on criteria</label>
+                        <textarea id="editFeedbackCriteria" rows="3" class="w-full p-3 border rounded text-sm bg-white focus:ring-purple-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Additional Feedback</label>
+                        <textarea id="editAdditionalFeedback" rows="2" class="w-full p-3 border rounded text-sm bg-white focus:ring-purple-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Optional Suggestion</label>
+                        <textarea id="editOptionalSuggestion" rows="2" class="w-full p-3 border rounded text-sm bg-white focus:ring-purple-500"></textarea>
+                    </div>
                 </div>
             </div>
             <div class="p-4 border-t bg-gray-100 flex justify-end gap-3">

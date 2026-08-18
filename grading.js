@@ -35,6 +35,20 @@ function getQuarter(monthStr) {
     if (m >= 1 && m <= 3) return "Q3";
     return "Q4";
 }
+function buildFeedbackHtml(gradeData, maxScore) {
+    let html = `<div class="space-y-1">`;
+    html += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} / ${maxScore}</div>`;
+    if (gradeData.breakdown) {
+        gradeData.breakdown.forEach(b => {
+            html += `<div class="text-gray-700 font-semibold">${b.criterion}: ${b.score}/${b.max}</div>`;
+        });
+    }
+    html += `<div class="mt-4"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Feedback based on criteria:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${(gradeData.feedback_criteria || "None").replace(/\n/g, '<br>')}</span></div>`;
+    html += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Additional feedback:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${(gradeData.additional_feedback || "None").replace(/\n/g, '<br>')}</span></div>`;
+    html += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Optional Suggestion:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${(gradeData.optional_suggestion || "None").replace(/\n/g, '<br>')}</span></div>`;
+    html += `</div>`;
+    return html;
+}
 
 function updateQuotaDisplay() {
     const today = new Date().toISOString().split('T')[0];
@@ -354,12 +368,51 @@ window.closeDetailsModal = function() { document.getElementById('detailsModal').
 window.closeAiModal = function() { document.getElementById('aiModal').classList.add('hidden'); };
 window.openEditModal = function(studentId) {
     const gradeRec = firestoreGradesMap[studentId];
-    if (!gradeRec) return;
+    if (!gradeRec || !gradeRec.rawAiData) return alert("Cannot manually edit older grades. Please click 'Regrade via AI' first to convert to the new format.");
     
+    const ai = gradeRec.rawAiData;
+
     document.getElementById('editStudentId').value = studentId;
-    document.getElementById('editTotalScore').value = gradeRec.score;
-    document.getElementById('editFeedbackText').value = gradeRec.feedback;
+    document.getElementById('editMaxScore').value = gradeRec.maxScore;
+    
+    document.getElementById('editTotalScoreDisplay').textContent = ai.total_score;
+    document.getElementById('editMaxScoreDisplay').textContent = gradeRec.maxScore;
+
+    const container = document.getElementById('editCriteriaContainer');
+    container.innerHTML = '';
+    
+    // Generate an input box for every single criteria in the rubric
+    if (ai.breakdown) {
+        ai.breakdown.forEach((b, index) => {
+            container.insertAdjacentHTML('beforeend', `
+                <div class="flex items-center justify-between bg-white p-2 border rounded shadow-sm">
+                    <label class="text-xs font-bold text-gray-700 w-2/3 truncate pr-2" title="${b.criterion}">${b.criterion}</label>
+                    <div class="flex items-center gap-1 w-1/3 justify-end">
+                        <input type="number" id="editCrit_${index}" value="${b.score}" max="${b.max}" min="0" onchange="recalculateTotal()" class="w-16 p-1 border rounded text-center font-bold text-purple-700 focus:ring-purple-500">
+                        <span class="text-xs text-gray-500 font-bold">/ ${b.max}</span>
+                        <input type="hidden" id="editCritName_${index}" value="${b.criterion}">
+                        <input type="hidden" id="editCritMax_${index}" value="${b.max}">
+                    </div>
+                </div>
+            `);
+        });
+    }
+
+    // Populate the clean textareas
+    document.getElementById('editFeedbackCriteria').value = ai.feedback_criteria || "";
+    document.getElementById('editAdditionalFeedback').value = ai.additional_feedback || "";
+    document.getElementById('editOptionalSuggestion').value = ai.optional_suggestion || "";
+    
     document.getElementById('editGradeModal').classList.remove('hidden');
+};
+
+window.recalculateTotal = function() {
+    let total = 0;
+    const inputs = document.querySelectorAll('[id^="editCrit_"]');
+    inputs.forEach(input => {
+        total += parseInt(input.value) || 0;
+    });
+    document.getElementById('editTotalScoreDisplay').textContent = total;
 };
 
 window.closeEditModal = function() {
@@ -368,28 +421,47 @@ window.closeEditModal = function() {
 
 window.saveEditedGrade = async function() {
     const studentId = document.getElementById('editStudentId').value;
-    const newScore = parseInt(document.getElementById('editTotalScore').value);
-    const newFeedback = document.getElementById('editFeedbackText').value.trim();
-
+    const maxScore = parseInt(document.getElementById('editMaxScore').value);
     const gradeRec = firestoreGradesMap[studentId];
     if(!gradeRec) return;
 
+    // 1. Reconstruct the new breakdown array and Total Score
+    let newTotal = 0;
+    let newBreakdown = [];
+    const inputs = document.querySelectorAll('[id^="editCrit_"]');
+    inputs.forEach((input, index) => {
+        const score = parseInt(input.value) || 0;
+        const criterion = document.getElementById(`editCritName_${index}`).value;
+        const max = parseInt(document.getElementById(`editCritMax_${index}`).value);
+        newTotal += score;
+        newBreakdown.push({ criterion, score, max });
+    });
+
+    // 2. Build the new AI JSON Object
+    const newRawAiData = {
+        total_score: newTotal,
+        breakdown: newBreakdown,
+        feedback_criteria: document.getElementById('editFeedbackCriteria').value.trim(),
+        additional_feedback: document.getElementById('editAdditionalFeedback').value.trim(),
+        optional_suggestion: document.getElementById('editOptionalSuggestion').value.trim()
+    };
+
+    // 3. Convert it back into HTML using the helper
+    const newFormattedFeedback = buildFeedbackHtml(newRawAiData, maxScore);
+
     window.showLoader("Saving Manual Override...");
     try {
-        // We set rawAiData to null so the postCommentToGithub function stops using 
-        // the original AI JSON structure and defaults back to the edited text.
         const updatedData = {
-            score: newScore,
-            feedback: newFeedback,
-            rawAiData: null 
+            score: newTotal,
+            feedback: newFormattedFeedback,
+            rawAiData: newRawAiData // Save it back so the GitHub publisher can format it
         };
 
         await setDoc(doc(db, "grades", gradeRec.docId), updatedData, { merge: true });
 
-        // Update local map
-        firestoreGradesMap[studentId].score = newScore;
-        firestoreGradesMap[studentId].feedback = newFeedback;
-        firestoreGradesMap[studentId].rawAiData = null;
+        firestoreGradesMap[studentId].score = newTotal;
+        firestoreGradesMap[studentId].feedback = newFormattedFeedback;
+        firestoreGradesMap[studentId].rawAiData = newRawAiData;
 
         closeEditModal();
         renderGradingTable();
@@ -420,7 +492,6 @@ window.gradeCode = async function(studentId) {
     const criteriaText = activeTemplate.criteria.map(c => `- ${c.name} (${c.weight}${isPct ? '%' : ' pts'}): ${c.description}`).join('\n');
     const maxScore = isPct ? 100 : activeTemplate.criteria.reduce((sum, c) => sum + Number(c.weight || 0), 0);
 
-    // FIX 2a: The updated prompt forcing single quotes/backticks
     const prompt = `
 ${activeTemplate.generalPrompt}
 You are a strict Computer Programming Professor grading a student's weekly commits. Review the following GitHub diff patches.
@@ -429,7 +500,9 @@ CRITICAL INSTRUCTIONS:
 1. DO NOT use conversational filler. Be blunt and direct.
 2. Evaluate the code against the provided criteria and assign a specific score for each.
 3. Output MUST be strictly in the following JSON format. Do NOT wrap it in markdown blocks.
-4. CODE QUOTATION RULE: If you quote the student's code in your feedback, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (") anywhere inside your feedback text, as it will break the system.
+4. CODE QUOTATION RULE: If you quote the student's code in your feedback, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
+5. BE CONCISE. DO NOT REPEAT OR OUTPUT THE STUDENT'S CODE IN YOUR JSON RESPONSE. Limit explanations to 2-3 sentences.
+6. If possible avoid code qoutation and just refer which part of the students code you are talking about.
 
 {
     "total_score": <number>,
@@ -437,8 +510,8 @@ CRITICAL INSTRUCTIONS:
         { "criterion": "<Name of Criterion>", "score": <number>, "max": <number> }
     ],
     "feedback_criteria": "<Bullet points explaining the deductions and errors based strictly on the criteria>",
-    "additional_feedback": "<1-2 sentences of factual praise, missing logic, or extra context>",
-    "optional_suggestion": "<1 bullet point for best practices>"
+    "additional_feedback": "<1-3 sentences of factual praise, missing logic, or extra context>",
+    "optional_suggestion": "<2 bullet point for best practices>"
 }
 
 Grade out of a maximum total score of ${maxScore}.
@@ -464,7 +537,6 @@ ${data.patches.substring(0, 30000)}
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
                     response_mime_type: "application/json",
-                    // FIX 2b: The strict Schema enforcement ensuring proper JSON formatting
                     response_schema: {
                         type: "OBJECT",
                         properties: {
@@ -498,23 +570,21 @@ ${data.patches.substring(0, 30000)}
         incrementAiQuota();
         
         const aiResult = await response.json();
-        
         let rawJson = aiResult.candidates[0].content.parts[0].text;
         rawJson = rawJson.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         
-        const gradeData = JSON.parse(rawJson);
+        let gradeData;
+        try {
+            gradeData = JSON.parse(rawJson);
+        } catch (e) {
+            throw new Error("AI returned truncated or invalid JSON. Please try clicking Regrade via AI. (" + e.message + ")");
+        }
+        
+        // Safety check to prevent the 'forEach' undefined crash
+        if (!gradeData.breakdown) gradeData.breakdown = [];
 
-        let formattedFeedback = `<div class="space-y-1">`;
-        formattedFeedback += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} / ${maxScore}</div>`;
-        
-        gradeData.breakdown.forEach(b => {
-            formattedFeedback += `<div class="text-gray-700 font-semibold">${b.criterion}: ${b.score}/${b.max}</div>`;
-        });
-        
-        formattedFeedback += `<div class="mt-4"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Feedback based on criteria:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${gradeData.feedback_criteria.replace(/\n/g, '<br>')}</span></div>`;
-        formattedFeedback += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Additional feedback:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${gradeData.additional_feedback.replace(/\n/g, '<br>')}</span></div>`;
-        formattedFeedback += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Optional Suggestion:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${gradeData.optional_suggestion.replace(/\n/g, '<br>')}</span></div>`;
-        formattedFeedback += `</div>`;
+        // Build the HTML using our new helper function
+        const formattedFeedback = buildFeedbackHtml(gradeData, maxScore);
 
         const y = parseInt(document.getElementById('yearSelect').value);
         const m = parseInt(document.getElementById('monthSelect').value);
