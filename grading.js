@@ -430,24 +430,30 @@ ${data.patches.substring(0, 30000)}
         incrementAiQuota();
         
         const aiResult = await response.json();
-        const rawJson = aiResult.candidates[0].content.parts[0].text;
-        // NEW: Clean the JSON string to remove accidental markdown code blocks
+        
+        // FIX: Changed 'const' to 'let' so the regex cleaner can reassign the variable safely
+        let rawJson = aiResult.candidates[0].content.parts[0].text;
+        
+        // Clean the JSON string to remove accidental markdown code blocks
         rawJson = rawJson.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         
         const gradeData = JSON.parse(rawJson);
 
-        // Format the feedback for the Dashboard UI
-        let formattedFeedback = `<div class="space-y-2">`;
-        formattedFeedback += `<div><strong class="text-gray-800">Criteria Breakdown:</strong><br>`;
+        // NEW UI FORMAT: Structured exactly as requested for the dashboard
+        let formattedFeedback = `<div class="space-y-1">`;
+        formattedFeedback += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} / ${maxScore}</div>`;
+        
+        // Loop through the breakdown to display Criteria 1, Criteria 2, etc.
         gradeData.breakdown.forEach(b => {
-            formattedFeedback += `<span class="text-gray-600">- ${b.criterion}: ${b.score}/${b.max}</span><br>`;
+            formattedFeedback += `<div class="text-gray-700 font-semibold">${b.criterion}: ${b.score}/${b.max}</div>`;
         });
-        formattedFeedback += `</div>`;
-        formattedFeedback += `<div><strong class="text-gray-800">Feedback based on criteria:</strong><br><span class="text-gray-600">${gradeData.feedback_criteria.replace(/\n/g, '<br>')}</span></div>`;
-        formattedFeedback += `<div><strong class="text-gray-800">Additional feedback:</strong><br><span class="text-gray-600">${gradeData.additional_feedback.replace(/\n/g, '<br>')}</span></div>`;
-        formattedFeedback += `<div><strong class="text-gray-800">Optional Suggestion:</strong><br><span class="text-gray-600">${gradeData.optional_suggestion.replace(/\n/g, '<br>')}</span></div>`;
+        
+        formattedFeedback += `<div class="mt-4"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Feedback based on criteria:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${gradeData.feedback_criteria.replace(/\n/g, '<br>')}</span></div>`;
+        formattedFeedback += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Additional feedback:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${gradeData.additional_feedback.replace(/\n/g, '<br>')}</span></div>`;
+        formattedFeedback += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Optional Suggestion:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${gradeData.optional_suggestion.replace(/\n/g, '<br>')}</span></div>`;
         formattedFeedback += `</div>`;
 
+        // Save directly to Firestore
         const y = parseInt(document.getElementById('yearSelect').value);
         const m = parseInt(document.getElementById('monthSelect').value);
         const w = parseInt(document.getElementById('weekSelect').value);
