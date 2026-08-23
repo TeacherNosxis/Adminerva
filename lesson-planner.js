@@ -2,13 +2,41 @@ let currentGrade11Plan = [];
 let currentGrade12Plan = [];
 let currentWeeklyOverview = null;
 let activeTab = 'g11';
+let loaderInterval;
+
+const loaderMessages = [
+    "AI Architecting Syllabus...",
+    "Analyzing DepEd & TESDA standards...",
+    "Cross-referencing your Master Schedule...",
+    "Structuring Grade 11 & 12 sessions...",
+    "Formatting activities for the RepoReview System...",
+    "Finalizing lesson plan JSON..."
+];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadLibraryFolders();
 });
 
-window.showLoader = function() { document.getElementById('globalLoader').classList.replace('hidden', 'flex'); };
-window.hideLoader = function() { document.getElementById('globalLoader').classList.replace('flex', 'hidden'); };
+window.showLoader = function() { 
+    document.getElementById('globalLoader').classList.replace('hidden', 'flex'); 
+    let msgIndex = 0;
+    const msgElement = document.getElementById('loaderDynamicText');
+    msgElement.textContent = loaderMessages[0];
+    
+    loaderInterval = setInterval(() => {
+        msgIndex = (msgIndex + 1) % loaderMessages.length;
+        msgElement.style.opacity = 0; // Fade out effect
+        setTimeout(() => {
+            msgElement.textContent = loaderMessages[msgIndex];
+            msgElement.style.opacity = 1; // Fade in effect
+        }, 300); // 300ms transition
+    }, 4000);
+};
+
+window.hideLoader = function() { 
+    document.getElementById('globalLoader').classList.replace('flex', 'hidden'); 
+    clearInterval(loaderInterval);
+};
 
 window.switchTab = function(tab) {
     activeTab = tab;
@@ -49,9 +77,9 @@ window.generateLessonPlan = async function() {
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-3.5-flash'; 
     if (!gemKey) return alert("Missing Gemini API Key in Global Settings.");
 
+    // Compile Context
+    const masterContext = document.getElementById('lpContent').value;
     const selectedCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
-    if (selectedCheckboxes.length === 0) return alert("Please select at least one reference folder.");
-
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
     let compiledReferenceText = "";
     
@@ -64,7 +92,9 @@ window.generateLessonPlan = async function() {
         }
     });
 
-    if (!compiledReferenceText.trim()) return alert("The selected folders do not contain any extracted documents.");
+    if (!masterContext.trim() && !compiledReferenceText.trim()) {
+        return alert("Please provide Master Context text or select a Reference Folder.");
+    }
 
     const rawSchedule = localStorage.getItem('lessonReview_schedule') || "No schedule provided. Leave schedule fields generic.";
     const targetMonth = document.getElementById('lpMonth').value;
@@ -72,10 +102,10 @@ window.generateLessonPlan = async function() {
     const weekScope = `${targetWeek} of ${targetMonth}`;
 
     const prompt = `
-You are an expert curriculum developer. Based on the provided Reference Text and Target Scope, generate a highly structured JSON lesson plan.
+You are an expert curriculum developer. Based on the provided "Master Context" AND "Reference Text", generate a highly structured JSON lesson plan.
 
 CRITICAL FORMATTING RULES:
-1. "weekly_overview": Generate the overarching topic, content standard, performance standard, formation standard, and required materials for the whole week based on the Reference Text.
+1. "weekly_overview": Extract the overarching topic, content standard, performance standard, formation standard, and materials. You MUST actively extract these from the "Master Context" text provided. If not explicitly stated, infer them professionally based on the topic.
 2. "grade_11" & "grade_12" arrays: Generate the daily sessions.
 3. GRADE 11 SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
 4. GRADE 12 SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".
@@ -94,16 +124,17 @@ CRITICAL FORMATTING RULES:
       - (Good for 50 mins activity using -ing verbs)
      Session 6:
       - (Good for 50 mins activity using -ing verbs)
-7. SESSION FLEX RULE: 
+7. SESSION FLEX RULE (Grade 11 & 12): 
    - This is OFFLINE/ASYNCHRONOUS. 
-   - Provide ONLY bulleted "learning_activities". 
+   - Provide ONLY bulleted "learning_activities" (e.g. assignments, modules to read). 
    - You MUST set preliminary, motivation, evaluation, closing, values_integration, remarks, competencies, and objectives to an empty string "". Do NOT put "N/A", just leave them completely empty.
 
 Target Scope: ${weekScope}
+Master Context (DepEd/TESDA Specs): ${masterContext}
 Teacher Schedule:
 ${rawSchedule}
 
-Reference Text:
+Reference Text (Library Folders):
 ${compiledReferenceText.substring(0, 25000)}
     `;
 
@@ -251,7 +282,6 @@ function renderOutput() {
             <h3 class="text-lg font-bold ${isFlex ? 'text-amber-600' : 'text-blue-800'} mb-4 border-b pb-2">${session.session_name} ${isFlex ? '(Asynchronous)' : ''}</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
 
-        // Only render Objectives/Competencies if it's NOT Flex
         if (!isFlex) {
             html += `
                 <div>
@@ -272,14 +302,12 @@ function renderOutput() {
                 </div>`;
         }
 
-        // Learning Activities (Always renders, full width)
         html += `
                 <div class="md:col-span-2">
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Learning Activities</label>
                     <textarea class="w-full p-3 border border-gray-300 rounded text-sm bg-white font-mono leading-relaxed shadow-inner" rows="6">${session.learning_activities || ''}</textarea>
                 </div>`;
 
-        // Only render the rest if it's NOT Flex
         if (!isFlex) {
             html += `
                 <div>
