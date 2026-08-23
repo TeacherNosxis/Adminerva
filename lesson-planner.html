@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LessonReview - AI Curriculum Planner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
 
@@ -38,65 +38,73 @@
         </div>
     </nav>
 
-    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-2 flex-1 flex flex-col">
+    <!-- Main Workspace -->
+    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col lg:flex-row gap-6">
         
-        <!-- TOP SECTION: Configuration Banner -->
-        <div class="w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Lesson Configuration</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">School Year</label>
-                    <input type="text" id="lpSchoolYear" value="2026-2027" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Semester</label>
-                    <select id="lpSemester" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-                        <option>1st Semester</option><option>2nd Semester</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Quarter</label>
-                    <select id="lpQuarter" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-                        <option>1st Quarter</option><option>2nd Quarter</option><option>3rd Quarter</option><option>4th Quarter</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Target Month</label>
-                    <select id="lpMonth" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-                        <option value="August">August</option><option value="September">September</option>
-                        <option value="October">October</option><option value="November">November</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Target Week</label>
-                    <select id="lpWeek" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-                        <option value="Week 1">Week 1</option><option value="Week 2">Week 2</option>
-                        <option value="Week 3">Week 3</option><option value="Week 4">Week 4</option><option value="Week 5">Week 5</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                <div>
-                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Master Context / Topic</label>
-                    <textarea id="lpContent" rows="4" class="w-full p-3 border border-blue-200 rounded text-sm bg-blue-50 focus:ring-blue-500 shadow-inner" placeholder="Paste your DepEd/TESDA standards, overarching topic, or specific instructions here..."></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Select Reference Folders</label>
-                    <div id="libraryFolderContainer" class="bg-blue-50 border border-blue-200 rounded p-3 h-[110px] overflow-y-auto space-y-2 shadow-inner">
-                        <!-- Checkboxes injected via JS -->
+        <!-- LEFT COLUMN: Inputs & Config -->
+        <div class="w-full lg:w-1/3 bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-6 overflow-y-auto max-h-[85vh]">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Lesson Configuration</h2>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">School Year</label>
+                        <input type="text" id="lpSchoolYear" value="2026-2027" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Semester</label>
+                        <select id="lpSemester" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                            <option>1st Semester</option><option>2nd Semester</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Quarter</label>
+                        <select id="lpQuarter" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                            <option>1st Quarter</option><option>2nd Quarter</option><option>3rd Quarter</option><option>4th Quarter</option>
+                        </select>
                     </div>
                 </div>
+
+                <div class="p-4 bg-gray-50 border border-gray-200 rounded mb-4">
+                    <label class="block text-xs font-extrabold text-gray-800 uppercase mb-2">Target Scope</label>
+                    <div class="flex gap-2">
+                        <select id="lpMonth" class="w-full p-2 border rounded text-sm bg-white focus:ring-blue-500 shadow-sm">
+                            <option value="August">August</option><option value="September">September</option>
+                            <option value="October">October</option><option value="November">November</option>
+                            <option value="December">December</option><option value="January">January</option>
+                            <option value="February">February</option><option value="March">March</option>
+                            <option value="April">April</option><option value="May">May</option>
+                        </select>
+                        <select id="lpWeek" class="w-full p-2 border rounded text-sm bg-white focus:ring-blue-500 shadow-sm">
+                            <option value="Week 1">Week 1</option><option value="Week 2">Week 2</option>
+                            <option value="Week 3">Week 3</option><option value="Week 4">Week 4</option>
+                            <option value="Week 5">Week 5</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- RESTORED: Master Context Box for DepEd/TESDA Standards -->
+                <div>
+                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Master Context / Topic</label>
+                    <textarea id="lpContent" rows="4" class="w-full p-3 border border-blue-200 rounded text-sm bg-blue-50 focus:ring-blue-500 shadow-inner" placeholder="Paste your DepEd/TESDA standards or overarching topic here..."></textarea>
+                </div>
             </div>
 
-            <button onclick="generateLessonPlan()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2">
+            <div class="border-t pt-4">
+                <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Select Reference Folders</label>
+                <div id="libraryFolderContainer" class="bg-blue-50 border border-blue-200 rounded p-3 max-h-48 overflow-y-auto space-y-2 shadow-inner">
+                    <!-- Checkboxes injected via JS -->
+                </div>
+                <p class="text-[10px] text-gray-500 mt-2 font-semibold">The AI will extract curriculum data from these Library folders.</p>
+            </div>
+
+            <button onclick="generateLessonPlan()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 shadow-md transition mt-auto flex justify-center items-center gap-2">
                 <span>🤖</span> Generate Dual Plans
             </button>
         </div>
 
-        <!-- BOTTOM SECTION: Full Width Output -->
-        <div class="w-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col flex-1">
+        <!-- RIGHT COLUMN: Output & Editor -->
+        <div class="w-full lg:w-2/3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
             <div id="weeklyOverviewContainer" class="bg-gray-100 border-b border-gray-200 hidden flex-col"></div>
 
             <div class="flex border-b bg-gray-50">
@@ -104,7 +112,7 @@
                 <button onclick="switchTab('g12')" id="tab-g12" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">Grade 12 (4 Sessions)</button>
             </div>
             
-            <div id="outputContainer" class="p-6 overflow-y-auto bg-gray-50 flex-1 min-h-[400px]">
+            <div id="outputContainer" class="p-6 overflow-y-auto flex-1 bg-gray-50 min-h-[400px]">
                 <div class="text-center text-gray-400 italic mt-20">Select your scope and folders to generate plans.</div>
             </div>
             
@@ -115,11 +123,16 @@
         </div>
     </div>
 
-    <!-- DYNAMIC LOADING OVERLAY -->
-    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col">
+    <!-- UPGRADED LOADING OVERLAY (Timer & Bible Verses) -->
+    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-95 z-[100] items-center justify-center flex-col px-6">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"></div>
-        <p id="loaderDynamicText" class="text-white font-bold text-2xl tracking-wider mb-2 text-center transition-opacity duration-500">AI Architecting Syllabus...</p>
-        <p class="text-blue-300 text-sm font-semibold">Please do not close this window.</p>
+        <p class="text-white font-bold text-2xl tracking-wider mb-2">AI Architecting Syllabus... <span id="elapsedTime" class="text-blue-400 font-mono">0s</span></p>
+        <p class="text-blue-300 text-sm font-semibold mb-8">Please do not close this window.</p>
+        
+        <!-- Bible Verse Container -->
+        <div class="max-w-2xl text-center min-h-[80px]">
+            <p id="bibleVerse" class="text-gray-200 text-lg italic font-serif transition-opacity duration-500"></p>
+        </div>
     </div>
 
     <script type="module" src="lesson-planner.js?v=3"></script>
