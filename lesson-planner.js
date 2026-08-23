@@ -1,8 +1,8 @@
 let currentGrade11Plan = [];
 let currentGrade12Plan = [];
+let currentWeeklyOverview = null;
 let activeTab = 'g11';
 
-// Load folders instantly when page opens
 document.addEventListener('DOMContentLoaded', () => {
     loadLibraryFolders();
 });
@@ -23,7 +23,6 @@ window.switchTab = function(tab) {
     renderOutput();
 };
 
-// --- LOAD FOLDERS FROM RAG KNOWLEDGE BASE ---
 function loadLibraryFolders() {
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
     const container = document.getElementById('libraryFolderContainer');
@@ -45,18 +44,14 @@ function loadLibraryFolders() {
     });
 }
 
-// --- CORE AI GENERATION ---
 window.generateLessonPlan = async function() {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
-    const model = localStorage.getItem('repoReview_ai_model') || 'gemini-3.5-flash';
-    
+    const model = localStorage.getItem('repoReview_ai_model') || 'gemini-3.5-flash'; 
     if (!gemKey) return alert("Missing Gemini API Key in Global Settings.");
 
-    // 1. Gather Selected Folders
     const selectedCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
     if (selectedCheckboxes.length === 0) return alert("Please select at least one reference folder.");
 
-    // 2. Compile Reference Text from the Library
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
     let compiledReferenceText = "";
     
@@ -71,31 +66,40 @@ window.generateLessonPlan = async function() {
 
     if (!compiledReferenceText.trim()) return alert("The selected folders do not contain any extracted documents.");
 
-   // 3. Grab Schedule & Form Inputs
     const rawSchedule = localStorage.getItem('lessonReview_schedule') || "No schedule provided. Leave schedule fields generic.";
-    const topic = document.getElementById('lpContent').value;
-    const objectives = document.getElementById('lpObjectives').value;
-    
-    // Grab the Month and Week directly from the new dropdowns
     const targetMonth = document.getElementById('lpMonth').value;
     const targetWeek = document.getElementById('lpWeek').value;
     const weekScope = `${targetWeek} of ${targetMonth}`;
 
     const prompt = `
-You are an expert curriculum developer. Based on the provided Reference Text, Topic, and Objectives, generate a highly structured JSON lesson plan.
+You are an expert curriculum developer. Based on the provided Reference Text and Target Scope, generate a highly structured JSON lesson plan.
 
 CRITICAL FORMATTING RULES:
-1. You MUST generate two distinct arrays in your JSON response: "grade_11" and "grade_12".
-2. GRADE 11 RULE: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
-3. GRADE 12 RULE: Compress the topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex". (Do NOT include a 4-6 Lab).
-4. PRELIMINARY RULE: "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
-5. MOTIVATION RULE: "motivation" MUST contain a mini-game, warm-up, or recall activity.
-6. ACTIVITIES RULE: Every sentence in "learning_activities" MUST begin with an "-ing" verb (e.g., "Discussing...", "Creating...").
-7. EVALUATION RULE: "evaluation" MUST reference a 10-item Quipper quiz.
-8. REMARKS RULE: Map the provided Teacher Schedule into the "remarks" field for the corresponding sessions.
+1. "weekly_overview": Generate the overarching topic, content standard, performance standard, formation standard, and required materials for the whole week based on the Reference Text.
+2. "grade_11" & "grade_12" arrays: Generate the daily sessions.
+3. GRADE 11 SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
+4. GRADE 12 SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".
+5. SESSION DETAILS (Normal): 
+   - "competencies" and "objectives" MUST be unique per session.
+   - "learning_activities" MUST be heavily bulleted using standard dashes (-). Every bullet MUST begin with an "-ing" verb.
+   - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
+   - "evaluation" MUST reference a 10-item Quipper quiz.
+   - Map the provided Teacher Schedule into the "remarks" field.
+6. SESSION 4-6 RULE (Grade 11 ONLY): 
+   - This is a 3-hour period. Share the same objectives/competencies.
+   - You MUST format the "learning_activities" explicitly like this:
+     Session 4:
+      - (Good for 50 mins activity using -ing verbs)
+     Session 5:
+      - (Good for 50 mins activity using -ing verbs)
+     Session 6:
+      - (Good for 50 mins activity using -ing verbs)
+7. SESSION FLEX RULE: 
+   - This is OFFLINE/ASYNCHRONOUS. 
+   - Provide ONLY bulleted "learning_activities". 
+   - You MUST set preliminary, motivation, evaluation, closing, values_integration, remarks, competencies, and objectives to an empty string "". Do NOT put "N/A", just leave them completely empty.
 
-Topic: ${topic}
-Objectives: ${objectives}
+Target Scope: ${weekScope}
 Teacher Schedule:
 ${rawSchedule}
 
@@ -117,29 +121,24 @@ ${compiledReferenceText.substring(0, 25000)}
                     responseSchema: {
                         type: "OBJECT",
                         properties: {
+                            weekly_overview: {
+                                type: "OBJECT",
+                                properties: {
+                                    topic: { type: "STRING" },
+                                    content_standard: { type: "STRING" },
+                                    performance_standard: { type: "STRING" },
+                                    formation_standard: { type: "STRING" },
+                                    materials: { type: "STRING" }
+                                }
+                            },
                             grade_11: {
                                 type: "ARRAY",
                                 items: {
                                     type: "OBJECT",
                                     properties: {
                                         session_name: { type: "STRING" },
-                                        preliminary: { type: "STRING" },
-                                        motivation: { type: "STRING" },
-                                        learning_activities: { type: "STRING", description: "Use -ing verbs." },
-                                        evaluation: { type: "STRING", description: "Include 10-item Quipper quiz." },
-                                        closing: { type: "STRING" },
-                                        values_integration: { type: "STRING" },
-                                        remarks: { type: "STRING" }
-                                    },
-                                    required: ["session_name", "preliminary", "motivation", "learning_activities", "evaluation", "closing", "values_integration", "remarks"]
-                                }
-                            },
-                            grade_12: {
-                                type: "ARRAY",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        session_name: { type: "STRING" },
+                                        competencies: { type: "STRING" },
+                                        objectives: { type: "STRING" },
                                         preliminary: { type: "STRING" },
                                         motivation: { type: "STRING" },
                                         learning_activities: { type: "STRING" },
@@ -148,11 +147,30 @@ ${compiledReferenceText.substring(0, 25000)}
                                         values_integration: { type: "STRING" },
                                         remarks: { type: "STRING" }
                                     },
-                                    required: ["session_name", "preliminary", "motivation", "learning_activities", "evaluation", "closing", "values_integration", "remarks"]
+                                    required: ["session_name", "learning_activities"]
+                                }
+                            },
+                            grade_12: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        session_name: { type: "STRING" },
+                                        competencies: { type: "STRING" },
+                                        objectives: { type: "STRING" },
+                                        preliminary: { type: "STRING" },
+                                        motivation: { type: "STRING" },
+                                        learning_activities: { type: "STRING" },
+                                        evaluation: { type: "STRING" },
+                                        closing: { type: "STRING" },
+                                        values_integration: { type: "STRING" },
+                                        remarks: { type: "STRING" }
+                                    },
+                                    required: ["session_name", "learning_activities"]
                                 }
                             }
                         },
-                        required: ["grade_11", "grade_12"]
+                        required: ["weekly_overview", "grade_11", "grade_12"]
                     }
                 }
             })
@@ -164,8 +182,11 @@ ${compiledReferenceText.substring(0, 25000)}
         let rawJson = aiResult.candidates[0].content.parts[0].text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
         const planData = JSON.parse(rawJson);
 
+        currentWeeklyOverview = planData.weekly_overview;
         currentGrade11Plan = planData.grade_11;
         currentGrade12Plan = planData.grade_12;
+        
+        renderOverview();
         renderOutput();
 
     } catch(e) {
@@ -174,6 +195,43 @@ ${compiledReferenceText.substring(0, 25000)}
         window.hideLoader();
     }
 };
+
+function renderOverview() {
+    const container = document.getElementById('weeklyOverviewContainer');
+    if (!currentWeeklyOverview) return;
+    
+    container.classList.remove('hidden');
+    container.classList.add('flex');
+    container.innerHTML = `
+        <div class="p-6">
+            <h3 class="text-sm font-extrabold text-gray-400 uppercase tracking-widest mb-4">Weekly Curriculum Overview</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase">Topic / Content</label>
+                    <textarea class="w-full p-2 border border-transparent rounded text-sm bg-white font-bold text-gray-800" rows="1">${currentWeeklyOverview.topic || ''}</textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Content Standard</label>
+                        <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${currentWeeklyOverview.content_standard || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Performance Standard</label>
+                        <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${currentWeeklyOverview.performance_standard || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Formation Standard</label>
+                        <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${currentWeeklyOverview.formation_standard || ''}</textarea>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase">Materials & Tech</label>
+                    <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="1">${currentWeeklyOverview.materials || ''}</textarea>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
 function renderOutput() {
     const container = document.getElementById('outputContainer');
@@ -186,42 +244,63 @@ function renderOutput() {
         return;
     }
 
-    activePlan.forEach((session, index) => {
-        container.insertAdjacentHTML('beforeend', `
-            <div class="bg-white p-5 rounded border border-gray-200 shadow-sm mb-6">
-                <h3 class="text-lg font-bold text-blue-800 mb-4 border-b pb-2">${session.session_name}</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Preliminary Action</label>
-                        <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="3">${session.preliminary}</textarea>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Motivation / Recall</label>
-                        <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="3">${session.motivation}</textarea>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Learning Activities</label>
-                        <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="4">${session.learning_activities}</textarea>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Evaluation</label>
-                        <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.evaluation}</textarea>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Closing Activities</label>
-                        <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.closing}</textarea>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Values Integration</label>
-                        <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.values_integration}</textarea>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Remarks / Intervention</label>
-                        <textarea class="w-full p-2 border rounded text-sm bg-blue-50 border-blue-200" rows="2">${session.remarks}</textarea>
-                    </div>
+    activePlan.forEach(session => {
+        const isFlex = session.session_name.toLowerCase().includes('flex');
+        
+        let html = `<div class="bg-white p-5 rounded border border-gray-200 shadow-sm mb-6">
+            <h3 class="text-lg font-bold ${isFlex ? 'text-amber-600' : 'text-blue-800'} mb-4 border-b pb-2">${session.session_name} ${isFlex ? '(Asynchronous)' : ''}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
+
+        // Only render Objectives/Competencies if it's NOT Flex
+        if (!isFlex) {
+            html += `
+                <div>
+                    <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Learning Competencies</label>
+                    <textarea class="w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3">${session.competencies || ''}</textarea>
                 </div>
-            </div>
-        `);
+                <div>
+                    <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Specific Objectives</label>
+                    <textarea class="w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3">${session.objectives || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Preliminary Action</label>
+                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="3">${session.preliminary || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Motivation / Recall</label>
+                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="3">${session.motivation || ''}</textarea>
+                </div>`;
+        }
+
+        // Learning Activities (Always renders, full width)
+        html += `
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Learning Activities</label>
+                    <textarea class="w-full p-3 border border-gray-300 rounded text-sm bg-white font-mono leading-relaxed shadow-inner" rows="6">${session.learning_activities || ''}</textarea>
+                </div>`;
+
+        // Only render the rest if it's NOT Flex
+        if (!isFlex) {
+            html += `
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Evaluation</label>
+                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.evaluation || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Closing Activities</label>
+                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.closing || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Values Integration</label>
+                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.values_integration || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-amber-600 uppercase tracking-wider mb-1">Remarks / Intervention</label>
+                    <textarea class="w-full p-2 border rounded text-sm bg-amber-50 border-amber-200" rows="2">${session.remarks || ''}</textarea>
+                </div>`;
+        }
+
+        html += `</div></div>`;
+        container.insertAdjacentHTML('beforeend', html);
     });
 }
