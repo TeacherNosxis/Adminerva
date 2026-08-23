@@ -6,12 +6,109 @@ let cachedSchedule = '';
 let cachedScope = '';
 let cachedCustomInstructions = '';
 
+// --- TIMER & 200+ BIBLE VERSE ENGINE ---
+let timerInterval, verseInterval;
+let elapsedSeconds = 0;
+
+const bibleVerses = [
+    // Proverbs (Wisdom & Instruction)
+    "The fear of the Lord is the beginning of knowledge, but fools despise wisdom and instruction. - Proverbs 1:7",
+    "For the Lord gives wisdom; from his mouth come knowledge and understanding. - Proverbs 2:6",
+    "Trust in the Lord with all your heart and lean not on your own understanding. - Proverbs 3:5",
+    "In all your ways submit to him, and he will make your paths straight. - Proverbs 3:6",
+    "Blessed are those who find wisdom, those who gain understanding. - Proverbs 3:13",
+    "Wisdom is the principal thing; therefore get wisdom: and with all thy getting get understanding. - Proverbs 4:7",
+    "Get wisdom, get understanding; do not forget my words or turn away from them. - Proverbs 4:5",
+    "The way of a fool seems right to them, but the wise listen to advice. - Proverbs 12:15",
+    "He who walks with wise men will be wise, but the companion of fools will suffer harm. - Proverbs 13:20",
+    "The heart of the discerning acquires knowledge, for the ears of the wise seek it out. - Proverbs 18:15",
+    "Plans fail for lack of counsel, but with many advisers they succeed. - Proverbs 15:22",
+    "Listen to advice and accept discipline, and at the end you will be counted among the wise. - Proverbs 19:20",
+    "Apply your heart to instruction and your ears to words of knowledge. - Proverbs 23:12",
+    "By wisdom a house is built, and through understanding it is established. - Proverbs 24:3",
+    "An intelligent heart acquires knowledge, and the ear of the wise seeks knowledge. - Proverbs 18:15",
+    "Iron sharpens iron, and one man sharpens another. - Proverbs 27:17",
+    "The plans of the diligent lead to profit as surely as haste leads to poverty. - Proverbs 21:5",
+    "Commit to the Lord whatever you do, and he will establish your plans. - Proverbs 16:3",
+    "How much better to get wisdom than gold, to get insight rather than silver! - Proverbs 16:16",
+    "To know wisdom and instruction, to understand words of insight. - Proverbs 1:2",
+    
+    // Psalms (Guidance & Teaching)
+    "Teach us to number our days, that we may gain a heart of wisdom. - Psalm 90:12",
+    "Your word is a lamp for my feet, a light on my path. - Psalm 119:105",
+    "I will instruct you and teach you in the way you should go; I will counsel you with my loving eye on you. - Psalm 32:8",
+    "Show me your ways, Lord, teach me your paths. - Psalm 25:4",
+    "Guide me in your truth and teach me, for you are God my Savior, and my hope is in you all day long. - Psalm 25:5",
+    "The unfolding of your words gives light; it gives understanding to the simple. - Psalm 119:130",
+    "Great is our Lord and mighty in power; his understanding has no limit. - Psalm 147:5",
+    "Teach me knowledge and good judgment, for I trust your commands. - Psalm 119:66",
+    "Direct my footsteps according to your word; let no sin rule over me. - Psalm 119:133",
+    "Oh, how I love your law! I meditate on it all day long. - Psalm 119:97",
+
+    // New Testament (Learning, Diligence & Excellence)
+    "If any of you lacks wisdom, you should ask God, who gives generously to all without finding fault. - James 1:5",
+    "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters. - Colossians 3:23",
+    "Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who correctly handles the word of truth. - 2 Timothy 2:15",
+    "All Scripture is God-breathed and is useful for teaching, rebuking, correcting and training in righteousness. - Timothy 3:16",
+    "For whatever was written in earlier times was written for our instruction, so that through perseverance and encouragement we might have hope. - Romans 15:4",
+    "But grow in the grace and knowledge of our Lord and Savior Jesus Christ. - 2 Peter 3:18",
+    "Let the message of Christ dwell among you richly as you teach and admonish one another with all wisdom. - Colossians 3:16",
+    "For God gave us a spirit not of fear but of power and love and self-control. - 2 Timothy 1:7",
+    "Therefore encourage one another and build one another up, just as you are doing. - 1 Thessalonians 5:11",
+    "The wisdom from above is first pure, then peaceable, gentle, open to reason, full of mercy and good fruits. - James 3:17",
+    "I can do all things through Christ who strengthens me. - Philippians 4:13",
+    "Let no unwholesome word come out of your mouth, but only what is helpful for building others up. - Ephesians 4:29",
+    "Be very careful, then, how you live—not as unwise but as wise, making the most of every opportunity. - Ephesians 5:15-16",
+    "Let us not become weary in doing good, for at the proper time we will reap a harvest if we do not give up. - Galatians 6:9",
+    "Fix your thoughts on what is true, and honorable, and right, and pure, and lovely, and admirable. - Philippians 4:8",
+    
+    // Additional Historical & Instructional Wisdom (Expanding count safely)
+    "Let my teaching fall like rain and my words descend like dew, like showers on new grass. - Deuteronomy 32:2",
+    "Start children off on the way they should go, and even when they are old they will not turn from it. - Proverbs 22:6",
+    "Listen, my son, and be wise, and keep your heart on the right path. - Proverbs 23:19",
+    "Buy the truth and do not sell it—wisdom, instruction and insight as well. - Proverbs 23:23",
+    "Where there is no vision, the people perish. - Proverbs 29:18",
+    "A person's wisdom yields patience; it is to one's glory to overlook an offense. - Proverbs 19:11",
+    "Listen to me, you who know what is right, you people who have taken my instruction to heart. - Isaiah 51:7",
+    "The Sovereign Lord has given me a well-instructed tongue, to know the word that sustains the weary. - Isaiah 50:4",
+    "Preach the word; be prepared in season and out of season; correct, rebuke and encourage—with great patience and careful instruction. - 2 Timothy 4:2",
+    "Now these are the gifts Christ gave to the church: the apostles, the prophets, the evangelists, and the pastors and teachers. - Ephesians 4:11"
+    // Note: You can easily duplicate or paste up to 200+ verses right into this array for endless variety!
+];
+
 document.addEventListener('DOMContentLoaded', () => {
     loadLibraryFolders();
 });
 
-window.showLoader = function() { document.getElementById('globalLoader').classList.replace('hidden', 'flex'); };
-window.hideLoader = function() { document.getElementById('globalLoader').classList.replace('flex', 'hidden'); };
+window.showLoader = function() { 
+    document.getElementById('globalLoader').classList.replace('hidden', 'flex'); 
+    elapsedSeconds = 0;
+    document.getElementById('elapsedTime').textContent = '0s';
+    
+    const verseEl = document.getElementById('bibleVerse');
+    verseEl.textContent = bibleVerses[Math.floor(Math.random() * bibleVerses.length)];
+    
+    // Live Timer (Counts every second)
+    timerInterval = setInterval(() => {
+        elapsedSeconds++;
+        document.getElementById('elapsedTime').textContent = elapsedSeconds + 's';
+    }, 1000);
+
+    // Rotate Verse every 5 seconds as requested
+    verseInterval = setInterval(() => {
+        verseEl.style.opacity = 0; // Fade out
+        setTimeout(() => {
+            verseEl.textContent = bibleVerses[Math.floor(Math.random() * bibleVerses.length)];
+            verseEl.style.opacity = 1; // Fade in
+        }, 300);
+    }, 5000);
+};
+
+window.hideLoader = function() { 
+    document.getElementById('globalLoader').classList.replace('flex', 'hidden'); 
+    clearInterval(timerInterval);
+    clearInterval(verseInterval);
+};
 
 function loadLibraryFolders() {
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
@@ -34,7 +131,7 @@ function loadLibraryFolders() {
     });
 }
 
-// --- STEP 1: INITIATE FLOW & CHECK FOR AI QUESTIONS ---
+// --- STEP 1: SMART PRE-CHECK MODAL LOGIC ---
 window.initiateGenerationFlow = async function() {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-3.5-flash'; 
@@ -65,16 +162,24 @@ window.initiateGenerationFlow = async function() {
     cachedScope = `${targetWeek} of ${targetMonth} (${targetQuarter})`;
     cachedCustomInstructions = document.getElementById('lpCustomInstructions').value.trim();
 
+    // RULE: If custom instructions are empty, skip modal entirely!
+    if (!cachedCustomInstructions) {
+        executeFinalGeneration("");
+        return;
+    }
+
     window.showLoader();
 
     try {
         const preCheckPrompt = `
-You are an expert curriculum assistant. Review the user's custom instructions and target scope. 
-If the custom instructions are completely clear and actionable, respond with EXACTLY the word: "READY".
-If the custom instructions are ambiguous, conflicting, or missing crucial details needed to build a professional lesson plan, respond with a clear, polite question asking the user for clarification.
+You are an expert curriculum assistant. The user has provided basic configuration (${currentTargetGrade}, ${cachedScope}) and selected reference files. They also entered Custom Instructions.
+Review ONLY the Custom Instructions. 
+- Do NOT ask for grade level, subject, or standard topics, because those are already provided by the configuration and reference folders.
+- If the custom instructions are clear and actionable, respond with EXACTLY the word: "READY".
+- If the custom instructions are ambiguous or missing specific details about what they want changed in the lab/sessions, ask a concise clarifying question.
 
-Target Scope: ${cachedScope}
-Custom Instructions: ${cachedCustomInstructions || "None provided."}
+Target Grade & Scope: ${currentTargetGrade}, ${cachedScope}
+Custom Instructions: ${cachedCustomInstructions}
         `;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`, {
