@@ -101,42 +101,41 @@ function formatTimeToAMPM(time24) {
 window.addRow = function(type) {
     const savedJson = getTableDataFromDOM();
     
-    // --- NEW ENGINE: AUTO-INHERIT PREVIOUS TIMES ---
     let inheritedStartTime = '';
     let inheritedEndTime = '';
 
-    if (savedJson.length > 0) {
-        // Grab the last row in the schedule
+    // BULLETPROOF INHERITANCE: Look directly at the visible table for the last end time
+    const allEndInputs = document.querySelectorAll('.time-end');
+    if (allEndInputs.length > 0) {
+        const lastEndInput = allEndInputs[allEndInputs.length - 1];
+        if (lastEndInput && lastEndInput.value) {
+            inheritedStartTime = lastEndInput.value;
+        }
+    } 
+    
+    // Fallback just in case the DOM is rendering from read-only mode
+    if (!inheritedStartTime && savedJson.length > 0) {
         const lastRow = savedJson[savedJson.length - 1];
-        
         if (lastRow.endTime) {
-            inheritedStartTime = lastRow.endTime; // Start exactly when the last one ended
-            
-            // Auto-calculate +50 mins for the new end time
-            const [hours, minutes] = inheritedStartTime.split(':').map(Number);
-            const date = new Date();
-            date.setHours(hours, minutes + 50, 0, 0);
-            
-            const endHours = String(date.getHours()).padStart(2, '0');
-            const endMinutes = String(date.getMinutes()).padStart(2, '0');
-            inheritedEndTime = `${endHours}:${endMinutes}`;
+            inheritedStartTime = lastRow.endTime;
         }
     }
 
+    // Auto-calculate +50 mins based on the inherited time
+    if (inheritedStartTime) {
+        const [hours, minutes] = inheritedStartTime.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes + 50, 0, 0);
+        
+        const endHours = String(date.getHours()).padStart(2, '0');
+        const endMinutes = String(date.getMinutes()).padStart(2, '0');
+        inheritedEndTime = `${endHours}:${endMinutes}`;
+    }
+
     if (type === 'class') {
-        savedJson.push({ 
-            type: 'class', 
-            startTime: inheritedStartTime, 
-            endTime: inheritedEndTime, 
-            mon: {sec:'', sub:''}, tue: {sec:'', sub:''}, wed: {sec:'', sub:''}, thu: {sec:'', sub:''}, fri: {sec:'', sub:''} 
-        });
+        savedJson.push({ type: 'class', startTime: inheritedStartTime, endTime: inheritedEndTime, mon: {sec:'', sub:''}, tue: {sec:'', sub:''}, wed: {sec:'', sub:''}, thu: {sec:'', sub:''}, fri: {sec:'', sub:''} });
     } else {
-        savedJson.push({ 
-            type: 'constant', 
-            startTime: inheritedStartTime, 
-            endTime: inheritedEndTime, 
-            eventName: '' 
-        });
+        savedJson.push({ type: 'constant', startTime: inheritedStartTime, endTime: inheritedEndTime, eventName: '' });
     }
     
     localStorage.setItem('lessonReview_schedule_json', JSON.stringify(savedJson));
@@ -149,7 +148,6 @@ window.deleteRow = function(index) {
     localStorage.setItem('lessonReview_schedule_json', JSON.stringify(data));
     renderTable();
 };
-
 function renderTable() {
     const tbody = document.getElementById('scheduleTableBody');
     tbody.innerHTML = '';
@@ -166,12 +164,12 @@ function renderTable() {
         tr.className = "border-b hover:bg-gray-50 transition group";
         tr.dataset.rowType = row.type;
 
-        // DUAL TIME INPUTS (Mouse Clickable)
+        // DUAL TIME INPUTS (Now featuring step="300" for 5-minute snapping)
         const timeInputHtml = isEditing 
             ? `<div class="flex flex-col gap-1 items-center justify-center">
-                   <input type="time" class="time-start w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" onchange="autoFillEndTime(this)" value="${row.startTime || ''}" title="Start Time">
+                   <input type="time" step="300" class="time-start w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" onchange="autoFillEndTime(this)" value="${row.startTime || ''}" title="Start Time">
                    <span class="text-[9px] text-gray-400 font-bold uppercase">To</span>
-                   <input type="time" class="time-end w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" value="${row.endTime || ''}" title="End Time">
+                   <input type="time" step="300" class="time-end w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" value="${row.endTime || ''}" title="End Time">
                </div>`
             : `<div class="flex flex-col items-center justify-center text-center">
                    <span class="font-bold text-gray-800 text-xs">${formatTimeToAMPM(row.startTime) || '<span class="text-gray-300">--</span>'}</span>
