@@ -25,13 +25,12 @@
             <!-- LEFT: The App Switcher Dropdown -->
             <div class="relative group cursor-pointer">
                 <div class="flex items-center gap-2 text-xl font-bold hover:text-purple-400 transition">
-                    <!-- ICON & NAME CHANGED BASED ON ACTIVE APP -->
                     <span>⚡</span> 
-                    <span id="currentAppName">RepoReview</span>
+                    <span id="currentAppName">Global Settings</span>
                     <span class="text-[10px] text-gray-400">▼</span>
                 </div>
                 
-                <!-- Dropdown Menu (Appears on Hover) -->
+                <!-- Dropdown Menu -->
                 <div class="absolute left-0 mt-4 w-56 bg-white rounded-md shadow-2xl hidden group-hover:block border border-gray-200 overflow-hidden">
                     <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Switch Workspace</div>
                     <a href="index.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700 border-b border-gray-100 transition">
@@ -43,22 +42,29 @@
                 </div>
             </div>
 
-            <!-- CENTER: App-Specific Tools (RepoReview Links) -->
-            <div class="flex gap-6 text-sm font-semibold">
-                <a href="index.html" class="text-gray-400 hover:text-white transition">Analytics Dashboard</a>
-                <a href="gradebook.html" class="text-gray-400 hover:text-white transition">Gradebook</a>
-                <a href="grading.html" class="text-gray-400 hover:text-white transition">AutoGrader</a>
+            <!-- CENTER: Blank for Settings -->
+            <div class="flex gap-6 text-sm font-semibold text-gray-400">
+                <span class="italic">System Configuration</span>
             </div>
 
-            <!-- RIGHT: Global Settings (Old Admin Hub) -->
+            <!-- RIGHT: Active Settings Indicator -->
             <div>
-                <a href="admin.html" class="bg-gray-800 border border-gray-700 hover:bg-gray-700 px-3 py-1.5 rounded text-gray-300 hover:text-white transition flex items-center gap-2 font-semibold text-sm shadow-inner">
-                    <span>⚙️</span> Global Settings
-                </a>
+                <span class="bg-purple-600 border border-purple-500 px-4 py-1.5 rounded text-white font-bold text-sm shadow-inner flex items-center gap-2">
+                    <span>⚙️</span> Control Center
+                </span>
             </div>
 
         </div>
     </nav>
+
+    <!-- Main Workspace -->
+    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
+        <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-300">
+            <div>
+                <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">Global Settings & Configuration</h2>
+                <p class="text-sm text-gray-500 mt-1 font-medium">Manage API keys, Firebase connections, grading rubrics, and student rosters.</p>
+            </div>
+        </div>
 
     <!-- Admin Content -->
     <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
@@ -321,6 +327,6 @@
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500 border-solid mb-4"></div>
         <p id="loaderMessage" class="text-white font-bold text-lg tracking-wider">Processing...</p>
     </div>
-    <script type="module" src="admin.js"></script>
+    <script type="module" src="settings.js"></script>
 </body>
 </html>
