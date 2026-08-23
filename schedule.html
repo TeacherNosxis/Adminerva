@@ -50,23 +50,42 @@
     </nav>
 
     <!-- Main Workspace -->
-    <div class="max-w-screen-lg mx-auto w-full p-6 mt-4 flex-1 flex flex-col">
+    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col">
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col">
             
             <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-200">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">Master Teaching Schedule</h2>
-                    <p class="text-sm text-gray-500 mt-1">Paste your semester schedule here. The AI will automatically reference this when mapping intervention remarks.</p>
+                    <p class="text-sm text-gray-500 mt-1">Configure your weekly timeslots. This grid will automatically format itself for the AI to read.</p>
                 </div>
-                <button onclick="saveSchedule()" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition shadow flex items-center gap-2">
-                    <span>💾</span> Save Schedule
-                </button>
+                <div class="flex gap-3">
+                    <button onclick="addRow()" class="bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded font-bold hover:bg-gray-200 transition shadow-sm flex items-center gap-2">
+                        <span>➕</span> Add Time Slot
+                    </button>
+                    <button onclick="saveSchedule()" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition shadow-sm flex items-center gap-2">
+                        <span>💾</span> Save Schedule
+                    </button>
+                </div>
             </div>
             
-            <!-- Schedule Input Area -->
-            <div class="flex-1 flex flex-col">
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-2">Raw Schedule Text</label>
-                <textarea id="scheduleInput" class="w-full flex-1 p-4 border rounded font-mono text-sm bg-gray-50 focus:ring-blue-500 leading-relaxed placeholder-gray-400" placeholder="Paste your schedule here...&#10;&#10;Example:&#10;St. Isidore of Seville&#10;Session 1&#10;Jul 14, 2026&#10;12:40pm - 1:30pm"></textarea>
+            <!-- Flexible Schedule Table -->
+            <div class="flex-1 overflow-x-auto border border-gray-200 rounded">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100 border-b-2 border-gray-200">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase w-[15%]">Time Slot</th>
+                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[16%]">Monday</th>
+                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[16%]">Tuesday</th>
+                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[16%]">Wednesday</th>
+                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[16%]">Thursday</th>
+                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[16%]">Friday</th>
+                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-400 uppercase w-[5%]"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleTableBody">
+                        <!-- Dynamic Rows injected via JS -->
+                    </tbody>
+                </table>
             </div>
             
         </div>
