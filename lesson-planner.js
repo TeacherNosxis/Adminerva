@@ -29,7 +29,7 @@ function loadLibraryFolders() {
     container.innerHTML = '';
 
     if (libraryData.length === 0) {
-        container.innerHTML = '<div class="text-xs text-gray-500 italic">No folders found.</div>';
+        container.innerHTML = '<div class="text-xs text-gray-500 italic">No folders found. Go to the Reference Library to extract your PDFs first.</div>';
         return;
     }
 
@@ -75,7 +75,7 @@ window.generateLessonPlan = async function() {
 You are an expert curriculum developer. Based on the provided Reference Text and Target Scope, generate a highly structured JSON lesson plan.
 
 CRITICAL FORMATTING RULES:
-1. "weekly_overview": Extract the overarching topic, content standard, performance standard, formation standard, and required materials for the whole week based on the Reference Text.
+1. "weekly_overview": Generate the overarching topic, content standard, performance standard, formation standard, and required materials for the whole week based on the Reference Text.
 2. "grade_11" & "grade_12" arrays: Generate the daily sessions.
 3. GRADE 11 SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
 4. GRADE 12 SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".
@@ -118,7 +118,7 @@ ${compiledReferenceText.substring(0, 25000)}
                 generationConfig: { 
                     responseMimeType: "application/json",
                     temperature: 0.2,
-                    maxOutputTokens: 8192,
+                    maxOutputTokens: 8192, // <--- THIS IS THE CRITICAL FIX
                     responseSchema: {
                         type: "OBJECT",
                         properties: {
@@ -181,7 +181,15 @@ ${compiledReferenceText.substring(0, 25000)}
         
         const aiResult = await response.json();
         let rawJson = aiResult.candidates[0].content.parts[0].text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-        const planData = JSON.parse(rawJson);
+        
+        // Safer parsing to catch the exact error
+        let planData;
+        try {
+            planData = JSON.parse(rawJson);
+        } catch (parseError) {
+            console.error("Incomplete JSON Output:", rawJson);
+            throw new Error("The AI ran out of tokens before finishing the plan. Try selecting fewer folders or a smaller reference text.");
+        }
 
         currentWeeklyOverview = planData.weekly_overview;
         currentGrade11Plan = planData.grade_11;
@@ -252,6 +260,7 @@ function renderOutput() {
             <h3 class="text-lg font-bold ${isFlex ? 'text-amber-600' : 'text-blue-800'} mb-4 border-b pb-2">${session.session_name} ${isFlex ? '(Asynchronous)' : ''}</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
 
+        // Only render Objectives/Competencies if it's NOT Flex
         if (!isFlex) {
             html += `
                 <div>
@@ -272,12 +281,14 @@ function renderOutput() {
                 </div>`;
         }
 
+        // Learning Activities (Always renders, full width)
         html += `
                 <div class="md:col-span-2">
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Learning Activities</label>
                     <textarea class="w-full p-3 border border-gray-300 rounded text-sm bg-white font-mono leading-relaxed shadow-inner" rows="6">${session.learning_activities || ''}</textarea>
                 </div>`;
 
+        // Only render the rest if it's NOT Flex
         if (!isFlex) {
             html += `
                 <div>
