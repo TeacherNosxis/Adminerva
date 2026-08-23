@@ -10,24 +10,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- MODAL & CONFIG LOGIC ---
 window.openSettingsModal = function() {
+    // 1. Load the current saved values into the inputs
     document.getElementById('configSections').value = localStorage.getItem('lessonReview_sections') || "";
     document.getElementById('configSubjects').value = localStorage.getItem('lessonReview_subjects') || "";
     document.getElementById('configEvents').value = localStorage.getItem('lessonReview_events') || "";
-    document.getElementById('settingsModal').classList.replace('hidden', 'flex');
+    
+    // 2. Force the modal to show
+    const modal = document.getElementById('settingsModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
 };
 
 window.closeSettingsModal = function() {
-    document.getElementById('settingsModal').classList.replace('flex', 'hidden');
+    // Force the modal to hide
+    const modal = document.getElementById('settingsModal');
+    modal.classList.remove('flex');
+    modal.classList.add('hidden');
 };
 
 window.saveSettingsConfig = function() {
+    // Save to local storage
     localStorage.setItem('lessonReview_sections', document.getElementById('configSections').value);
     localStorage.setItem('lessonReview_subjects', document.getElementById('configSubjects').value);
     localStorage.setItem('lessonReview_events', document.getElementById('configEvents').value);
     
+    // Reload the arrays and table
     loadConfig();
-    if(isEditing) saveScheduleData(); // Save state before re-rendering
+    if(isEditing) saveScheduleData(); 
     renderTable();
+    
+    // Close the modal
     closeSettingsModal();
 };
 
