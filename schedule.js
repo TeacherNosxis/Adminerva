@@ -100,11 +100,45 @@ function formatTimeToAMPM(time24) {
 // --- TABLE RENDERING ---
 window.addRow = function(type) {
     const savedJson = getTableDataFromDOM();
-    if (type === 'class') {
-        savedJson.push({ type: 'class', startTime: '', endTime: '', mon: {sec:'', sub:''}, tue: {sec:'', sub:''}, wed: {sec:'', sub:''}, thu: {sec:'', sub:''}, fri: {sec:'', sub:''} });
-    } else {
-        savedJson.push({ type: 'constant', startTime: '', endTime: '', eventName: '' });
+    
+    // --- NEW ENGINE: AUTO-INHERIT PREVIOUS TIMES ---
+    let inheritedStartTime = '';
+    let inheritedEndTime = '';
+
+    if (savedJson.length > 0) {
+        // Grab the last row in the schedule
+        const lastRow = savedJson[savedJson.length - 1];
+        
+        if (lastRow.endTime) {
+            inheritedStartTime = lastRow.endTime; // Start exactly when the last one ended
+            
+            // Auto-calculate +50 mins for the new end time
+            const [hours, minutes] = inheritedStartTime.split(':').map(Number);
+            const date = new Date();
+            date.setHours(hours, minutes + 50, 0, 0);
+            
+            const endHours = String(date.getHours()).padStart(2, '0');
+            const endMinutes = String(date.getMinutes()).padStart(2, '0');
+            inheritedEndTime = `${endHours}:${endMinutes}`;
+        }
     }
+
+    if (type === 'class') {
+        savedJson.push({ 
+            type: 'class', 
+            startTime: inheritedStartTime, 
+            endTime: inheritedEndTime, 
+            mon: {sec:'', sub:''}, tue: {sec:'', sub:''}, wed: {sec:'', sub:''}, thu: {sec:'', sub:''}, fri: {sec:'', sub:''} 
+        });
+    } else {
+        savedJson.push({ 
+            type: 'constant', 
+            startTime: inheritedStartTime, 
+            endTime: inheritedEndTime, 
+            eventName: '' 
+        });
+    }
+    
     localStorage.setItem('lessonReview_schedule_json', JSON.stringify(savedJson));
     renderTable();
 };
