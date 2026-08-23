@@ -54,7 +54,7 @@
         <div class="w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Lesson Configuration</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">School Year</label>
                     <input type="text" id="lpSchoolYear" value="2026-2027" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
@@ -63,6 +63,12 @@
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Semester</label>
                     <select id="lpSemester" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
                         <option>1st Semester</option><option>2nd Semester</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Quarter</label>
+                    <select id="lpQuarter" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                        <option>1st Quarter</option><option>2nd Quarter</option><option>3rd Quarter</option><option>4th Quarter</option>
                     </select>
                 </div>
                 <div>
@@ -92,34 +98,34 @@
                 </div>
             </div>
 
-            <div class="border-t pt-4">
-                <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Select Reference Folders</label>
-                <div id="libraryFolderContainer" class="bg-blue-50 border border-blue-200 rounded p-3 h-28 overflow-y-auto space-y-2 shadow-inner flex flex-wrap gap-4">
-                    <!-- Checkboxes injected via JS -->
+            <!-- Custom Instructions & Folders Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                <div>
+                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Custom Instructions / Lab Details</label>
+                    <textarea id="lpCustomInstructions" rows="4" class="w-full p-3 border border-blue-200 rounded text-sm bg-blue-50 focus:ring-blue-500 shadow-inner" placeholder="E.g., Make Session 4-6 a hands-on laboratory performance task involving an e-wallet calculator app..."></textarea>
                 </div>
-                <p class="text-[10px] text-gray-500 mt-2 font-semibold">The AI will automatically extract the overarching Topic, Standards, and Materials from these folders.</p>
+                <div>
+                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Select Reference Folders</label>
+                    <div id="libraryFolderContainer" class="bg-blue-50 border border-blue-200 rounded p-3 h-28 overflow-y-auto space-y-2 shadow-inner flex flex-wrap gap-4">
+                        <!-- Checkboxes injected via JS -->
+                    </div>
+                </div>
             </div>
 
-            <button onclick="generateLessonPlan()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 shadow-md transition mt-4 flex justify-center items-center gap-2">
+            <button onclick="initiateGenerationFlow()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 shadow-md transition mt-4 flex justify-center items-center gap-2">
                 <span>🤖</span> Generate Single Grade Plan
             </button>
         </div>
 
         <!-- BOTTOM SECTION: Full Width Output & Editor -->
         <div class="w-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-            
-            <!-- Global AI Weekly Overview -->
-            <div id="weeklyOverviewContainer" class="bg-gray-100 border-b border-gray-200 hidden flex-col">
-                <!-- Overview details inserted by JS -->
-            </div>
+            <div id="weeklyOverviewContainer" class="bg-gray-100 border-b border-gray-200 hidden flex-col"></div>
 
-            <!-- Header -->
             <div class="bg-blue-600 text-white px-6 py-3 border-b flex justify-between items-center">
                 <h3 id="planHeaderTitle" class="font-bold text-lg">Generated Plan</h3>
                 <span id="planHeaderBadge" class="bg-blue-800 px-3 py-1 rounded text-xs font-bold">No Data</span>
             </div>
             
-            <!-- Output Area -->
             <div id="outputContainer" class="p-6 overflow-y-auto bg-gray-50 min-h-[500px]">
                 <div class="text-center text-gray-400 italic mt-20">Select your scope, grade level, and folders to generate plans.</div>
             </div>
@@ -131,6 +137,28 @@
         </div>
     </div>
 
+    <!-- AI CLARIFICATION MODAL (Popup for AI Questions) -->
+    <div id="aiClarificationModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4">
+            <div class="flex items-center gap-3 border-b pb-3">
+                <span class="text-2xl">💡</span>
+                <h3 class="font-bold text-lg text-blue-900">AI Curriculum Assistant Has a Question</h3>
+            </div>
+            <p class="text-sm text-gray-600">Before building your lesson plan, the AI needs clarification on your custom instructions:</p>
+            <div id="aiQuestionBox" class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900">
+                <!-- Question injected here -->
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Your Response / Clarification</label>
+                <textarea id="userClarificationInput" rows="3" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500" placeholder="Type your answer here..."></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-2 border-t">
+                <button onclick="cancelClarification()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Cancel</button>
+                <button onclick="submitClarificationAndProceed()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700">Submit & Continue</button>
+            </div>
+        </div>
+    </div>
+
     <!-- GLOBAL LOADING OVERLAY -->
     <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"></div>
@@ -138,6 +166,6 @@
         <p class="text-blue-300 text-sm font-semibold">Analyzing scope and structuring session activities.</p>
     </div>
 
-    <script type="module" src="lesson-planner.js?v=5"></script>
+    <script type="module" src="lesson-planner.js?v=6"></script>
 </body>
 </html>
