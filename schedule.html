@@ -54,33 +54,37 @@
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col">
             
             <div class="flex justify-between items-end mb-4 pb-4 border-b border-gray-200">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Master Teaching Schedule</h2>
-                    <p class="text-sm text-gray-500 mt-1">Configure your dropdowns below, then build your weekly timeslots.</p>
+                <div class="flex items-center gap-3">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Master Teaching Schedule</h2>
+                        <p class="text-sm text-gray-500 mt-1">Schedule is locked by default. Click Edit to modify timeslots.</p>
+                    </div>
+                    <!-- Mode Badge -->
+                    <span id="modeBadge" class="bg-gray-200 text-gray-700 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">🔒 Read-Only</span>
                 </div>
                 <div class="flex gap-3">
-                    <button onclick="addRow()" class="bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded font-bold hover:bg-gray-200 transition shadow-sm flex items-center gap-2">
+                    <button id="addSlotBtn" onclick="addRow()" class="hidden bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded font-bold hover:bg-gray-200 transition shadow-sm items-center gap-2">
                         <span>➕</span> Add Time Slot
                     </button>
-                    <button onclick="saveSchedule()" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition shadow-sm flex items-center gap-2">
-                        <span>💾</span> Save Schedule
+                    <button id="editSaveBtn" onclick="toggleEditMode()" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition shadow-sm flex items-center gap-2">
+                        <span>✏️</span> Edit Schedule
                     </button>
                 </div>
             </div>
 
-            <!-- Dropdown Configuration Panel -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded border border-gray-200 shadow-inner">
+            <!-- Dropdown Configuration Panel (Only visible in Edit Mode) -->
+            <div id="configPanel" class="hidden grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-blue-50 p-4 rounded border border-blue-200 shadow-inner">
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">My Subjects (Comma Separated)</label>
-                    <input type="text" id="configSubjects" placeholder="e.g. Comprog, Work Immersion" class="w-full p-2 border rounded text-sm font-semibold focus:ring-blue-500">
+                    <label class="block text-xs font-bold text-blue-900 uppercase mb-1">My Subjects (Comma Separated)</label>
+                    <input type="text" id="configSubjects" placeholder="e.g. Comprog, Work Immersion" class="w-full p-2 border rounded text-sm font-semibold focus:ring-blue-500 bg-white">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">My Sections (Comma Separated)</label>
-                    <input type="text" id="configSections" placeholder="e.g. St. Isidore, St. Carlo Acutis" class="w-full p-2 border rounded text-sm font-semibold focus:ring-blue-500">
+                    <label class="block text-xs font-bold text-blue-900 uppercase mb-1">My Sections (Comma Separated)</label>
+                    <input type="text" id="configSections" placeholder="e.g. St. Isidore, St. Carlo Acutis" class="w-full p-2 border rounded text-sm font-semibold focus:ring-blue-500 bg-white">
                 </div>
                 <div class="md:col-span-2 flex justify-end">
-                    <button onclick="updateDropdownConfig()" class="bg-gray-800 text-white px-4 py-2 rounded font-bold text-xs hover:bg-gray-700 transition shadow">
-                        Update Dropdown Menus
+                    <button onclick="updateDropdownConfig()" class="bg-blue-700 text-white px-4 py-2 rounded font-bold text-xs hover:bg-blue-800 transition shadow">
+                        Save Dropdown Options
                     </button>
                 </div>
             </div>
