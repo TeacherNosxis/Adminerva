@@ -63,8 +63,28 @@
                     <input type="text" id="lpSchoolYear" value="2026-2027" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Week & Scope</label>
-                    <input type="text" id="lpWeekScope" placeholder="Week 6: Jul 13 - 17" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Target Scope</label>
+                    <div class="flex gap-2">
+                        <select id="lpMonth" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                            <option value="August">August</option>
+                            <option value="September">September</option>
+                            <option value="October">October</option>
+                            <option value="November">November</option>
+                            <option value="December">December</option>
+                            <option value="January">January</option>
+                            <option value="February">February</option>
+                            <option value="March">March</option>
+                            <option value="April">April</option>
+                            <option value="May">May</option>
+                        </select>
+                        <select id="lpWeek" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                            <option value="Week 1">Week 1</option>
+                            <option value="Week 2">Week 2</option>
+                            <option value="Week 3">Week 3</option>
+                            <option value="Week 4">Week 4</option>
+                            <option value="Week 5">Week 5</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Quarter</label>
@@ -108,8 +128,14 @@
             </div>
 
             <div class="border-t pt-4 mt-2">
-                <label class="block text-xs font-extrabold text-blue-700 uppercase mb-1">Upload Reference Context (.txt, .md)</label>
-                <input type="file" id="lpReferenceFile" accept=".txt, .md, .csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-bold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200">
+                <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Select Reference Folders</label>
+                
+                <!-- Dynamic Folder Checklist -->
+                <div id="libraryFolderContainer" class="bg-blue-50 border border-blue-200 rounded p-3 max-h-40 overflow-y-auto space-y-2 shadow-inner">
+                    <!-- Checkboxes injected via JS -->
+                </div>
+                
+                <p class="text-[10px] text-gray-500 mt-2 font-semibold">Select your Scope & Sequence and specific Unit folders to provide context.</p>
             </div>
 
             <button onclick="generateLessonPlan()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 shadow-md transition mt-2 flex justify-center items-center gap-2">
