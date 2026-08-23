@@ -1,7 +1,6 @@
-let currentGrade11Plan = [];
-let currentGrade12Plan = [];
+let currentPlan = [];
 let currentWeeklyOverview = null;
-let activeTab = 'g11';
+let currentTargetGrade = '';
 
 document.addEventListener('DOMContentLoaded', () => {
     loadLibraryFolders();
@@ -9,19 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.showLoader = function() { document.getElementById('globalLoader').classList.replace('hidden', 'flex'); };
 window.hideLoader = function() { document.getElementById('globalLoader').classList.replace('flex', 'hidden'); };
-
-window.switchTab = function(tab) {
-    activeTab = tab;
-    document.getElementById('tab-g11').className = tab === 'g11' 
-        ? "flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-700 transition" 
-        : "flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition";
-    
-    document.getElementById('tab-g12').className = tab === 'g12' 
-        ? "flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-700 transition" 
-        : "flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition";
-        
-    renderOutput();
-};
 
 function loadLibraryFolders() {
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
@@ -69,23 +55,15 @@ window.generateLessonPlan = async function() {
     const rawSchedule = localStorage.getItem('lessonReview_schedule') || "No schedule provided. Leave schedule fields generic.";
     const targetMonth = document.getElementById('lpMonth').value;
     const targetWeek = document.getElementById('lpWeek').value;
+    const targetGrade = document.getElementById('lpGradeLevel').value;
     const weekScope = `${targetWeek} of ${targetMonth}`;
 
-    const prompt = `
-You are an expert curriculum developer. Based on the provided Reference Text and Target Scope, generate a highly structured JSON lesson plan.
-
-CRITICAL FORMATTING RULES:
-1. "weekly_overview": Generate the overarching topic, content standard, performance standard, formation standard, and required materials for the whole week based on the Reference Text.
-2. "grade_11" & "grade_12" arrays: Generate the daily sessions.
-3. GRADE 11 SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
-4. GRADE 12 SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".
-5. SESSION DETAILS (Normal): 
-   - "competencies" and "objectives" MUST be unique per session.
-   - "learning_activities" MUST be heavily bulleted using standard dashes (-). Every bullet MUST begin with an "-ing" verb.
-   - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
-   - "evaluation" MUST reference a 10-item Quipper quiz.
-   - Map the provided Teacher Schedule into the "remarks" field.
-6. SESSION 4-6 RULE (Grade 11 ONLY): 
+    // Conditional Logic for the Prompt based on Grade Level
+    let gradeSpecificRules = "";
+    if (targetGrade === "Grade 11") {
+        gradeSpecificRules = `
+3. SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
+4. SESSION 4-6 RULE: 
    - This is a 3-hour period. Share the same objectives/competencies.
    - You MUST format the "learning_activities" explicitly like this:
      Session 4:
@@ -93,8 +71,26 @@ CRITICAL FORMATTING RULES:
      Session 5:
       - (Good for 50 mins activity using -ing verbs)
      Session 6:
-      - (Good for 50 mins activity using -ing verbs)
-7. SESSION FLEX RULE: 
+      - (Good for 50 mins activity using -ing verbs)`;
+    } else {
+        gradeSpecificRules = `
+3. SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".`;
+    }
+
+    const prompt = `
+You are an expert curriculum developer. Based on the provided Reference Text and Target Scope, generate a highly structured JSON lesson plan for ${targetGrade}.
+
+CRITICAL FORMATTING RULES:
+1. "weekly_overview": Generate the overarching topic, content standard, performance standard, formation standard, and required materials for the whole week based on the Reference Text.
+2. "sessions" array: Generate the daily sessions.
+${gradeSpecificRules}
+5. SESSION DETAILS (Normal): 
+   - "competencies" and "objectives" MUST be unique per session.
+   - "learning_activities" MUST be heavily bulleted using standard dashes (-). Every bullet MUST begin with an "-ing" verb.
+   - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
+   - "evaluation" MUST reference a 10-item Quipper quiz.
+   - Map the provided Teacher Schedule into the "remarks" field.
+6. SESSION FLEX RULE: 
    - This is OFFLINE/ASYNCHRONOUS. 
    - Provide ONLY bulleted "learning_activities". 
    - You MUST set preliminary, motivation, evaluation, closing, values_integration, remarks, competencies, and objectives to an empty string "". Do NOT put "N/A", just leave them completely empty.
@@ -118,7 +114,6 @@ ${compiledReferenceText.substring(0, 25000)}
                 generationConfig: { 
                     responseMimeType: "application/json",
                     temperature: 0.2,
-                    maxOutputTokens: 8192, // <--- THIS IS THE CRITICAL FIX
                     responseSchema: {
                         type: "OBJECT",
                         properties: {
@@ -132,26 +127,7 @@ ${compiledReferenceText.substring(0, 25000)}
                                     materials: { type: "STRING" }
                                 }
                             },
-                            grade_11: {
-                                type: "ARRAY",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        session_name: { type: "STRING" },
-                                        competencies: { type: "STRING" },
-                                        objectives: { type: "STRING" },
-                                        preliminary: { type: "STRING" },
-                                        motivation: { type: "STRING" },
-                                        learning_activities: { type: "STRING" },
-                                        evaluation: { type: "STRING" },
-                                        closing: { type: "STRING" },
-                                        values_integration: { type: "STRING" },
-                                        remarks: { type: "STRING" }
-                                    },
-                                    required: ["session_name", "learning_activities"]
-                                }
-                            },
-                            grade_12: {
+                            sessions: {
                                 type: "ARRAY",
                                 items: {
                                     type: "OBJECT",
@@ -171,7 +147,7 @@ ${compiledReferenceText.substring(0, 25000)}
                                 }
                             }
                         },
-                        required: ["weekly_overview", "grade_11", "grade_12"]
+                        required: ["weekly_overview", "sessions"]
                     }
                 }
             })
@@ -181,19 +157,11 @@ ${compiledReferenceText.substring(0, 25000)}
         
         const aiResult = await response.json();
         let rawJson = aiResult.candidates[0].content.parts[0].text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-        
-        // Safer parsing to catch the exact error
-        let planData;
-        try {
-            planData = JSON.parse(rawJson);
-        } catch (parseError) {
-            console.error("Incomplete JSON Output:", rawJson);
-            throw new Error("The AI ran out of tokens before finishing the plan. Try selecting fewer folders or a smaller reference text.");
-        }
+        const planData = JSON.parse(rawJson);
 
         currentWeeklyOverview = planData.weekly_overview;
-        currentGrade11Plan = planData.grade_11;
-        currentGrade12Plan = planData.grade_12;
+        currentPlan = planData.sessions;
+        currentTargetGrade = targetGrade;
         
         renderOverview();
         renderOutput();
@@ -244,16 +212,22 @@ function renderOverview() {
 
 function renderOutput() {
     const container = document.getElementById('outputContainer');
+    const headerTitle = document.getElementById('planHeaderTitle');
+    const headerBadge = document.getElementById('planHeaderBadge');
+
     container.innerHTML = '';
     
-    const activePlan = activeTab === 'g11' ? currentGrade11Plan : currentGrade12Plan;
-
-    if (!activePlan || !activePlan.length) {
-        container.innerHTML = '<div class="text-center text-gray-400 italic mt-20">No data generated yet.</div>';
+    if (!currentPlan || !currentPlan.length) {
+        headerTitle.textContent = "Generated Plan";
+        headerBadge.textContent = "No Data";
+        container.innerHTML = '<div class="text-center text-gray-400 italic mt-20">Select your scope, grade level, and folders to generate plans.</div>';
         return;
     }
 
-    activePlan.forEach(session => {
+    headerTitle.textContent = `${currentTargetGrade} Lesson Plan`;
+    headerBadge.textContent = `${currentPlan.length} Sessions`;
+
+    currentPlan.forEach(session => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
         
         let html = `<div class="bg-white p-5 rounded border border-gray-200 shadow-sm mb-6">
