@@ -18,18 +18,45 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
 
-    <!-- Global Navigation -->
-    <nav class="bg-gray-900 text-white shadow-md">
+    <!-- GLOBAL NAVIGATION -->
+    <nav class="bg-gray-900 text-white shadow-md relative z-50">
         <div class="max-w-screen-2xl mx-auto px-6 py-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold flex items-center gap-2">
-                <span>⚡</span> RepoReview
-            </h1>
+            
+            <!-- LEFT: The App Switcher Dropdown -->
+            <div class="relative group cursor-pointer">
+                <div class="flex items-center gap-2 text-xl font-bold hover:text-purple-400 transition">
+                    <!-- ICON & NAME CHANGED BASED ON ACTIVE APP -->
+                    <span>⚡</span> 
+                    <span id="currentAppName">RepoReview</span>
+                    <span class="text-[10px] text-gray-400">▼</span>
+                </div>
+                
+                <!-- Dropdown Menu (Appears on Hover) -->
+                <div class="absolute left-0 mt-4 w-56 bg-white rounded-md shadow-2xl hidden group-hover:block border border-gray-200 overflow-hidden">
+                    <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Switch Workspace</div>
+                    <a href="index.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700 border-b border-gray-100 transition">
+                        ⚡ RepoReview System
+                    </a>
+                    <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition">
+                        📘 LessonReview
+                    </a>
+                </div>
+            </div>
+
+            <!-- CENTER: App-Specific Tools (RepoReview Links) -->
             <div class="flex gap-6 text-sm font-semibold">
-    <a href="index.html" class="text-gray-400 hover:text-white transition">Analytics Dashboard</a>
-    <a href="gradebook.html" class="text-white border-b-2 border-purple-500 pb-1">Gradebook</a>
-    <a href="grading.html" class="text-gray-400 hover:text-white transition">AutoGrader</a>
-    <a href="admin.html" class="text-gray-400 hover:text-white transition">Admin Hub</a>
-</div>
+                <a href="index.html" class="text-white border-b-2 border-purple-500 pb-1">Analytics Dashboard</a>
+                <a href="gradebook.html" class="text-gray-400 hover:text-white transition">Gradebook</a>
+                <a href="grading.html" class="text-gray-400 hover:text-white transition">AutoGrader</a>
+            </div>
+
+            <!-- RIGHT: Global Settings (Old Admin Hub) -->
+            <div>
+                <a href="admin.html" class="bg-gray-800 border border-gray-700 hover:bg-gray-700 px-3 py-1.5 rounded text-gray-300 hover:text-white transition flex items-center gap-2 font-semibold text-sm shadow-inner">
+                    <span>⚙️</span> Global Settings
+                </a>
+            </div>
+
         </div>
     </nav>
 
