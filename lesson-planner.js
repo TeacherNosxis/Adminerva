@@ -79,10 +79,10 @@ window.generateLessonPlan = async function() {
     const prompt = `
 You are an expert curriculum developer. Based on the provided Reference Text and Target Scope, generate a highly structured JSON lesson plan for ${targetGrade}.
 
-CRITICAL FORMATTING RULES:
+CRITICAL FORMATTING & CONTENT RULES:
 1. "weekly_overview": 
-   - "topic": Keep this short and punchy (e.g., "Java Operators and Expressions"). Do NOT write long paragraphs.
-   - "content_standard", "performance_standard", "formation_standard", and "materials": Populate these fully and professionally based on the curriculum guide in the Reference Text.
+   - "topic": Keep this short and punchy (e.g., "Java Operators and Expressions"). 
+   - "content_standard", "performance_standard", "formation_standard", and "materials": **MANDATORY FIELDS.** You MUST populate these fully. If they are not explicitly written in the Reference Text, professionally generate and infer them based on the topic and K-12 ICT curriculum standards. Do NOT leave them blank!
 2. "sessions" array: Generate the daily sessions.
 ${gradeSpecificRules}
 5. SESSION DETAILS (Normal): 
