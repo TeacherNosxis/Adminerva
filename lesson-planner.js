@@ -58,7 +58,6 @@ window.generateLessonPlan = async function() {
     const targetGrade = document.getElementById('lpGradeLevel').value;
     const weekScope = `${targetWeek} of ${targetMonth}`;
 
-    // Conditional Logic for the Prompt based on Grade Level
     let gradeSpecificRules = "";
     if (targetGrade === "Grade 11") {
         gradeSpecificRules = `
@@ -81,7 +80,9 @@ window.generateLessonPlan = async function() {
 You are an expert curriculum developer. Based on the provided Reference Text and Target Scope, generate a highly structured JSON lesson plan for ${targetGrade}.
 
 CRITICAL FORMATTING RULES:
-1. "weekly_overview": Generate the overarching topic, content standard, performance standard, formation standard, and required materials for the whole week based on the Reference Text.
+1. "weekly_overview": 
+   - "topic": Keep this short and punchy (e.g., "Java Operators and Expressions"). Do NOT write long paragraphs.
+   - "content_standard", "performance_standard", "formation_standard", and "materials": Populate these fully and professionally based on the curriculum guide in the Reference Text.
 2. "sessions" array: Generate the daily sessions.
 ${gradeSpecificRules}
 5. SESSION DETAILS (Normal): 
@@ -114,6 +115,7 @@ ${compiledReferenceText.substring(0, 25000)}
                 generationConfig: { 
                     responseMimeType: "application/json",
                     temperature: 0.2,
+                    maxOutputTokens: 8192,
                     responseSchema: {
                         type: "OBJECT",
                         properties: {
@@ -234,7 +236,6 @@ function renderOutput() {
             <h3 class="text-lg font-bold ${isFlex ? 'text-amber-600' : 'text-blue-800'} mb-4 border-b pb-2">${session.session_name} ${isFlex ? '(Asynchronous)' : ''}</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
 
-        // Only render Objectives/Competencies if it's NOT Flex
         if (!isFlex) {
             html += `
                 <div>
@@ -255,14 +256,12 @@ function renderOutput() {
                 </div>`;
         }
 
-        // Learning Activities (Always renders, full width)
         html += `
                 <div class="md:col-span-2">
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Learning Activities</label>
                     <textarea class="w-full p-3 border border-gray-300 rounded text-sm bg-white font-mono leading-relaxed shadow-inner" rows="6">${session.learning_activities || ''}</textarea>
                 </div>`;
 
-        // Only render the rest if it's NOT Flex
         if (!isFlex) {
             html += `
                 <div>
