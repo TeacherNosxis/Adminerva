@@ -127,7 +127,8 @@ ${compiledReferenceText.substring(0, 25000)}
                                     performance_standard: { type: "STRING" },
                                     formation_standard: { type: "STRING" },
                                     materials: { type: "STRING" }
-                                }
+                                },
+                                required: ["topic", "content_standard", "performance_standard", "formation_standard", "materials"]
                             },
                             sessions: {
                                 type: "ARRAY",
