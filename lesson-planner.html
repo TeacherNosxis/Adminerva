@@ -5,6 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LessonReview - AI Curriculum Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+@media print {
+    @page {
+        size: 13in 8.5in; /* Folio Landscape */
+        margin: 0.5in;
+    }
+    body {
+        background: white !important;
+        color: black !important;
+        font-family: Arial, sans-serif;
+    }
+    /* Hide navigation, buttons, and configuration UI during print */
+    nav, .bg-white.p-6.rounded-lg.shadow-sm, button, .border-t.bg-white {
+        display: none !important;
+    }
+    /* Show print-only curriculum map container */
+    #printDocumentWrapper {
+        display: block !important;
+        width: 100%;
+    }
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+    .print-table th, .print-table td {
+        border: 1px solid black;
+        padding: 6px;
+        vertical-align: top;
+    }
+    .print-table th {
+        background-color: #b9d1ea !important; /* Matches your blue table header */
+        text-align: center;
+        font-weight: bold;
+    }
+}
+#printDocumentWrapper { display: none; }
+</style>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
 
@@ -53,7 +91,16 @@
         <!-- TOP SECTION: Configuration Banner (Full Width) -->
         <div class="w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Lesson Configuration</h2>
-            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Teacher Name</label>
+        <input type="text" id="lpTeacherName" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+    </div>
+    <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Subject Title</label>
+        <input type="text" id="lpSubjectTitle" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+    </div>
+</div>
             <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">School Year</label>

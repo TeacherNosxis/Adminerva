@@ -61,10 +61,51 @@ window.switchAdminTab = function(tabId) {
     activeBtn.classList.add('tab-active'); 
     activeBtn.classList.remove('tab-inactive');
 };
-
+// Switcher for the settings sub-tabs
+window.switchSettingsTab = function(tabName) {
+    ['repo', 'lesson'].forEach(t => {
+        const pane = document.getElementById('settingsTab-' + t);
+        const btn = document.getElementById('settingsTabBtn-' + t);
+        if (t === tabName) {
+            pane.classList.remove('hidden');
+            btn.className = "flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-700 bg-blue-50 transition";
+        } else {
+            pane.classList.add('hidden');
+            btn.className = "flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition";
+        }
+    });
+};
 // ----------------------------------------------------
 // DATABASE & SECURITY LOGIC
 // ----------------------------------------------------
+// Add to your existing loadSecuritySettings() or a new function called on DOMContentLoaded:
+function loadLessonReviewSettings() {
+    document.getElementById('setTeacherName').value = localStorage.getItem('lessonReview_teacherName') || "";
+    document.getElementById('setSubjectTitle').value = localStorage.getItem('lessonReview_subjectTitle') || "";
+    document.getElementById('sigTeacher').value = localStorage.getItem('lessonReview_sigTeacher') || "Computer Teacher";
+    document.getElementById('sigTeacherTitle').value = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
+    document.getElementById('sigSubjectCoord').value = localStorage.getItem('lessonReview_sigSubjectCoord') || "Mr. Mer Ryanson Bañez";
+    document.getElementById('sigSubjectCoordTitle').value = localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "ICT Subject Coordinator";
+    document.getElementById('sigGradeCoord').value = localStorage.getItem('lessonReview_sigGradeCoord') || "Mr. Darwin S. Mijares";
+    document.getElementById('sigGradeCoordTitle').value = localStorage.getItem('lessonReview_sigGradeCoordTitle') || "Grade 11 Coordinator";
+    document.getElementById('sigPrincipal').value = localStorage.getItem('lessonReview_sigPrincipal') || "Mrs. Lucille Ariette A. Bautista";
+    document.getElementById('sigPrincipalTitle').value = localStorage.getItem('lessonReview_sigPrincipalTitle') || "JHS/SHS Principal";
+}
+
+window.saveLessonReviewSettings = function() {
+    localStorage.setItem('lessonReview_teacherName', document.getElementById('setTeacherName').value.trim());
+    localStorage.setItem('lessonReview_subjectTitle', document.getElementById('setSubjectTitle').value.trim());
+    localStorage.setItem('lessonReview_sigTeacher', document.getElementById('sigTeacher').value.trim());
+    localStorage.setItem('lessonReview_sigTeacherTitle', document.getElementById('sigTeacherTitle').value.trim());
+    localStorage.setItem('lessonReview_sigSubjectCoord', document.getElementById('sigSubjectCoord').value.trim());
+    localStorage.setItem('lessonReview_sigSubjectCoordTitle', document.getElementById('sigSubjectCoordTitle').value.trim());
+    localStorage.setItem('lessonReview_sigGradeCoord', document.getElementById('sigGradeCoord').value.trim());
+    localStorage.setItem('lessonReview_sigGradeCoordTitle', document.getElementById('sigGradeCoordTitle').value.trim());
+    localStorage.setItem('lessonReview_sigPrincipal', document.getElementById('sigPrincipal').value.trim());
+    localStorage.setItem('lessonReview_sigPrincipalTitle', document.getElementById('sigPrincipalTitle').value.trim());
+    
+    alert("LessonReview export defaults saved successfully!");
+};
 function loadSecuritySettings() {
     document.getElementById('adminGithubToken').value = localStorage.getItem('repoReview_github_token') || "";
     document.getElementById('adminGeminiKey').value = localStorage.getItem('repoReview_gemini_token') || "";

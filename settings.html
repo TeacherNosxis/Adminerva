@@ -59,7 +59,18 @@
 
         </div>
     </nav>
+<!-- SETTINGS TAB NAVIGATION -->
+<div class="flex border-b mb-6 bg-white rounded-t-lg overflow-hidden shadow-sm">
+    <button onclick="switchSettingsTab('repo')" id="settingsTabBtn-repo" class="flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-700 bg-blue-50 transition">
+        ⚡ RepoReview Settings (API & Firebase)
+    </button>
+    <button onclick="switchSettingsTab('lesson')" id="settingsTabBtn-lesson" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
+        📘 LessonReview Settings (Export & Signatories)
+    </button>
+</div>
 
+<!-- TAB 1: REPO-REVIEW CONFIG -->
+<div id="settingsTab-repo" class="space-y-6">
     <!-- Main Workspace -->
     <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
         <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-300">
@@ -250,6 +261,52 @@
             </div>
         </div>
     </div>
+    </div>
+
+<!-- TAB 2: LESSON-REVIEW CONFIG -->
+<div id="settingsTab-lesson" class="space-y-6 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4">📄 Document Export & Signatory Defaults</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Default Teacher Name</label>
+                <input type="text" id="setTeacherName" placeholder="e.g., Joseph Sixson" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Default Subject Title</label>
+                <input type="text" id="setSubjectTitle" placeholder="e.g., Computer Programming 11" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 border-t pt-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 1 (Submitted By)</label>
+                <input type="text" id="sigTeacher" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
+                <input type="text" id="sigTeacherTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 2 (Subject Coord.)</label>
+                <input type="text" id="sigSubjectCoord" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
+                <input type="text" id="sigSubjectCoordTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 3 (Grade Coord.)</label>
+                <input type="text" id="sigGradeCoord" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
+                <input type="text" id="sigGradeCoordTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 4 (Principal)</label>
+                <input type="text" id="sigPrincipal" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
+                <input type="text" id="sigPrincipalTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
+            </div>
+        </div>
+
+        <button onclick="saveLessonReviewSettings()" class="mt-4 bg-blue-600 text-white font-bold px-6 py-2 rounded text-sm hover:bg-blue-700 shadow-sm transition">
+            💾 Save LessonReview Settings
+        </button>
+    </div>
+</div>
 
     <!-- MODAL: ADD / EDIT STUDENT -->
     <div id="studentModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
