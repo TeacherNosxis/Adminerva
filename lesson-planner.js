@@ -738,27 +738,49 @@ window.loadSpecificPlan = function(planData) {
     alert("✅ Lesson plan loaded successfully!");
 };
 
-window.exportPDF = function() {
-    // --- HEADER LOGO / BANNER CONFIG ---
+// ==========================================
+// FORMATTING HELPERS
+// ==========================================
+function formatObjectivesForPrint(text) {
+    if (!text) return '';
+    const items = text.split(/\d+[\.\)]\s*/).filter(Boolean);
+    if (items.length <= 1) return text;
+    let html = '<ol style="margin: 0; padding-left: 15px; list-style-type: decimal;">';
+    items.forEach(item => { html += `<li style="margin-bottom: 3px;">${item.trim()}</li>`; });
+    html += '</ol>';
+    return html;
+}
+
+function formatMaterialsForPrint(text) {
+    if (!text) return '';
+    const items = text.split(/[-•]\s*/).filter(Boolean);
+    if (items.length <= 1) return text;
+    let html = '<ul style="margin: 0; padding-left: 15px; list-style-type: disc;">';
+    items.forEach(item => { html += `<li style="margin-bottom: 3px;">${item.trim()}</li>`; });
+    html += '</ul>';
+    return html;
+}
+
+// ==========================================
+// CORE LAYOUT BUILDER (Used by both Print & Word)
+// ==========================================
+function buildDocumentLayout() {
+    if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
+        alert("Please generate a lesson plan first before exporting.");
+        return false;
+    }
+
+    // 1. Header Image
     const headerImgUrl = localStorage.getItem('lessonReview_headerImage');
     const headerImgEl = document.getElementById('printHeaderImage');
     const headerContainer = document.getElementById('printHeaderBannerContainer');
-    
     if (headerImgUrl && headerImgEl) {
         headerImgEl.src = headerImgUrl;
         headerImgEl.classList.remove('hidden');
         if (headerContainer) headerContainer.classList.remove('hidden');
-    } else if (headerContainer) {
-        headerContainer.classList.add('hidden');
     }
 
-    if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
-        return alert("Please generate a lesson plan first before printing.");
-    }
-
-    const printSubject = document.getElementById('printSubject');
-    if(!printSubject) return alert("Missing print layout in HTML! Please add the #printDocumentWrapper block to your lesson-planner.html file.");
-
+    // 2. Metadata
     document.getElementById('printSubject').textContent = document.getElementById('lpSubjectTitle').value || "SUBJECT";
     document.getElementById('printSY').textContent = document.getElementById('lpSchoolYear').value || "2026-2027";
     document.getElementById('printQuarter').textContent = document.getElementById('lpQuarter').value || "QUARTER";
@@ -770,6 +792,7 @@ window.exportPDF = function() {
     const dateRange = dateRangeEl ? dateRangeEl.value : "";
     document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth} ${dateRange ? '(' + dateRange + ')' : ''}`;
 
+    // 3. Signatories
     document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "Teacher Name";
     document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
     document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "Coordinator Name";
@@ -779,6 +802,7 @@ window.exportPDF = function() {
     document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sigPrincipal') || "Principal Name";
     document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sigPrincipalTitle') || "Principal";
 
+    // 4. Build Table Rows
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
@@ -787,11 +811,11 @@ window.exportPDF = function() {
         const tr = document.createElement('tr');
         let rowHtml = ``;
 
-        // CRITICAL FIX: No rowspan. Print details on first row, empty cells on subsequent rows to prevent print preview freeze.
+        // Topic and Standards only on the first row
         if (index === 0) {
             rowHtml += `
-                <td class="font-bold text-center align-middle">${currentWeeklyOverview.topic || ''}</td>
-                <td>
+                <td style="font-weight: bold; text-align: center; vertical-align: middle;">${currentWeeklyOverview.topic || ''}</td>
+                <td style="vertical-align: top;">
                     <strong>Content Standard:</strong><br>${currentWeeklyOverview.content_standard || ''}<br><br>
                     <strong>Performance Standard:</strong><br>${currentWeeklyOverview.performance_standard || ''}<br><br>
                     <strong>Formation Standard:</strong><br>${currentWeeklyOverview.formation_standard || ''}
@@ -801,73 +825,79 @@ window.exportPDF = function() {
             rowHtml += `<td></td><td></td>`;
         }
 
+        const objText = formatObjectivesForPrint(session.objectives || 'N/A');
+        const matText = formatMaterialsForPrint(currentWeeklyOverview.materials || '');
+
         rowHtml += `
-            <td>
+            <td style="vertical-align: top;">
                 <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
-                <strong>Objectives:</strong><br>${session.objectives || 'N/A'}
+                <strong>Objectives:</strong><br>${objText}
             </td>
         `;
 
-        // TIME FRAME COLUMN (Dynamic & Line-aligned)
         let timeFrame = isFlex ? "Async" : "5 mins<br><br>5 mins<br><br>26 mins<br><br>10 mins<br><br>4 mins";
-        
         if (session.session_name.includes("4-6")) {
-            // Dynamically reflects the breakdown of the 150-minute lab phases
             timeFrame = "10 mins<br><br>15 mins<br><br>40 mins<br><br>50 mins<br><br>25 mins<br><br>10 mins";
         }
-        
-        rowHtml += `<td class="text-center font-bold align-middle leading-relaxed text-xs">${timeFrame}</td>`;
+        rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: middle; font-size: 12px; line-height: 1.6;">${timeFrame}</td>`;
 
-
-        let experiencesHTML = `<div class="font-bold mb-1">${session.session_name}</div>`;
+        let experiencesHTML = `<div style="font-weight: bold; margin-bottom: 4px;">${session.session_name}</div>`;
         if (!isFlex) {
             experiencesHTML += `
-                <strong>Preliminary:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.preliminary || ''}</div><br>
-                <strong>Motivation:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.motivation || ''}</div><br>
+                <strong>Preliminary:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.preliminary || ''}</div><br>
+                <strong>Motivation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div><br>
             `;
         }
-        experiencesHTML += `<strong>Activities:</strong><br><div class="pl-2 whitespace-pre-wrap font-mono">${session.learning_activities || ''}</div>`;
+        experiencesHTML += `<strong>Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap; font-family: monospace;">${session.learning_activities || ''}</div>`;
         if (!isFlex) {
             experiencesHTML += `
-                <br><strong>Evaluation:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.evaluation || ''}</div><br>
-                <strong>Closing:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.closing || ''}</div><br>
-                <strong>Values Integration:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.values_integration || ''}</div>
+                <br><strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div><br>
+                <strong>Closing:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div><br>
+                <strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>
             `;
         }
-        rowHtml += `<td>${experiencesHTML}</td>`;
+        rowHtml += `<td style="vertical-align: top;">${experiencesHTML}</td>`;
 
+        // Materials only on first row
         if (index === 0) {
-            rowHtml += `<td class="whitespace-pre-wrap align-middle">${currentWeeklyOverview.materials || ''}</td>`;
+            rowHtml += `<td style="white-space: pre-wrap; vertical-align: middle;">${matText}</td>`;
         } else {
             rowHtml += `<td></td>`;
         }
 
-        rowHtml += `<td class="whitespace-pre-wrap align-middle">${session.remarks || ''}</td>`;
+        rowHtml += `<td style="white-space: pre-wrap; vertical-align: middle;">${session.remarks || ''}</td>`;
 
         tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
     });
 
-    setTimeout(() => { window.print(); }, 300);
+    return true;
+}
+
+// ==========================================
+// EXPORT TRIGGERS
+// ==========================================
+window.exportPDF = function() {
+    if (buildDocumentLayout()) {
+        setTimeout(() => { window.print(); }, 300);
+    }
 };
 
 window.saveAndPrint = async function() {
     const isSaved = await window.saveLessonPlan();
-    if (isSaved) {
-        window.exportPDF();
+    if (isSaved && buildDocumentLayout()) {
+        setTimeout(() => { window.print(); }, 300);
     }
 };
+
 window.exportToWordDoc = function() {
+    if (!buildDocumentLayout()) return;
+
     const printWrapper = document.getElementById('printDocumentWrapper');
-    if (!printWrapper || printWrapper.innerHTML.trim() === "") {
-        alert("Please generate or load a lesson plan first.");
-        return;
-    }
+    
+    // CRITICAL FOR WORD: Strip <thead> tags so it doesn't repeat on every page
+    let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
 
-    const wasHidden = printWrapper.classList.contains('hidden');
-    if (wasHidden) printWrapper.classList.remove('hidden');
-
-    // Word XML style block to force Landscape orientation
     const htmlContent = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office" 
               xmlns:w="urn:schemas-microsoft-com:office:word" 
@@ -876,28 +906,28 @@ window.exportToWordDoc = function() {
             <meta charset="utf-8">
             <title>Lesson Plan</title>
             <style>
-                @page WordSection1 {
-                    size: 13in 8.5in; /* Folio / Landscape dimensions */
-                    margin: 1in;
-                    mso-page-orientation: landscape;
+                @page { margin: 0.5in; }
+                @page Section1 { 
+                    size: 13in 8.5in; /* Forces Landscape in Word */
+                    mso-page-orientation: landscape; 
+                    margin: 0.5in; 
                 }
-                div.WordSection1 { page: WordSection1; }
-                body { font-family: 'Arial', sans-serif; font-size: 11pt; color: #333; }
+                div.Section1 { page: Section1; }
+                
+                body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
-                th { background-color: #f2f2f2; text-align: center; }
+                th, td { border: 1px solid #000; padding: 6px 8px; font-size: 9pt; vertical-align: top; }
+                th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
         <body>
-            <div class="WordSection1">
-                ${printWrapper.innerHTML}
+            <div class="Section1">
+                ${cleanHtml}
             </div>
         </body>
         </html>
     `;
-
-    if (wasHidden) printWrapper.classList.add('hidden');
 
     const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
     const subjectTitle = document.getElementById('lpSubjectTitle')?.value || "Lesson_Plan";
