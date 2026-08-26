@@ -130,15 +130,24 @@ window.toggleEditMode = async function() {
 window.autoFillEndTime = function(startInput) {
     if (!startInput.value) return;
     const row = startInput.closest('tr');
+    
+    // Target the actual flatpickr instance element, not just the visual input
     const endInput = row.querySelector('.time-end');
     
     const [hours, minutes] = startInput.value.split(':').map(Number);
     const date = new Date();
-    date.setHours(hours, minutes + 50, 0, 0);
+    date.setHours(hours, minutes + 50, 0, 0); // Adds exactly 50 mins
     
     const endHours = String(date.getHours()).padStart(2, '0');
     const endMinutes = String(date.getMinutes()).padStart(2, '0');
-    endInput.value = `${endHours}:${endMinutes}`;
+    const finalTime = `${endHours}:${endMinutes}`;
+    
+    endInput.value = finalTime;
+    
+    // Command the new Flatpickr UI to visually update
+    if (endInput._flatpickr) {
+        endInput._flatpickr.setDate(finalTime);
+    }
 };
 
 function formatTimeToAMPM(time24) {
@@ -215,12 +224,13 @@ function renderTable() {
         tr.className = "border-b hover:bg-gray-50 transition group";
         tr.dataset.rowType = row.type;
 
-        // CRITICAL FIX: step="300" locks the picker strictly to 5-minute increments.
+        // CRITICAL FIX: Changed type="time" to type="text" to bypass Chrome's ugly native picker.
+        // Flatpickr will automatically attach to these text inputs.
         const timeInputHtml = isEditing 
             ? `<div class="flex flex-col gap-1 items-center justify-center">
-                   <input type="time" step="300" class="time-start w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" onchange="autoFillEndTime(this)" value="${row.startTime || ''}" title="Start Time">
+                   <input type="text" class="time-start w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center cursor-pointer bg-white" value="${row.startTime || ''}" placeholder="Start Time">
                    <span class="text-[9px] text-gray-400 font-bold uppercase">To</span>
-                   <input type="time" step="300" class="time-end w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" value="${row.endTime || ''}" title="End Time">
+                   <input type="text" class="time-end w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center cursor-pointer bg-white" value="${row.endTime || ''}" placeholder="End Time">
                </div>`
             : `<div class="flex flex-col items-center justify-center text-center">
                    <span class="font-bold text-gray-800 text-xs">${formatTimeToAMPM(row.startTime) || '<span class="text-gray-300">--</span>'}</span>
@@ -273,6 +283,31 @@ function renderTable() {
         }
         tbody.appendChild(tr);
     });
+
+    // --- FLATPICKR INITIALIZATION ---
+    // This runs after all rows are drawn on the screen
+    if (isEditing) {
+        flatpickr(".time-start", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i", // Under-the-hood 24h format for saving
+            altInput: true,
+            altFormat: "h:i K", // Visual 12h AM/PM format for the user
+            minuteIncrement: 5, // STRICTLY forces 5-minute jumps!
+            onChange: function(selectedDates, dateStr, instance) {
+                window.autoFillEndTime(instance.element);
+            }
+        });
+        
+        flatpickr(".time-end", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            altInput: true,
+            altFormat: "h:i K",
+            minuteIncrement: 5 // STRICTLY forces 5-minute jumps!
+        });
+    }
 }
 
 function buildCellEdit(dayPrefix, savedData = {}) {
