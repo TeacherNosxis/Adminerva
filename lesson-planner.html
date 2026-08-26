@@ -7,36 +7,64 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
 @media print {
-    body * {
-        visibility: hidden !important;
+    /* 1. CLEANLY HIDE ALL WEB UI ELEMENTS */
+    body > nav, 
+    body > div.max-w-screen-2xl, 
+    body > #globalLoader, 
+    body > #aiClarificationModal, 
+    body > #loadPlanModal {
+        display: none !important;
     }
-    #printDocumentWrapper, #printDocumentWrapper * {
-        visibility: visible !important;
-    }
+
+    /* 2. RESTORE PROPER DOCUMENT FLOW FOR PRINT WRAPPER */
     #printDocumentWrapper {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
         display: block !important;
+        position: relative !important;
+        width: 100% !important;
         background: white !important;
     }
 
-    /* FORCES TABLE HEADERS TO APPEAR ONLY ONCE (Disables repeating top rows) */
-    thead {
+    /* 3. FORCE TABLE LINES AND PADDING */
+    .print-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin-top: 10px !important;
+    }
+    .print-table th, .print-table td {
+        border: 1px solid #000000 !important; /* This fixes the missing lines! */
+        padding: 6px 8px !important;
+        vertical-align: top !important;
+        text-align: left;
+        font-size: 11px !important;
+    }
+    .print-table th {
+        text-align: center !important;
+        background-color: #f2f2f2 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* 4. FIX THE MASSIVE PAGE GAP (Allow rows to split across pages naturally) */
+    .print-table tr {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+    }
+    
+    /* 5. STOP HEADERS FROM REPEATING ON EVERY PAGE */
+    .print-table thead {
         display: table-row-group !important;
     }
-    
-    tr {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-    
-    th {
-        background-color: #f2f2f2 !important;
-        -webkit-print-color-adjust: exact;
+
+    /* 6. TIGHTEN TOP HEADER TEXT SPACING */
+    #printDocumentWrapper h2, 
+    #printDocumentWrapper p {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1.2 !important;
     }
 }
+
+/* Hide the print wrapper from the normal screen */
 #printDocumentWrapper { display: none; }
 </style>
 </head>
