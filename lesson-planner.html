@@ -214,10 +214,17 @@
     </div>
 
     <!-- GLOBAL LOADING OVERLAY -->
-    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"></div>
-        <p class="text-white font-bold text-xl tracking-wider mb-2">AI Architecting Syllabus...</p>
-        <p class="text-blue-300 text-sm font-semibold">Analyzing scope and structuring session activities.</p>
+    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col text-center px-4">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-6"></div>
+        <p class="text-white font-bold text-xl tracking-wider mb-2">
+            AI Architecting Syllabus... <span id="elapsedTime" class="text-blue-400 ml-2">0s</span>
+        </p>
+        <p class="text-blue-300 text-sm font-semibold mb-8">Analyzing scope and structuring session activities.</p>
+        
+        <!-- BIBLE VERSE CONTAINER -->
+        <div class="max-w-2xl text-gray-300 italic text-lg transition-opacity duration-300 min-h-[4rem]" id="bibleVerse">
+            Preparing wisdom...
+        </div>
     </div>
 
     <script type="module" src="lesson-planner.js?v=6"></script>
