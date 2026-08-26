@@ -206,29 +206,43 @@ async function fetchSectionsFromFirebase() {
 
 function populateSectionDropdowns() {
     const filterSelect = document.getElementById('sectionFilterSelect');
-    const curVal = filterSelect.value;
-    filterSelect.innerHTML = `<option value="ALL">All Sections (All Students)</option>`;
     
-    allSections.forEach(sec => {
-        const opt = document.createElement('option');
-        opt.value = sec.name;
-        opt.textContent = sec.name;
-        filterSelect.appendChild(opt);
-    });
-    if ([...filterSelect.options].some(o => o.value === curVal)) {
-        filterSelect.value = curVal;
+    // Only attempt to populate if the element actually exists on the page
+    if (filterSelect) {
+        const curVal = filterSelect.value;
+        filterSelect.innerHTML = `<option value="ALL">All Sections (All Students)</option>`;
+        
+        allSections.forEach(sec => {
+            const opt = document.createElement('option');
+            opt.value = sec.name;
+            opt.textContent = sec.name;
+            filterSelect.appendChild(opt);
+        });
+        
+        if ([...filterSelect.options].some(o => o.value === curVal)) {
+            filterSelect.value = curVal;
+        }
     }
 
     const modalSelect = document.getElementById('modalStudentSection');
-    modalSelect.innerHTML = '';
-    allSections.forEach(sec => {
-        const opt = document.createElement('option');
-        opt.value = sec.name;
-        opt.textContent = sec.name;
-        modalSelect.appendChild(opt);
-    });
+    
+    // Only attempt to populate if the Add Student Modal exists
+    if (modalSelect) {
+        modalSelect.innerHTML = '';
+        allSections.forEach(sec => {
+            const opt = document.createElement('option');
+            opt.value = sec.name;
+            opt.textContent = sec.name;
+            modalSelect.appendChild(opt);
+        });
+    }
 
-    renderSectionsManagerTable();
+    // Wrap this in a try-catch just in case the Sections Modal is missing too
+    try {
+        renderSectionsManagerTable();
+    } catch(e) {
+        console.warn("Sections table not rendered. Modal might be missing from HTML.");
+    }
 }
 
 function renderSectionsManagerTable() {
