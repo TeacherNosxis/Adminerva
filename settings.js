@@ -120,22 +120,23 @@ function loadSecuritySettings() {
 }
 
 window.saveSecuritySettings = async function() {
-    // 1. Get the exact inputs you want to test
+    // 1. Correctly match the exact IDs from your HTML!
     const apiKeyInput = document.getElementById('adminGeminiKey').value.trim();
-    const aiModelInput = document.getElementById('repoReview_ai_model').value.trim();
-    const saveBtn = document.getElementById('saveSecurityBtn'); // Your save button ID
+    const aiModelInput = document.getElementById('adminAiModel').value.trim();
+    
+    // Find the save button safely using its onclick attribute
+    const saveBtn = document.querySelector('button[onclick="saveSecuritySettings()"]'); 
 
     if (!apiKeyInput || !aiModelInput) {
         return alert("Please enter both a Gemini API Key and an AI Model name.");
     }
 
-    // 2. Change the button to a loading state so you know it's testing
+    // 2. Change the button to a loading state
     const originalText = saveBtn.innerHTML;
     saveBtn.innerHTML = "⏳ Testing Connection...";
     saveBtn.disabled = true;
 
     try {
-        // 3. Send a tiny "ping" to the AI to see if the door opens
         const testPrompt = "Reply with exactly one word: SUCCESS";
         
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModelInput}:generateContent?key=${apiKeyInput}`, {
@@ -146,23 +147,20 @@ window.saveSecuritySettings = async function() {
             })
         });
 
-        // 4. Trap the exact error if Google rejects the model or key
         if (!response.ok) {
             const errorDetails = await response.text();
             throw new Error(`Error Code ${response.status}\n\nGoogle says: ${errorDetails}`);
         }
 
-        // 5. If it gets to this line, the test passed! Save the settings.
+        // 3. Save to localStorage ONLY if the test passes
         localStorage.setItem('repoReview_gemini_token', apiKeyInput);
         localStorage.setItem('repoReview_ai_model', aiModelInput);
         
         alert("✅ AI Connection Successful!\nYour API Key and Model are perfectly configured and saved.");
 
     } catch (error) {
-        // 6. Alert the exact reason it failed so you don't have to guess
         alert("🚨 AI TEST FAILED!\n\nSettings were NOT saved. Please fix the issue below:\n\n" + error.message);
     } finally {
-        // Restore the save button
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
     }
