@@ -8,13 +8,16 @@
     <style>
 @media print {
     @page {
-        size: 13in 8.5in; /* Folio Landscape */
+        size: 13in 8.5in landscape; /* Folio Landscape */
         margin: 0.5in;
     }
     body {
         background: white !important;
         color: black !important;
         font-family: Arial, sans-serif;
+        display: block !important;     /* Prevents flexbox print crash */
+        height: auto !important;       /* Prevents height calculation crash */
+        min-height: 0 !important; 
     }
     /* Hide navigation, buttons, and configuration UI during print */
     nav, .bg-white.p-6.rounded-lg.shadow-sm, button, .border-t.bg-white {

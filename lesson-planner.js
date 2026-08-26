@@ -361,7 +361,7 @@ ${gradeSpecificRules}
        [Specific Suspension/Interruption Dates if applicable]
      
      (If multiple sections are taught in one day for that session type, list them sequentially separated by a blank line).
-     
+
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted "learning_activities". Set all other fields to empty strings "".
 ${lookbackContext}
@@ -759,22 +759,23 @@ window.exportPDF = function() {
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
-    const rowCount = currentPlan.length;
-
     currentPlan.forEach((session, index) => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
         const tr = document.createElement('tr');
         let rowHtml = ``;
 
+        // CRITICAL FIX: No rowspan. Print details on first row, empty cells on subsequent rows to prevent print preview freeze.
         if (index === 0) {
             rowHtml += `
-                <td rowspan="${rowCount}" class="font-bold text-center align-middle">${currentWeeklyOverview.topic || ''}</td>
-                <td rowspan="${rowCount}">
+                <td class="font-bold text-center align-middle">${currentWeeklyOverview.topic || ''}</td>
+                <td>
                     <strong>Content Standard:</strong><br>${currentWeeklyOverview.content_standard || ''}<br><br>
                     <strong>Performance Standard:</strong><br>${currentWeeklyOverview.performance_standard || ''}<br><br>
                     <strong>Formation Standard:</strong><br>${currentWeeklyOverview.formation_standard || ''}
                 </td>
             `;
+        } else {
+            rowHtml += `<td></td><td></td>`;
         }
 
         rowHtml += `
@@ -806,7 +807,9 @@ window.exportPDF = function() {
         rowHtml += `<td>${experiencesHTML}</td>`;
 
         if (index === 0) {
-            rowHtml += `<td rowspan="${rowCount}" class="whitespace-pre-wrap align-middle">${currentWeeklyOverview.materials || ''}</td>`;
+            rowHtml += `<td class="whitespace-pre-wrap align-middle">${currentWeeklyOverview.materials || ''}</td>`;
+        } else {
+            rowHtml += `<td></td>`;
         }
 
         rowHtml += `<td class="whitespace-pre-wrap align-middle">${session.remarks || ''}</td>`;
