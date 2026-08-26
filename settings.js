@@ -109,7 +109,9 @@ window.saveLessonReviewSettings = function() {
 function loadSecuritySettings() {
     document.getElementById('adminGithubToken').value = localStorage.getItem('repoReview_github_token') || "";
     document.getElementById('adminGeminiKey').value = localStorage.getItem('repoReview_gemini_token') || "";
-    document.getElementById('adminAiModel').value = localStorage.getItem('repoReview_ai_model') || "gemini-3.5-flash";
+    
+    // CRITICAL FIX: The default fallback is now correctly gemini-1.5-flash
+    document.getElementById('adminAiModel').value = localStorage.getItem('repoReview_ai_model') || "gemini-1.5-flash";
     
     const fbConfig = localStorage.getItem('repoReview_firebase_config');
     if (fbConfig) {
@@ -119,7 +121,7 @@ function loadSecuritySettings() {
 
 window.saveSecuritySettings = async function() {
     // 1. Get the exact inputs you want to test
-    const apiKeyInput = document.getElementById('repoReview_gemini_token').value.trim();
+    const apiKeyInput = document.getElementById('adminGeminiKey').value.trim();
     const aiModelInput = document.getElementById('repoReview_ai_model').value.trim();
     const saveBtn = document.getElementById('saveSecurityBtn'); // Your save button ID
 
