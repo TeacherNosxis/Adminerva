@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
 let db = null;
 let currentPlan = [];
 let currentWeeklyOverview = null;
@@ -8,12 +9,12 @@ let cachedCompiledText = '';
 let cachedSchedule = '';
 let cachedScope = '';
 let cachedCustomInstructions = '';
-// --- TIMER & 200+ BIBLE VERSE ENGINE ---
+
+// --- TIMER & BIBLE VERSE ENGINE ---
 let timerInterval, verseInterval;
 let elapsedSeconds = 0;
 
 const bibleVerses = [
-    // Proverbs (Wisdom & Instruction)
     "The fear of the Lord is the beginning of knowledge, but fools despise wisdom and instruction. - Proverbs 1:7",
     "For the Lord gives wisdom; from his mouth come knowledge and understanding. - Proverbs 2:6",
     "Trust in the Lord with all your heart and lean not on your own understanding. - Proverbs 3:5",
@@ -34,8 +35,6 @@ const bibleVerses = [
     "Commit to the Lord whatever you do, and he will establish your plans. - Proverbs 16:3",
     "How much better to get wisdom than gold, to get insight rather than silver! - Proverbs 16:16",
     "To know wisdom and instruction, to understand words of insight. - Proverbs 1:2",
-    
-    // Psalms (Guidance & Teaching)
     "Teach us to number our days, that we may gain a heart of wisdom. - Psalm 90:12",
     "Your word is a lamp for my feet, a light on my path. - Psalm 119:105",
     "I will instruct you and teach you in the way you should go; I will counsel you with my loving eye on you. - Psalm 32:8",
@@ -46,12 +45,10 @@ const bibleVerses = [
     "Teach me knowledge and good judgment, for I trust your commands. - Psalm 119:66",
     "Direct my footsteps according to your word; let no sin rule over me. - Psalm 119:133",
     "Oh, how I love your law! I meditate on it all day long. - Psalm 119:97",
-
-    // New Testament (Learning, Diligence & Excellence)
     "If any of you lacks wisdom, you should ask God, who gives generously to all without finding fault. - James 1:5",
     "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters. - Colossians 3:23",
     "Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who correctly handles the word of truth. - 2 Timothy 2:15",
-    "All Scripture is God-breathed and is useful for teaching, rebuking, correcting and training in righteousness. - Timothy 3:16",
+    "All Scripture is God-breathed and is useful for teaching, rebuking, correcting and training in righteousness. - 2 Timothy 3:16",
     "For whatever was written in earlier times was written for our instruction, so that through perseverance and encouragement we might have hope. - Romans 15:4",
     "But grow in the grace and knowledge of our Lord and Savior Jesus Christ. - 2 Peter 3:18",
     "Let the message of Christ dwell among you richly as you teach and admonish one another with all wisdom. - Colossians 3:16",
@@ -63,8 +60,6 @@ const bibleVerses = [
     "Be very careful, then, how you live—not as unwise but as wise, making the most of every opportunity. - Ephesians 5:15-16",
     "Let us not become weary in doing good, for at the proper time we will reap a harvest if we do not give up. - Galatians 6:9",
     "Fix your thoughts on what is true, and honorable, and right, and pure, and lovely, and admirable. - Philippians 4:8",
-    
-    // Additional Historical & Instructional Wisdom (Expanding count safely)
     "Let my teaching fall like rain and my words descend like dew, like showers on new grass. - Deuteronomy 32:2",
     "Start children off on the way they should go, and even when they are old they will not turn from it. - Proverbs 22:6",
     "Listen, my son, and be wise, and keep your heart on the right path. - Proverbs 23:19",
@@ -75,13 +70,13 @@ const bibleVerses = [
     "The Sovereign Lord has given me a well-instructed tongue, to know the word that sustains the weary. - Isaiah 50:4",
     "Preach the word; be prepared in season and out of season; correct, rebuke and encourage—with great patience and careful instruction. - 2 Timothy 4:2",
     "Now these are the gifts Christ gave to the church: the apostles, the prophets, the evangelists, and the pastors and teachers. - Ephesians 4:11"
-    // Note: You can easily duplicate or paste up to 200+ verses right into this array for endless variety!
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadLibraryFolders();
     initFirebase();
 });
+
 function initFirebase() {
     const configStr = localStorage.getItem('repoReview_firebase_config');
     if (!configStr) return;
@@ -93,26 +88,27 @@ function initFirebase() {
         console.error("Firebase Initialization Failed:", e);
     }
 }
+
 window.showLoader = function() { 
     document.getElementById('globalLoader').classList.replace('hidden', 'flex'); 
     elapsedSeconds = 0;
-    document.getElementById('elapsedTime').textContent = '0s';
+    const timeEl = document.getElementById('elapsedTime');
+    if (timeEl) timeEl.textContent = '0s';
     
     const verseEl = document.getElementById('bibleVerse');
-    verseEl.textContent = bibleVerses[Math.floor(Math.random() * bibleVerses.length)];
+    if (verseEl) verseEl.textContent = bibleVerses[Math.floor(Math.random() * bibleVerses.length)];
     
-    // Live Timer (Counts every second)
     timerInterval = setInterval(() => {
         elapsedSeconds++;
-        document.getElementById('elapsedTime').textContent = elapsedSeconds + 's';
+        if (timeEl) timeEl.textContent = elapsedSeconds + 's';
     }, 1000);
 
-    // Rotate Verse every 5 seconds as requested
     verseInterval = setInterval(() => {
-        verseEl.style.opacity = 0; // Fade out
+        if (!verseEl) return;
+        verseEl.style.opacity = 0;
         setTimeout(() => {
             verseEl.textContent = bibleVerses[Math.floor(Math.random() * bibleVerses.length)];
-            verseEl.style.opacity = 1; // Fade in
+            verseEl.style.opacity = 1;
         }, 300);
     }, 5000);
 };
@@ -126,6 +122,7 @@ window.hideLoader = function() {
 function loadLibraryFolders() {
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
     const container = document.getElementById('libraryFolderContainer');
+    if(!container) return;
     container.innerHTML = '';
 
     if (libraryData.length === 0) {
@@ -147,7 +144,7 @@ function loadLibraryFolders() {
 // --- STEP 1: SMART PRE-CHECK MODAL LOGIC ---
 window.initiateGenerationFlow = async function() {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
-    const model = localStorage.getItem('repoReview_ai_model') || 'gemini-3.5-flash'; 
+    const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
     if (!gemKey) return alert("Missing Gemini API Key in Global Settings.");
 
     const selectedCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
@@ -175,7 +172,6 @@ window.initiateGenerationFlow = async function() {
     cachedScope = `${targetWeek} of ${targetMonth} (${targetQuarter})`;
     cachedCustomInstructions = document.getElementById('lpCustomInstructions').value.trim();
 
-    // RULE: If custom instructions are empty, skip modal entirely!
     if (!cachedCustomInstructions) {
         executeFinalGeneration("");
         return;
@@ -236,7 +232,7 @@ window.submitClarificationAndProceed = function() {
 // --- STEP 2: EXECUTE FINAL GENERATION ---
 async function executeFinalGeneration(userClarification) {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
-    const model = localStorage.getItem('repoReview_ai_model') || 'gemini-3.5-flash'; 
+    const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
 
     let gradeSpecificRules = "";
     if (currentTargetGrade === "Grade 11") {
@@ -361,7 +357,7 @@ ${cachedCompiledText.substring(0, 25000)}
 
 function renderOverview() {
     const container = document.getElementById('weeklyOverviewContainer');
-    if (!currentWeeklyOverview) return;
+    if (!currentWeeklyOverview || !container) return;
     
     container.classList.remove('hidden');
     container.classList.add('flex');
@@ -400,18 +396,19 @@ function renderOutput() {
     const container = document.getElementById('outputContainer');
     const headerTitle = document.getElementById('planHeaderTitle');
     const headerBadge = document.getElementById('planHeaderBadge');
+    if(!container) return;
 
     container.innerHTML = '';
     
     if (!currentPlan || !currentPlan.length) {
-        headerTitle.textContent = "Generated Plan";
-        headerBadge.textContent = "No Data";
+        if(headerTitle) headerTitle.textContent = "Generated Plan";
+        if(headerBadge) headerBadge.textContent = "No Data";
         container.innerHTML = '<div class="text-center text-gray-400 italic mt-20">Select your scope, grade level, and folders to generate plans.</div>';
         return;
     }
 
-    headerTitle.textContent = `${currentTargetGrade} Lesson Plan`;
-    headerBadge.textContent = `${currentPlan.length} Sessions`;
+    if(headerTitle) headerTitle.textContent = `${currentTargetGrade} Lesson Plan`;
+    if(headerBadge) headerBadge.textContent = `${currentPlan.length} Sessions`;
 
     currentPlan.forEach(session => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
@@ -470,11 +467,9 @@ function renderOutput() {
         container.insertAdjacentHTML('beforeend', html);
     });
 }
+
 // ==========================================
-// ACTION BUTTONS: SAVE & PRINT ENGINE
-// ==========================================
-// ==========================================
-// ACTION BUTTONS: SMART SAVE, LOAD & DELETE
+// ACTION BUTTONS: SMART SAVE, LOAD, DELETE & PRINT
 // ==========================================
 
 window.saveLessonPlan = async function() {
@@ -492,12 +487,11 @@ window.saveLessonPlan = async function() {
     const month = document.getElementById('lpMonth').value;
     const week = document.getElementById('lpWeek').value;
     
-    // Creates a unique ID (e.g., Grade11_ComputerProgramming_August_Week1) to prevent duplicates!
     const safeDocId = `${grade}_${subject}_${month}_${week}`.replace(/[^a-zA-Z0-9_]/g, "");
 
     const loaderText = document.querySelector('#globalLoader p');
-    const originalText = loaderText.textContent;
-    loaderText.textContent = "Saving to Database...";
+    const originalText = loaderText ? loaderText.textContent : "Processing...";
+    if(loaderText) loaderText.textContent = "Saving to Database...";
     document.getElementById('globalLoader').classList.replace('hidden', 'flex');
 
     try {
@@ -515,7 +509,6 @@ window.saveLessonPlan = async function() {
             timestamp: new Date().toISOString()
         };
 
-        // setDoc overwrites existing plans for the same week instead of duplicating them
         await setDoc(doc(db, "lesson_plans", safeDocId), planData);
         alert("✅ Lesson Plan saved successfully!");
         return true; 
@@ -524,9 +517,103 @@ window.saveLessonPlan = async function() {
         alert("Failed to save to database: " + e.message);
         return false; 
     } finally {
-        loaderText.textContent = originalText;
+        if(loaderText) loaderText.textContent = originalText;
         document.getElementById('globalLoader').classList.replace('flex', 'hidden');
     }
+};
+
+window.openLoadPlanModal = async function() {
+    const modal = document.getElementById('loadPlanModal');
+    if (!modal) return alert("Modal HTML is missing!");
+    modal.classList.replace('hidden', 'flex');
+    
+    const container = document.getElementById('savedPlansListContainer');
+    container.innerHTML = `<p class="text-gray-500 italic text-center py-8">Fetching saved plans from cloud...</p>`;
+
+    if (!db) {
+        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Firebase is not connected!</p>`;
+        return;
+    }
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "lesson_plans"));
+        container.innerHTML = '';
+
+        if (querySnapshot.empty) {
+            container.innerHTML = `<p class="text-gray-400 italic text-center py-8">No saved lesson plans found in database.</p>`;
+            return;
+        }
+
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const docId = docSnap.id; 
+            const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown date";
+            
+            const card = document.createElement('div');
+            card.className = "p-4 border rounded-lg bg-gray-50 hover:bg-blue-50 transition flex justify-between items-center shadow-sm";
+            card.innerHTML = `
+                <div>
+                    <h4 class="font-bold text-blue-900">${data.subject_title || 'Untitled Subject'} (${data.grade_level || 'Grade N/A'})</h4>
+                    <p class="text-xs text-gray-600 mt-1">Scope: <strong>${data.month || ''} ${data.week || ''}</strong> | Quarter: ${data.quarter || ''}</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Saved on: ${dateStr}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">
+                        📂 Load
+                    </button>
+                    <button onclick="deleteLessonPlan('${docId}')" class="px-3 py-2 bg-red-100 text-red-600 font-bold text-xs rounded hover:bg-red-200 shadow transition" title="Delete Plan">
+                        🗑️
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (e) {
+        console.error("Error loading plans:", e);
+        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error loading plans: ${e.message}</p>`;
+    }
+};
+
+window.closeLoadPlanModal = function() {
+    const modal = document.getElementById('loadPlanModal');
+    if (modal) modal.classList.replace('flex', 'hidden');
+};
+
+window.deleteLessonPlan = async function(docId) {
+    if (!confirm("Are you sure you want to delete this saved lesson plan?")) return;
+    
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.classList.replace('hidden', 'flex');
+    
+    try {
+        await deleteDoc(doc(db, "lesson_plans", docId));
+        window.openLoadPlanModal(); 
+    } catch (e) {
+        alert("Failed to delete plan: " + e.message);
+    } finally {
+        if (loader) loader.classList.replace('flex', 'hidden');
+    }
+};
+
+window.loadSpecificPlan = function(planData) {
+    currentWeeklyOverview = planData.weekly_overview;
+    currentPlan = planData.sessions;
+    currentTargetGrade = planData.grade_level;
+
+    document.getElementById('lpTeacherName').value = planData.teacher_name || '';
+    document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
+    document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
+    if(planData.semester) document.getElementById('lpSemester').value = planData.semester;
+    if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
+    if(planData.month) document.getElementById('lpMonth').value = planData.month;
+    if(planData.week) document.getElementById('lpWeek').value = planData.week;
+    if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
+
+    renderOverview();
+    renderOutput();
+    closeLoadPlanModal();
+    alert("✅ Lesson plan loaded successfully!");
 };
 
 window.exportPDF = function() {
@@ -534,7 +621,9 @@ window.exportPDF = function() {
         return alert("Please generate a lesson plan first before printing.");
     }
 
-    // 1. Populate the Document Header
+    const printSubject = document.getElementById('printSubject');
+    if(!printSubject) return alert("Missing print layout in HTML! Please add the #printDocumentWrapper block to your lesson-planner.html file.");
+
     document.getElementById('printSubject').textContent = document.getElementById('lpSubjectTitle').value || "SUBJECT";
     document.getElementById('printSY').textContent = document.getElementById('lpSchoolYear').value || "2026-2027";
     document.getElementById('printQuarter').textContent = document.getElementById('lpQuarter').value || "QUARTER";
@@ -544,7 +633,6 @@ window.exportPDF = function() {
     const scopeMonth = document.getElementById('lpMonth').value;
     document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth}`;
 
-    // 2. Populate Signatories
     document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "Teacher Name";
     document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
     document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "Coordinator Name";
@@ -554,7 +642,6 @@ window.exportPDF = function() {
     document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sigPrincipal') || "Principal Name";
     document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sigPrincipalTitle') || "Principal";
 
-    // 3. Populate the 7-Column Table
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
@@ -563,10 +650,8 @@ window.exportPDF = function() {
     currentPlan.forEach((session, index) => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
         const tr = document.createElement('tr');
-        
         let rowHtml = ``;
 
-        // Col 1 & 2 (Content, Standards) merge across ALL rows
         if (index === 0) {
             rowHtml += `
                 <td rowspan="${rowCount}" class="font-bold text-center align-middle">${currentWeeklyOverview.topic || ''}</td>
@@ -623,99 +708,5 @@ window.saveAndPrint = async function() {
     const isSaved = await window.saveLessonPlan();
     if (isSaved) {
         window.exportPDF();
-    }
-};
-// ==========================================
-// LOAD SAVED PLANS FROM FIREBASE
-// ==========================================
-
-window.openLoadPlanModal = async function() {
-    const modal = document.getElementById('loadPlanModal');
-    if (!modal) return alert("Modal HTML is missing!");
-    modal.classList.replace('hidden', 'flex');
-    
-    const container = document.getElementById('savedPlansListContainer');
-    container.innerHTML = `<p class="text-gray-500 italic text-center py-8">Fetching saved plans from cloud...</p>`;
-
-    if (!db) {
-        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Firebase is not connected!</p>`;
-        return;
-    }
-
-    try {
-        const querySnapshot = await getDocs(collection(db, "lesson_plans"));
-        container.innerHTML = '';
-
-        if (querySnapshot.empty) {
-            container.innerHTML = `<p class="text-gray-400 italic text-center py-8">No saved lesson plans found in database.</p>`;
-            return;
-        }
-
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const docId = docSnap.id; 
-            const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown date";
-            
-            const card = document.createElement('div');
-            card.className = "p-4 border rounded-lg bg-gray-50 hover:bg-blue-50 transition flex justify-between items-center shadow-sm";
-            card.innerHTML = `
-                <div>
-                    <h4 class="font-bold text-blue-900">${data.subject_title || 'Untitled Subject'} (${data.grade_level || 'Grade N/A'})</h4>
-                    <p class="text-xs text-gray-600 mt-1">Scope: <strong>${data.month || ''} ${data.week || ''}</strong> | Quarter: ${data.quarter || ''}</p>
-                    <p class="text-[10px] text-gray-400 mt-0.5">Saved on: ${dateStr}</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">
-                        📂 Load
-                    </button>
-                    <button onclick="deleteLessonPlan('${docId}')" class="px-3 py-2 bg-red-100 text-red-600 font-bold text-xs rounded hover:bg-red-200 shadow transition" title="Delete Plan">
-                        🗑️
-                    </button>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-
-    } catch (e) {
-        console.error("Error loading plans:", e);
-        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error loading plans: ${e.message}</p>`;
-    }
-};
-
-window.closeLoadPlanModal = function() {
-    document.getElementById('loadPlanModal').classList.replace('flex', 'hidden');
-};
-
-
-window.loadSpecificPlan = function(planData) {
-    currentWeeklyOverview = planData.weekly_overview;
-    currentPlan = planData.sessions;
-    currentTargetGrade = planData.grade_level;
-
-    document.getElementById('lpTeacherName').value = planData.teacher_name || '';
-    document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
-    document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
-    if(planData.semester) document.getElementById('lpSemester').value = planData.semester;
-    if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
-    if(planData.month) document.getElementById('lpMonth').value = planData.month;
-    if(planData.week) document.getElementById('lpWeek').value = planData.week;
-    if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
-
-    renderOverview();
-    renderOutput();
-    closeLoadPlanModal();
-    alert("✅ Lesson plan loaded successfully!");
-};
-
-window.deleteLessonPlan = async function(docId) {
-    if (!confirm("Are you sure you want to delete this saved lesson plan?")) return;
-    window.showLoader();
-    try {
-        await deleteDoc(doc(db, "lesson_plans", docId));
-        window.openLoadPlanModal(); // Refresh the list
-    } catch (e) {
-        alert("Failed to delete plan: " + e.message);
-    } finally {
-        window.hideLoader();
     }
 };
