@@ -286,9 +286,61 @@
 
     </div>
 
-    <!-- MODALS (Students & Sections) remain exactly the same as your original code... -->
-    <!-- (I have omitted the modals here to save space, just paste your original modals here) -->
+    <!-- SECTIONS MODAL -->
+    <div id="sectionsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-lg text-gray-800">⚙️ Manage Sections</h3>
+                <button onclick="closeSectionsModal()" class="text-gray-400 hover:text-red-500 font-bold text-xl">✖</button>
+            </div>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="newSectionInput" class="flex-1 p-2 border border-gray-300 rounded text-sm focus:ring-purple-500" placeholder="New section name...">
+                <button onclick="addNewSection()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-purple-700 shadow-sm transition">Add</button>
+            </div>
+            <div class="max-h-60 overflow-y-auto border border-gray-200 rounded">
+                <table class="w-full text-sm">
+                    <tbody id="sectionsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
+    <!-- ADD/EDIT STUDENT MODAL -->
+    <div id="studentModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-300">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="studentModalTitle" class="font-bold text-lg text-gray-800">Add New Student</h3>
+                <button onclick="closeStudentModal()" class="text-gray-400 hover:text-red-500 font-bold text-xl">✖</button>
+            </div>
+            <form onsubmit="saveStudentForm(event)" class="space-y-4">
+                <input type="hidden" id="modalStudentDocId">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Section</label>
+                    <select id="modalStudentSection" class="w-full p-2 border border-gray-300 rounded bg-white text-sm focus:ring-purple-500" required></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Full Name</label>
+                    <input type="text" id="modalStudentName" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Email</label>
+                    <input type="email" id="modalStudentEmail" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">GitHub Username</label>
+                    <input type="text" id="modalStudentGithub" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Repository URL</label>
+                    <input type="url" id="modalStudentRepo" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-purple-500" required>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t mt-2">
+                    <button type="button" onclick="closeStudentModal()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded hover:bg-gray-300 text-sm transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white font-bold rounded hover:bg-purple-700 text-sm shadow-sm transition">Save Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <!-- GLOBAL LOADING OVERLAY -->
     <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[100] items-center justify-center flex-col">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500 border-solid mb-4"></div>
