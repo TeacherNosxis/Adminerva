@@ -88,36 +88,91 @@ window.switchAdminTab = function(tabId) {
 // ----------------------------------------------------
 // LESSONREVIEW SETTINGS LOGIC
 // ----------------------------------------------------
-function loadLessonReviewSettings() {
-    const safeSet = (id, val) => { if(document.getElementById(id)) document.getElementById(id).value = val; };
-    
-    safeSet('setTeacherName', localStorage.getItem('lessonReview_teacherName') || "");
-    safeSet('setSubjectTitle', localStorage.getItem('lessonReview_subjectTitle') || "");
-    safeSet('sigTeacher', localStorage.getItem('lessonReview_sigTeacher') || "Computer Teacher");
-    safeSet('sigTeacherTitle', localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher");
-    safeSet('sigSubjectCoord', localStorage.getItem('lessonReview_sigSubjectCoord') || "Mr. Mer Ryanson Bañez");
-    safeSet('sigSubjectCoordTitle', localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "ICT Subject Coordinator");
-    safeSet('sigGradeCoord', localStorage.getItem('lessonReview_sigGradeCoord') || "Mr. Darwin S. Mijares");
-    safeSet('sigGradeCoordTitle', localStorage.getItem('lessonReview_sigGradeCoordTitle') || "Grade 11 Coordinator");
-    safeSet('sigPrincipal', localStorage.getItem('lessonReview_sigPrincipal') || "Mrs. Lucille Ariette A. Bautista");
-    safeSet('sigPrincipalTitle', localStorage.getItem('lessonReview_sigPrincipalTitle') || "JHS/SHS Principal");
-}
+window.loadLessonReviewSettings = async function() {
+    if (!db) return;
 
-window.saveLessonReviewSettings = function() {
-    const safeGet = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : "";
-    
-    localStorage.setItem('lessonReview_teacherName', safeGet('setTeacherName'));
-    localStorage.setItem('lessonReview_subjectTitle', safeGet('setSubjectTitle'));
-    localStorage.setItem('lessonReview_sigTeacher', safeGet('sigTeacher'));
-    localStorage.setItem('lessonReview_sigTeacherTitle', safeGet('sigTeacherTitle'));
-    localStorage.setItem('lessonReview_sigSubjectCoord', safeGet('sigSubjectCoord'));
-    localStorage.setItem('lessonReview_sigSubjectCoordTitle', safeGet('sigSubjectCoordTitle'));
-    localStorage.setItem('lessonReview_sigGradeCoord', safeGet('sigGradeCoord'));
-    localStorage.setItem('lessonReview_sigGradeCoordTitle', safeGet('sigGradeCoordTitle'));
-    localStorage.setItem('lessonReview_sigPrincipal', safeGet('sigPrincipal'));
-    localStorage.setItem('lessonReview_sigPrincipalTitle', safeGet('sigPrincipalTitle'));
-    
-    alert("LessonReview export defaults saved successfully!");
+    try {
+        const docRef = doc(db, "global_settings", "lesson_review_config");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+
+            // Populate fields if they exist in cloud data
+            if (document.getElementById('setTeacherName')) document.getElementById('setTeacherName').value = data.teacher_name || '';
+            if (document.getElementById('setSubjectTitle')) document.getElementById('setSubjectTitle').value = data.subject_title || '';
+            if (document.getElementById('settingsHeaderImage')) document.getElementById('settingsHeaderImage').value = data.header_image_url || '';
+            
+            if (document.getElementById('sigTeacher')) document.getElementById('sigTeacher').value = data.sig_teacher || '';
+            if (document.getElementById('sigTeacherTitle')) document.getElementById('sigTeacherTitle').value = data.sig_teacher_title || '';
+            if (document.getElementById('sigSubjectCoord')) document.getElementById('sigSubjectCoord').value = data.sig_subject_coord || '';
+            if (document.getElementById('sigSubjectCoordTitle')) document.getElementById('sigSubjectCoordTitle').value = data.sig_subject_coord_title || '';
+            if (document.getElementById('sigGradeCoord')) document.getElementById('sigGradeCoord').value = data.sig_grade_coord || '';
+            if (document.getElementById('sigGradeCoordTitle')) document.getElementById('sigGradeCoordTitle').value = data.sig_grade_coord_title || '';
+            if (document.getElementById('sigPrincipal')) document.getElementById('sigPrincipal').value = data.sig_principal || '';
+            if (document.getElementById('sigPrincipalTitle')) document.getElementById('sigPrincipalTitle').value = data.sig_principal_title || '';
+
+            // Sync cache back to localStorage for fast access during printing
+            if (data.header_image_url) localStorage.setItem('lessonReview_headerImage', data.header_image_url);
+            if (data.sig_teacher) localStorage.setItem('lessonReview_sigTeacher', data.sig_teacher);
+            if (data.sig_teacher_title) localStorage.setItem('lessonReview_sigTeacherTitle', data.sig_teacher_title);
+            if (data.sig_subject_coord) localStorage.setItem('lessonReview_sigSubjectCoord', data.sig_subject_coord);
+            if (data.sig_subject_coord_title) localStorage.setItem('lessonReview_sigSubjectCoordTitle', data.sig_subject_coord_title);
+            if (data.sig_grade_coord) localStorage.setItem('lessonReview_sigGradeCoord', data.sig_grade_coord);
+            if (data.sig_grade_coord_title) localStorage.setItem('lessonReview_sigGradeCoordTitle', data.sig_grade_coord_title);
+            if (data.sig_principal) localStorage.setItem('lessonReview_sigPrincipal', data.sig_principal);
+            if (data.sig_principal_title) localStorage.setItem('lessonReview_sigPrincipalTitle', data.sig_principal_title);
+        }
+    } catch (e) {
+        console.error("Error loading settings from cloud:", e);
+    }
+};
+window.saveLessonReviewSettings = async function() {
+    if (!db) {
+        alert("Firebase is not connected! Please configure it in Global Settings first.");
+        return;
+    }
+
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.classList.replace('hidden', 'flex');
+
+    try {
+        const settingsData = {
+            teacher_name: document.getElementById('setTeacherName').value.trim(),
+            subject_title: document.getElementById('setSubjectTitle').value.trim(),
+            header_image_url: document.getElementById('settingsHeaderImage').value.trim(), // <--- Cloud Header Image
+            sig_teacher: document.getElementById('sigTeacher').value.trim(),
+            sig_teacher_title: document.getElementById('sigTeacherTitle').value.trim(),
+            sig_subject_coord: document.getElementById('sigSubjectCoord').value.trim(),
+            sig_subject_coord_title: document.getElementById('sigSubjectCoordTitle').value.trim(),
+            sig_grade_coord: document.getElementById('sigGradeCoord').value.trim(),
+            sig_grade_coord_title: document.getElementById('sigGradeCoordTitle').value.trim(),
+            sig_principal: document.getElementById('sigPrincipal').value.trim(),
+            sig_principal_title: document.getElementById('sigPrincipalTitle').value.trim(),
+            updated_at: new Date().toISOString()
+        };
+
+        // Save to Firebase Firestore
+        await setDoc(doc(db, "global_settings", "lesson_review_config"), settingsData, { merge: true });
+
+        // Also update localStorage backup for instant local retrieval
+        localStorage.setItem('lessonReview_headerImage', settingsData.header_image_url);
+        localStorage.setItem('lessonReview_sigTeacher', settingsData.sig_teacher);
+        localStorage.setItem('lessonReview_sigTeacherTitle', settingsData.sig_teacher_title);
+        localStorage.setItem('lessonReview_sigSubjectCoord', settingsData.sig_subject_coord);
+        localStorage.setItem('lessonReview_sigSubjectCoordTitle', settingsData.sig_subject_coord_title);
+        localStorage.setItem('lessonReview_sigGradeCoord', settingsData.sig_grade_coord);
+        localStorage.setItem('lessonReview_sigGradeCoordTitle', settingsData.sig_grade_coord_title);
+        localStorage.setItem('lessonReview_sigPrincipal', settingsData.sig_principal);
+        localStorage.setItem('lessonReview_sigPrincipalTitle', settingsData.sig_principal_title);
+
+        alert("✅ LessonReview settings and header image successfully saved to the cloud!");
+    } catch (e) {
+        console.error("Error saving settings:", e);
+        alert("Failed to save settings to Firebase: " + e.message);
+    } finally {
+        if (loader) loader.classList.replace('flex', 'hidden');
+    }
 };
 
 // ----------------------------------------------------
