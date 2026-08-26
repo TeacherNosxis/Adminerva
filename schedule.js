@@ -1,12 +1,67 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+let db = null;
 let mySections = [];
 let mySubjects = [];
 let myEvents = [];
 let isEditing = false; 
 
-document.addEventListener('DOMContentLoaded', () => {
+// --- CLOUD SYNC HELPERS ---
+window.showLoader = function(msg = "Syncing...") {
+    document.getElementById('loaderMessage').textContent = msg;
+    document.getElementById('globalLoader').classList.replace('hidden', 'flex');
+};
+window.hideLoader = function() {
+    document.getElementById('globalLoader').classList.replace('flex', 'hidden');
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
     loadConfig();
-    renderTable();
+    initFirebase();
 });
+
+// --- FIREBASE INITIALIZATION & FETCH ---
+async function initFirebase() {
+    const configStr = localStorage.getItem('repoReview_firebase_config');
+    if (!configStr) {
+        alert("Firebase is not configured! Please configure it in Global Settings.");
+        renderTable();
+        return;
+    }
+
+    try {
+        const firebaseConfig = JSON.parse(configStr);
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        
+        await fetchScheduleFromCloud();
+    } catch (e) {
+        console.error("Firebase Initialization Failed:", e);
+        alert("Failed to connect to Firebase. Using local cache.");
+        renderTable();
+    }
+}
+
+async function fetchScheduleFromCloud() {
+    if (!db) return;
+    window.showLoader("Loading schedule from cloud...");
+    try {
+        const docRef = doc(db, "app_config", "master_schedule");
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            localStorage.setItem('lessonReview_schedule_json', data.json_data || "[]");
+            localStorage.setItem('lessonReview_schedule', data.raw_text || "");
+        }
+    } catch (e) {
+        console.error("Error fetching schedule:", e);
+    } finally {
+        window.hideLoader();
+        renderTable();
+    }
+}
 
 // --- MODAL & CONFIG LOGIC ---
 window.openSettingsModal = function() {
@@ -25,13 +80,13 @@ window.closeSettingsModal = function() {
     modal.classList.add('hidden');
 };
 
-window.saveSettingsConfig = function() {
+window.saveSettingsConfig = async function() {
     localStorage.setItem('lessonReview_sections', document.getElementById('configSections').value);
     localStorage.setItem('lessonReview_subjects', document.getElementById('configSubjects').value);
     localStorage.setItem('lessonReview_events', document.getElementById('configEvents').value);
     
     loadConfig();
-    if(isEditing) saveScheduleData(true); // Bypass overlap check for background saving
+    if(isEditing) await saveScheduleData(true); 
     renderTable();
     closeSettingsModal();
 };
@@ -43,10 +98,10 @@ function loadConfig() {
 }
 
 // --- EDIT/LOCK ENGINE ---
-window.toggleEditMode = function() {
+window.toggleEditMode = async function() {
     if (isEditing) {
-        // Attempt to save. If validation fails, abort the toggle.
-        if (!saveScheduleData()) return; 
+        const saveSuccess = await saveScheduleData();
+        if (!saveSuccess) return; 
 
         isEditing = false;
         document.getElementById('editSaveBtn').innerHTML = '<span>✏️</span> Edit Schedule';
@@ -58,7 +113,7 @@ window.toggleEditMode = function() {
         document.getElementById('addEventBtn').classList.add('hidden');
     } else {
         isEditing = true;
-        document.getElementById('editSaveBtn').innerHTML = '<span>💾</span> Save Schedule';
+        document.getElementById('editSaveBtn').innerHTML = '<span>💾</span> Save to Cloud';
         document.getElementById('editSaveBtn').className = 'bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 transition shadow-sm flex items-center gap-2';
         document.getElementById('modeBadge').className = 'bg-green-100 text-green-800 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider animate-pulse';
         document.getElementById('modeBadge').textContent = '🛠️ Editing Mode';
@@ -77,7 +132,6 @@ window.autoFillEndTime = function(startInput) {
     const row = startInput.closest('tr');
     const endInput = row.querySelector('.time-end');
     
-    // Convert HH:MM to date, add 50 mins
     const [hours, minutes] = startInput.value.split(':').map(Number);
     const date = new Date();
     date.setHours(hours, minutes + 50, 0, 0);
@@ -93,18 +147,16 @@ function formatTimeToAMPM(time24) {
     let hours = parseInt(h, 10);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
-    hours = hours ? hours : 12; // 0 becomes 12
+    hours = hours ? hours : 12; 
     return `${hours}:${m} ${ampm}`;
 }
 
-// --- TABLE RENDERING ---
+// --- TABLE RENDERING & DATA MANAGEMENT ---
 window.addRow = function(type) {
     const savedJson = getTableDataFromDOM();
-    
     let inheritedStartTime = '';
     let inheritedEndTime = '';
 
-    // BULLETPROOF INHERITANCE: Look directly at the visible table for the last end time
     const allEndInputs = document.querySelectorAll('.time-end');
     if (allEndInputs.length > 0) {
         const lastEndInput = allEndInputs[allEndInputs.length - 1];
@@ -113,7 +165,6 @@ window.addRow = function(type) {
         }
     } 
     
-    // Fallback just in case the DOM is rendering from read-only mode
     if (!inheritedStartTime && savedJson.length > 0) {
         const lastRow = savedJson[savedJson.length - 1];
         if (lastRow.endTime) {
@@ -121,7 +172,6 @@ window.addRow = function(type) {
         }
     }
 
-    // Auto-calculate +50 mins based on the inherited time
     if (inheritedStartTime) {
         const [hours, minutes] = inheritedStartTime.split(':').map(Number);
         const date = new Date();
@@ -148,6 +198,7 @@ window.deleteRow = function(index) {
     localStorage.setItem('lessonReview_schedule_json', JSON.stringify(data));
     renderTable();
 };
+
 function renderTable() {
     const tbody = document.getElementById('scheduleTableBody');
     tbody.innerHTML = '';
@@ -164,7 +215,6 @@ function renderTable() {
         tr.className = "border-b hover:bg-gray-50 transition group";
         tr.dataset.rowType = row.type;
 
-        // DUAL TIME INPUTS (Now featuring step="300" for 5-minute snapping)
         const timeInputHtml = isEditing 
             ? `<div class="flex flex-col gap-1 items-center justify-center">
                    <input type="time" step="300" class="time-start w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" onchange="autoFillEndTime(this)" value="${row.startTime || ''}" title="Start Time">
@@ -237,7 +287,6 @@ function buildCellView(savedData = {}) {
     return `<div class="flex flex-col bg-blue-50 border border-blue-100 p-2 rounded shadow-sm"><span class="font-bold text-blue-900 text-xs">${savedData.sec || ''}</span><span class="text-gray-600 text-[11px]">${savedData.sub || ''}</span></div>`;
 }
 
-// --- DATA PARSING & VALIDATION ---
 function getTableDataFromDOM() {
     const rows = document.querySelectorAll('#scheduleTableBody tr');
     const jsonData = [];
@@ -267,10 +316,9 @@ function getTableDataFromDOM() {
     return jsonData;
 }
 
-window.saveScheduleData = function(bypassValidation = false) {
+window.saveScheduleData = async function(bypassValidation = false) {
     const jsonData = getTableDataFromDOM();
 
-    // OVERLAP VALIDATION ENGINE
     if (!bypassValidation) {
         const intervals = [];
         for (let i = 0; i < jsonData.length; i++) {
@@ -290,10 +338,8 @@ window.saveScheduleData = function(bypassValidation = false) {
             intervals.push({ start: startMins, end: endMins, rowNum: i + 1 });
         }
 
-        // Sort by start time mathematically
         intervals.sort((a, b) => a.start - b.start);
         
-        // Check if one slot begins before the previous one ends
         for (let i = 0; i < intervals.length - 1; i++) {
             if (intervals[i].end > intervals[i + 1].start) {
                 alert(`🚨 Time Overlap Detected!\nRow ${intervals[i].rowNum} conflicts with Row ${intervals[i + 1].rowNum}. Please fix this before saving.`);
@@ -301,8 +347,6 @@ window.saveScheduleData = function(bypassValidation = false) {
             }
         }
     }
-
-    localStorage.setItem('lessonReview_schedule_json', JSON.stringify(jsonData));
 
     // FORMAT FOR THE AI
     let rawTextForAI = "TEACHER WEEKLY SCHEDULE:\n\n";
@@ -335,6 +379,31 @@ window.saveScheduleData = function(bypassValidation = false) {
             rawTextForAI += `\n`;
         }
     });
+
+    // Save locally
+    localStorage.setItem('lessonReview_schedule_json', JSON.stringify(jsonData));
     localStorage.setItem('lessonReview_schedule', rawTextForAI);
-    return true; // Indicates success
+
+    // Save to Firebase (Cloud Sync)
+    if (!db) {
+        alert("Saved locally, but Firebase is not connected. Check Global Settings to enable cloud sync.");
+        return true; 
+    }
+
+    window.showLoader("Saving schedule to Firebase...");
+    try {
+        const docRef = doc(db, "app_config", "master_schedule");
+        await setDoc(docRef, {
+            json_data: JSON.stringify(jsonData),
+            raw_text: rawTextForAI,
+            last_updated: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error("Firebase save error:", e);
+        alert("Error saving to cloud. Data saved locally only. " + e.message);
+    } finally {
+        window.hideLoader();
+    }
+
+    return true; 
 };
