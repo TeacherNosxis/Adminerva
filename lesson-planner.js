@@ -618,3 +618,82 @@ window.saveAndPrint = async function() {
         window.exportPDF();
     }
 };
+// ==========================================
+// LOAD SAVED PLANS FROM FIREBASE
+// ==========================================
+import { getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+window.openLoadPlanModal = async function() {
+    const modal = document.getElementById('loadPlanModal');
+    modal.classList.replace('hidden', 'flex');
+    
+    const container = document.getElementById('savedPlansListContainer');
+    container.innerHTML = `<p class="text-gray-500 italic text-center py-8">Fetching saved plans from cloud...</p>`;
+
+    if (!db) {
+        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Firebase is not connected!</p>`;
+        return;
+    }
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "lesson_plans"));
+        container.innerHTML = '';
+
+        if (querySnapshot.empty) {
+            container.innerHTML = `<p class="text-gray-400 italic text-center py-8">No saved lesson plans found in database.</p>`;
+            return;
+        }
+
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown date";
+            
+            const card = document.createElement('div');
+            card.className = "p-4 border rounded-lg bg-gray-50 hover:bg-blue-50 transition flex justify-between items-center shadow-sm";
+            card.innerHTML = `
+                <div>
+                    <h4 class="font-bold text-blue-900">${data.subject_title || 'Untitled Subject'} (${data.grade_level || 'Grade N/A'})</h4>
+                    <p class="text-xs text-gray-600 mt-1">Scope: <strong>${data.month || ''} ${data.week || ''}</strong> | Quarter: ${data.quarter || ''}</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Saved on: ${dateStr}</p>
+                </div>
+                <button onclick='loadSpecificPlan(${JSON.stringify(data)})' class="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">
+                    📂 Load Plan
+                </button>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (e) {
+        console.error("Error loading plans:", e);
+        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error loading plans: ${e.message}</p>`;
+    }
+};
+
+window.closeLoadPlanModal = function() {
+    document.getElementById('loadPlanModal').classList.replace('flex', 'hidden');
+};
+
+window.loadSpecificPlan = function(planData) {
+    // 1. Populate global variables
+    currentWeeklyOverview = planData.weekly_overview;
+    currentPlan = planData.sessions;
+    currentTargetGrade = planData.grade_level;
+
+    // 2. Populate input fields back into the UI
+    document.getElementById('lpTeacherName').value = planData.teacher_name || '';
+    document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
+    document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
+    if(planData.semester) document.getElementById('lpSemester').value = planData.semester;
+    if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
+    if(planData.month) document.getElementById('lpMonth').value = planData.month;
+    if(planData.week) document.getElementById('lpWeek').value = planData.week;
+    if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
+
+    // 3. Render overview and output cards
+    renderOverview();
+    renderOutput();
+
+    // 4. Close modal
+    closeLoadPlanModal();
+    alert("✅ Lesson plan loaded successfully!");
+};
