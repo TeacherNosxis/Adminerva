@@ -7,10 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
 @media print {
-    /* Hide everything on the page except the print wrapper */
+    /* Hide everything on the page */
     body * {
         visibility: hidden !important;
     }
+    /* Make ONLY the print wrapper and its children visible */
     #printDocumentWrapper, #printDocumentWrapper * {
         visibility: visible !important;
     }
@@ -20,31 +21,34 @@
         top: 0 !important;
         width: 100% !important;
         display: block !important;
+        background: white !important;
     }
 
     /* Remove extra spacing from centered header titles */
-    #printDocumentWrapper h1, 
     #printDocumentWrapper h2, 
-    #printDocumentWrapper h3, 
-    #printDocumentWrapper .text-center {
+    #printDocumentWrapper p {
         margin-top: 0 !important;
         margin-bottom: 2px !important;
         padding-top: 0 !important;
         padding-bottom: 0 !important;
-        line-height: 1.2 !important;
+        line-height: 1.1 !important;
     }
 
-    /* Ensure table column headers appear cleanly and avoid unwanted repeating quirks */
+    /* Ensure table headers only appear once at the very top */
     table {
         width: 100% !important;
         border-collapse: collapse !important;
     }
     thead {
-        display: table-header-group;
+        display: table-header-group !important;
     }
     tr {
         page-break-inside: avoid;
         break-inside: avoid;
+    }
+    th {
+        background-color: #f2f2f2 !important;
+        -webkit-print-color-adjust: exact;
     }
 }
 #printDocumentWrapper { display: none; }
@@ -245,76 +249,97 @@
         </div>
     </div>
 
-    <script type="module" src="lesson-planner.js?v=6"></script>
-    <!-- PRINT-ONLY CURRICULUM MAP CONTAINER (Folio Landscape 7-Column Format) -->
-<div id="printDocumentWrapper" style="display: none;">
-    <div id="printHeaderBannerContainer" class="text-center mb-4">
-        <img id="printHeaderImage" src="" alt="School Header" class="max-h-20 mx-auto object-contain hidden">
-    </div>
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="font-size: 16px; font-weight: bold; margin: 0;">CURRICULUM MAP / LESSON PLAN</h2>
-        <p style="font-size: 12px; margin: 4px 0;">Subject: <span id="printSubject"></span> | School Year: <span id="printSY"></span></p>
-        <p style="font-size: 12px; margin: 4px 0;"><span id="printSemester"></span> — <span id="printQuarter"></span> (<span id="printScopeHeader"></span>)</p>
+    <!-- AI CLARIFICATION MODAL -->
+    <div id="aiClarificationModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4">
+            <div class="flex items-center gap-3 border-b pb-3">
+                <span class="text-2xl">💡</span>
+                <h3 class="font-bold text-lg text-blue-900">AI Curriculum Assistant Has a Question</h3>
+            </div>
+            <p class="text-sm text-gray-600">Before building your lesson plan, the AI needs clarification on your custom instructions:</p>
+            <div id="aiQuestionBox" class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900"></div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Your Response / Clarification</label>
+                <textarea id="userClarificationInput" rows="3" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500" placeholder="Type your answer here..."></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-2 border-t">
+                <button onclick="cancelClarification()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Cancel</button>
+                <button onclick="submitClarificationAndProceed()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700">Submit & Continue</button>
+            </div>
+        </div>
     </div>
 
-    <table class="print-table">
-        <thead>
-            <tr>
-                <th style="width: 12%;">Topic / Content</th>
-                <th style="width: 15%;">Curriculum Standards</th>
-                <th style="width: 15%;">Competencies & Objectives</th>
-                <th style="width: 8%;">Time Frame</th>
-                <th style="width: 30%;">Learning Experiences & Activities</th>
-                <th style="width: 10%;">Materials</th>
-                <th style="width: 10%;">Remarks</th>
-            </tr>
-        </thead>
-        <tbody id="printTableBody">
-            <!-- Dynamically populated via exportPDF() -->
-        </tbody>
-    </table>
     <!-- LOAD SAVED PLANS MODAL -->
-
-
-    <!-- SIGNATORIES FOOTER -->
-    <table style="width: 100%; margin-top: 40px; border-collapse: collapse; font-size: 11px;">
-        <tr>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <p style="margin-bottom: 30px;">Prepared by:</p>
-                <p style="font-weight: bold; text-decoration: underline;" id="printSig1Name"></p>
-                <p id="printSig1Title" style="font-size: 10px; color: #555;"></p>
-            </td>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <p style="margin-bottom: 30px;">Submitted to:</p>
-                <p style="font-weight: bold; text-decoration: underline;" id="printSig2Name"></p>
-                <p id="printSig2Title" style="font-size: 10px; color: #555;"></p>
-            </td>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <p style="margin-bottom: 30px;">Noted by:</p>
-                <p style="font-weight: bold; text-decoration: underline;" id="printSig3Name"></p>
-                <p id="printSig3Title" style="font-size: 10px; color: #555;"></p>
-            </td>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <p style="margin-bottom: 30px;">Approved by:</p>
-                <p style="font-weight: bold; text-decoration: underline;" id="printSig4Name"></p>
-                <p id="printSig4Title" style="font-size: 10px; color: #555;"></p>
-            </td>
-        </tr>
-    </table>
-</div>
-<div id="loadPlanModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-center justify-center p-4">
-    <div class="bg-white rounded-lg max-w-2xl w-full p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[80vh]">
-        <div class="flex items-center justify-between border-b pb-3 mb-4">
-            <h3 class="font-bold text-lg text-gray-800">📂 Saved Lesson Plans (Firebase)</h3>
-            <button onclick="closeLoadPlanModal()" class="text-gray-400 hover:text-red-500 font-bold">✖</button>
-        </div>
-        <div id="savedPlansListContainer" class="overflow-y-auto space-y-3 flex-1 pr-2">
-            <p class="text-gray-400 italic text-center py-8">Loading saved plans from Firebase...</p>
-        </div>
-        <div class="flex justify-end pt-4 border-t mt-4">
-            <button onclick="closeLoadPlanModal()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Close</button>
+    <div id="loadPlanModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[80vh]">
+            <div class="flex items-center justify-between border-b pb-3 mb-4">
+                <h3 class="font-bold text-lg text-gray-800">📂 Saved Lesson Plans (Firebase)</h3>
+                <button onclick="closeLoadPlanModal()" class="text-gray-400 hover:text-red-500 font-bold">✖</button>
+            </div>
+            <div id="savedPlansListContainer" class="overflow-y-auto space-y-3 flex-1 pr-2">
+                <p class="text-gray-400 italic text-center py-8">Loading saved plans from Firebase...</p>
+            </div>
+            <div class="flex justify-end pt-4 border-t mt-4">
+                <button onclick="closeLoadPlanModal()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Close</button>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- PRINT-ONLY CURRICULUM MAP CONTAINER (Isolated at bottom) -->
+    <div id="printDocumentWrapper" style="display: none;">
+        <div id="printHeaderBannerContainer" class="text-center mb-4">
+            <img id="printHeaderImage" src="" alt="School Header" class="max-h-20 mx-auto object-contain hidden">
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="font-size: 16px; font-weight: bold; margin: 0; padding: 0;">CURRICULUM MAP / LESSON PLAN</h2>
+            <p style="font-size: 12px; margin: 2px 0; padding: 0;">Subject: <span id="printSubject"></span> | School Year: <span id="printSY"></span></p>
+            <p style="font-size: 12px; margin: 2px 0; padding: 0;"><span id="printSemester"></span> — <span id="printQuarter"></span> (<span id="printScopeHeader"></span>)</p>
+        </div>
+
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Topic / Content</th>
+                    <th style="width: 15%;">Curriculum Standards</th>
+                    <th style="width: 15%;">Competencies & Objectives</th>
+                    <th style="width: 8%;">Time Frame</th>
+                    <th style="width: 30%;">Learning Experiences & Activities</th>
+                    <th style="width: 10%;">Materials</th>
+                    <th style="width: 10%;">Remarks</th>
+                </tr>
+            </thead>
+            <tbody id="printTableBody">
+                <!-- Dynamically populated via exportPDF() -->
+            </tbody>
+        </table>
+
+        <!-- SIGNATORIES FOOTER -->
+        <table style="width: 100%; margin-top: 40px; border-collapse: collapse; font-size: 11px;">
+            <tr>
+                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                    <p style="margin-bottom: 30px;">Prepared by:</p>
+                    <p style="font-weight: bold; text-decoration: underline;" id="printSig1Name"></p>
+                    <p id="printSig1Title" style="font-size: 10px; color: #555;"></p>
+                </td>
+                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                    <p style="margin-bottom: 30px;">Submitted to:</p>
+                    <p style="font-weight: bold; text-decoration: underline;" id="printSig2Name"></p>
+                    <p id="printSig2Title" style="font-size: 10px; color: #555;"></p>
+                </td>
+                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                    <p style="margin-bottom: 30px;">Noted by:</p>
+                    <p style="font-weight: bold; text-decoration: underline;" id="printSig3Name"></p>
+                    <p id="printSig3Title" style="font-size: 10px; color: #555;"></p>
+                </td>
+                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                    <p style="margin-bottom: 30px;">Approved by:</p>
+                    <p style="font-weight: bold; text-decoration: underline;" id="printSig4Name"></p>
+                    <p id="printSig4Title" style="font-size: 10px; color: #555;"></p>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <script type="module" src="lesson-planner.js?v=7"></script>
 </body>
 </html>
