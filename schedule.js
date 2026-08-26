@@ -171,7 +171,8 @@ window.addRow = function(type) {
     let inheritedStartTime = '';
     let inheritedEndTime = '';
 
-    const allEndInputs = document.querySelectorAll('.time-end');
+    // Specifically target the hidden input where Flatpickr stores the clean 24h mathematical time
+    const allEndInputs = document.querySelectorAll('input.time-end[type="hidden"]');
     if (allEndInputs.length > 0) {
         const lastEndInput = allEndInputs[allEndInputs.length - 1];
         if (lastEndInput && lastEndInput.value) {
@@ -179,6 +180,7 @@ window.addRow = function(type) {
         }
     } 
     
+    // Fallback if the DOM hasn't rendered inputs yet
     if (!inheritedStartTime && savedJson.length > 0) {
         const lastRow = savedJson[savedJson.length - 1];
         if (lastRow.endTime) {
@@ -186,6 +188,7 @@ window.addRow = function(type) {
         }
     }
 
+    // Automatically calculate the +50 mins based on the inherited time
     if (inheritedStartTime) {
         const [hours, minutes] = inheritedStartTime.split(':').map(Number);
         const date = new Date();
@@ -334,8 +337,10 @@ function getTableDataFromDOM() {
     const jsonData = [];
     rows.forEach(tr => {
         const type = tr.dataset.rowType;
-        const startInput = tr.querySelector('.time-start');
-        const endInput = tr.querySelector('.time-end');
+        
+        // Target Flatpickr's hidden 24h input first, fallback to standard if not active
+        const startInput = tr.querySelector('input.time-start[type="hidden"]') || tr.querySelector('.time-start');
+        const endInput = tr.querySelector('input.time-end[type="hidden"]') || tr.querySelector('.time-end');
         if (!startInput) return; 
 
         const startTime = startInput.value;
