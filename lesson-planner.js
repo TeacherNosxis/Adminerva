@@ -864,11 +864,10 @@ window.exportToWordDoc = function() {
         return;
     }
 
-    // Temporarily make it visible for extraction if hidden
     const wasHidden = printWrapper.classList.contains('hidden');
     if (wasHidden) printWrapper.classList.remove('hidden');
 
-    // Wrap content in a clean HTML structure styled for Word
+    // Word XML style block to force Landscape orientation
     const htmlContent = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office" 
               xmlns:w="urn:schemas-microsoft-com:office:word" 
@@ -877,27 +876,30 @@ window.exportToWordDoc = function() {
             <meta charset="utf-8">
             <title>Lesson Plan</title>
             <style>
+                @page WordSection1 {
+                    size: 13in 8.5in; /* Folio / Landscape dimensions */
+                    margin: 1in;
+                    mso-page-orientation: landscape;
+                }
+                div.WordSection1 { page: WordSection1; }
                 body { font-family: 'Arial', sans-serif; font-size: 11pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
                 th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
                 th { background-color: #f2f2f2; text-align: center; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
-                .text-center { text-align: center; }
             </style>
         </head>
         <body>
-            ${printWrapper.innerHTML}
+            <div class="WordSection1">
+                ${printWrapper.innerHTML}
+            </div>
         </body>
         </html>
     `;
 
     if (wasHidden) printWrapper.classList.add('hidden');
 
-    // Create a Blob and trigger a download as a Word-compatible .doc file
-    const blob = new Blob(['\ufeff' + htmlContent], {
-        type: 'application/msword'
-    });
-    
+    const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
     const subjectTitle = document.getElementById('lpSubjectTitle')?.value || "Lesson_Plan";
     const filename = `${subjectTitle.replace(/[^a-zA-Z0-9]/g, "_")}_LessonPlan.doc`;
     
