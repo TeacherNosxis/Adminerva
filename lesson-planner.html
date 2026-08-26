@@ -7,42 +7,44 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
 @media print {
-    @page {
-        size: 13in 8.5in landscape; /* Folio Landscape */
-        margin: 0.75in;
+    /* Hide everything on the page except the print wrapper */
+    body * {
+        visibility: hidden !important;
     }
-    body {
-        background: white !important;
-        color: black !important;
-        font-family: Arial, sans-serif;
-        display: block !important;     /* Prevents flexbox print crash */
-        height: auto !important;       /* Prevents height calculation crash */
-        min-height: 0 !important; 
+    #printDocumentWrapper, #printDocumentWrapper * {
+        visibility: visible !important;
     }
-    /* Hide navigation, buttons, and configuration UI during print */
-    nav, .bg-white.p-6.rounded-lg.shadow-sm, button, .border-t.bg-white {
-        display: none !important;
-    }
-    /* Show print-only curriculum map container */
     #printDocumentWrapper {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
         display: block !important;
-        width: 100%;
-        padding: 0.25in; /* Adds internal breathing room */
     }
-    .print-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 11px;
+
+    /* Remove extra spacing from centered header titles */
+    #printDocumentWrapper h1, 
+    #printDocumentWrapper h2, 
+    #printDocumentWrapper h3, 
+    #printDocumentWrapper .text-center {
+        margin-top: 0 !important;
+        margin-bottom: 2px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: 1.2 !important;
     }
-    .print-table th, .print-table td {
-        border: 1px solid black;
-        padding: 6px;
-        vertical-align: top;
+
+    /* Ensure table column headers appear cleanly and avoid unwanted repeating quirks */
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
     }
-    .print-table th {
-        background-color: #b9d1ea !important; /* Matches your blue table header */
-        text-align: center;
-        font-weight: bold;
+    thead {
+        display: table-header-group;
+    }
+    tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
     }
 }
 #printDocumentWrapper { display: none; }
@@ -191,6 +193,9 @@
             </div>
             
             <div class="p-4 border-t bg-white flex justify-end gap-3">
+                <button onclick="exportToWordDoc()" class="bg-green-600 text-white font-bold px-4 py-2 rounded text-xs hover:bg-green-700 transition">
+    📄 Export to Word (.doc)
+</button>
                 <button onclick="saveLessonPlan()" class="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded shadow-sm hover:bg-gray-300 transition flex items-center gap-2">
                     <span>💾</span> Save Draft
                 </button>

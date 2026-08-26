@@ -751,7 +751,7 @@ window.exportPDF = function() {
     } else if (headerContainer) {
         headerContainer.classList.add('hidden');
     }
-    
+
     if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
         return alert("Please generate a lesson plan first before printing.");
     }
@@ -856,4 +856,57 @@ window.saveAndPrint = async function() {
     if (isSaved) {
         window.exportPDF();
     }
+};
+window.exportToWordDoc = function() {
+    const printWrapper = document.getElementById('printDocumentWrapper');
+    if (!printWrapper || printWrapper.innerHTML.trim() === "") {
+        alert("Please generate or load a lesson plan first.");
+        return;
+    }
+
+    // Temporarily make it visible for extraction if hidden
+    const wasHidden = printWrapper.classList.contains('hidden');
+    if (wasHidden) printWrapper.classList.remove('hidden');
+
+    // Wrap content in a clean HTML structure styled for Word
+    const htmlContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+              xmlns:w="urn:schemas-microsoft-com:office:word" 
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+            <meta charset="utf-8">
+            <title>Lesson Plan</title>
+            <style>
+                body { font-family: 'Arial', sans-serif; font-size: 11pt; color: #333; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
+                th { background-color: #f2f2f2; text-align: center; }
+                img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
+                .text-center { text-align: center; }
+            </style>
+        </head>
+        <body>
+            ${printWrapper.innerHTML}
+        </body>
+        </html>
+    `;
+
+    if (wasHidden) printWrapper.classList.add('hidden');
+
+    // Create a Blob and trigger a download as a Word-compatible .doc file
+    const blob = new Blob(['\ufeff' + htmlContent], {
+        type: 'application/msword'
+    });
+    
+    const subjectTitle = document.getElementById('lpSubjectTitle')?.value || "Lesson_Plan";
+    const filename = `${subjectTitle.replace(/[^a-zA-Z0-9]/g, "_")}_LessonPlan.doc`;
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };

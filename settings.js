@@ -96,6 +96,7 @@ window.switchAdminTab = function(tabId) {
 // ----------------------------------------------------
 window.loadLessonReviewSettings = async function() {
     if (!db) return;
+    
 
     try {
         const docRef = doc(db, "global_settings", "lesson_review_config");
@@ -134,7 +135,8 @@ window.loadLessonReviewSettings = async function() {
                 }
             }
 
-            // Sync cache back to localStorage for fast access during printing
+            } else {
+                // Sync cache back to localStorage for fast access during printing
             if (headerBase64) localStorage.setItem('lessonReview_headerImage', headerBase64);
             if (data.sig_teacher) localStorage.setItem('lessonReview_sigTeacher', data.sig_teacher);
             if (data.sig_teacher_title) localStorage.setItem('lessonReview_sigTeacherTitle', data.sig_teacher_title);
@@ -144,7 +146,7 @@ window.loadLessonReviewSettings = async function() {
             if (data.sig_grade_coord_title) localStorage.setItem('lessonReview_sigGradeCoordTitle', data.sig_grade_coord_title);
             if (data.sig_principal) localStorage.setItem('lessonReview_sigPrincipal', data.sig_principal);
             if (data.sig_principal_title) localStorage.setItem('lessonReview_sigPrincipalTitle', data.sig_principal_title);
-        }
+            }
     } catch (e) {
         console.error("Error loading settings from cloud:", e);
     }
