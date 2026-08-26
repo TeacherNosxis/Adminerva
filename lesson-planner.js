@@ -22,75 +22,20 @@ const bibleVerses = [
     "In all your ways submit to him, and he will make your paths straight. - Proverbs 3:6",
     "Blessed are those who find wisdom, those who gain understanding. - Proverbs 3:13",
     "Wisdom is the principal thing; therefore get wisdom: and with all thy getting get understanding. - Proverbs 4:7",
-    "Get wisdom, get understanding; do not forget my words or turn away from them. - Proverbs 4:5",
     "The way of a fool seems right to them, but the wise listen to advice. - Proverbs 12:15",
-    "He who walks with wise men will be wise, but the companion of fools will suffer harm. - Proverbs 13:20",
-    "The plans of the diligent lead to profit as surely as haste leads to poverty. - Proverbs 21:5",
+    "Plans fail for lack of counsel, but with many advisers they succeed. - Proverbs 15:22",
     "Commit to the Lord whatever you do, and he will establish your plans. - Proverbs 16:3",
-    "Teach us to number our days, that we may gain a heart of wisdom. - Psalm 90:12",
     "Your word is a lamp for my feet, a light on my path. - Psalm 119:105",
-    "I will instruct you and teach you in the way you should go; I will counsel you with my loving eye on you. - Psalm 32:8",
     "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters. - Colossians 3:23"
 ];
 
+// ==========================================
+// INITIALIZATION
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    loadLibraryFolders();
     initFirebase();
-    setupDateCalculator(); // Start the auto-calculator
+    setupDateCalculator();
 });
-
-function setupDateCalculator() {
-    const syInput = document.getElementById('lpSchoolYear');
-    const monthSelect = document.getElementById('lpMonth');
-    const weekSelect = document.getElementById('lpWeek');
-    const dateRangeInput = document.getElementById('lpDateRange');
-
-    if (!syInput || !monthSelect || !weekSelect || !dateRangeInput) return;
-
-    function calculateDateRange() {
-        const sy = syInput.value.trim(); 
-        const monthName = monthSelect.value;
-        const weekNum = parseInt(weekSelect.value.replace("Week ", "")) - 1;
-
-        if (!sy.includes("-")) return;
-        const startYear = parseInt(sy.split('-')[0]);
-        const endYear = parseInt(sy.split('-')[1]);
-
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const monthIdx = months.indexOf(monthName);
-
-        // Academic year logic: Aug-Dec use startYear, Jan-May use endYear
-        const year = (monthIdx >= 0 && monthIdx <= 6) ? endYear : startYear;
-
-        // Find the 1st day of the selected month
-        const firstDayOfMonth = new Date(year, monthIdx, 1);
-        const dayOfWeek = firstDayOfMonth.getDay(); // 0 is Sun, 1 is Mon, 6 is Sat
-
-        // Find the Monday of Week 1
-        // If the 1st is a Sat/Sun, Week 1 starts on the NEXT Monday.
-        // If the 1st is Mon-Fri, Week 1 starts on the Monday of THAT week (which might bleed into the previous month).
-        const diff = (dayOfWeek === 0 || dayOfWeek === 6) ? (dayOfWeek === 0 ? 1 : 2) : (1 - dayOfWeek);
-        const firstMonday = new Date(year, monthIdx, 1 + diff);
-
-        // Add the weeks to find the target Monday and Friday
-        const targetMonday = new Date(firstMonday);
-        targetMonday.setDate(firstMonday.getDate() + (weekNum * 7));
-        
-        const targetFriday = new Date(targetMonday);
-        targetFriday.setDate(targetMonday.getDate() + 4);
-
-        const formatOpts = { month: 'short', day: 'numeric' };
-        dateRangeInput.value = `${targetMonday.toLocaleDateString('en-US', formatOpts)} - ${targetFriday.toLocaleDateString('en-US', formatOpts)}`;
-    }
-
-    // Tell the system to recalculate whenever you change the year, month, or week!
-    syInput.addEventListener('input', calculateDateRange);
-    monthSelect.addEventListener('change', calculateDateRange);
-    weekSelect.addEventListener('change', calculateDateRange);
-
-    // Run it once immediately on page load
-    calculateDateRange();
-}
 
 function initFirebase() {
     const configStr = localStorage.getItem('repoReview_firebase_config');
@@ -99,11 +44,16 @@ function initFirebase() {
         const firebaseConfig = JSON.parse(configStr);
         const app = initializeApp(firebaseConfig);
         db = getFirestore(app);
+        
+        loadLibraryFolders(); // Fetch cloud folders once DB is ready
     } catch (e) {
         console.error("Firebase Initialization Failed:", e);
     }
 }
 
+// ==========================================
+// UI & CALENDAR HELPERS
+// ==========================================
 window.showLoader = function() { 
     document.getElementById('globalLoader').classList.replace('hidden', 'flex'); 
     elapsedSeconds = 0;
@@ -134,29 +84,93 @@ window.hideLoader = function() {
     clearInterval(verseInterval);
 };
 
-function loadLibraryFolders() {
-    const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
+function setupDateCalculator() {
+    const syInput = document.getElementById('lpSchoolYear');
+    const monthSelect = document.getElementById('lpMonth');
+    const weekSelect = document.getElementById('lpWeek');
+    const dateRangeInput = document.getElementById('lpDateRange');
+
+    if (!syInput || !monthSelect || !weekSelect || !dateRangeInput) return;
+
+    function calculateDateRange() {
+        const sy = syInput.value.trim(); 
+        const monthName = monthSelect.value;
+        const weekNum = parseInt(weekSelect.value.replace("Week ", "")) - 1;
+
+        if (!sy.includes("-")) return;
+        const startYear = parseInt(sy.split('-')[0]);
+        const endYear = parseInt(sy.split('-')[1]);
+
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const monthIdx = months.indexOf(monthName);
+
+        const year = (monthIdx >= 0 && monthIdx <= 6) ? endYear : startYear;
+
+        const firstDayOfMonth = new Date(year, monthIdx, 1);
+        const dayOfWeek = firstDayOfMonth.getDay(); 
+        const diff = (dayOfWeek === 0 || dayOfWeek === 6) ? (dayOfWeek === 0 ? 1 : 2) : (1 - dayOfWeek);
+        
+        const firstMonday = new Date(year, monthIdx, 1 + diff);
+        const targetMonday = new Date(firstMonday);
+        targetMonday.setDate(firstMonday.getDate() + (weekNum * 7));
+        
+        const targetFriday = new Date(targetMonday);
+        targetFriday.setDate(targetMonday.getDate() + 4);
+
+        const formatOpts = { month: 'short', day: 'numeric' };
+        dateRangeInput.value = `${targetMonday.toLocaleDateString('en-US', formatOpts)} - ${targetFriday.toLocaleDateString('en-US', formatOpts)}`;
+    }
+
+    syInput.addEventListener('input', calculateDateRange);
+    monthSelect.addEventListener('change', calculateDateRange);
+    weekSelect.addEventListener('change', calculateDateRange);
+    calculateDateRange();
+}
+
+// ==========================================
+// CLOUD LIBRARY FETCHING
+// ==========================================
+async function loadLibraryFolders() {
     const container = document.getElementById('libraryFolderContainer');
     if(!container) return;
-    container.innerHTML = '';
 
-    if (libraryData.length === 0) {
-        container.innerHTML = '<div class="text-xs text-gray-500 italic">No folders found. Go to the Reference Library first.</div>';
+    if (!db) {
+        container.innerHTML = '<div class="text-xs text-red-500 italic">Firebase not ready.</div>';
         return;
     }
 
-    libraryData.forEach(folder => {
-        const docCount = folder.documents ? folder.documents.length : 0;
-        container.insertAdjacentHTML('beforeend', `
-            <label class="flex items-center gap-2 cursor-pointer group">
-                <input type="checkbox" value="${folder.id}" class="folder-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 bg-white">
-                <span class="text-sm font-bold text-blue-900 group-hover:text-blue-700 transition">📁 ${folder.name} <span class="text-[10px] text-gray-500 font-normal">(${docCount} docs)</span></span>
-            </label>
-        `);
-    });
+    container.innerHTML = '<div class="text-xs text-gray-500 italic">Fetching folders from cloud...</div>';
+
+    try {
+        const snap = await getDocs(collection(db, "reference_folders"));
+        const libraryData = [];
+        snap.forEach(d => libraryData.push({ id: d.id, ...d.data() }));
+        
+        localStorage.setItem('lessonReview_library', JSON.stringify(libraryData)); 
+        
+        container.innerHTML = '';
+        if (libraryData.length === 0) {
+            container.innerHTML = '<div class="text-xs text-gray-500 italic">No folders found in Firebase.</div>';
+            return;
+        }
+
+        libraryData.forEach(folder => {
+            const docCount = folder.documents ? folder.documents.length : 0;
+            container.insertAdjacentHTML('beforeend', `
+                <label class="flex items-center gap-2 cursor-pointer group">
+                    <input type="checkbox" value="${folder.id}" class="folder-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 bg-white">
+                    <span class="text-sm font-bold text-blue-900 group-hover:text-blue-700 transition">📁 ${folder.name} <span class="text-[10px] text-gray-500 font-normal">(${docCount} docs)</span></span>
+                </label>
+            `);
+        });
+    } catch (e) {
+        container.innerHTML = `<div class="text-xs text-red-500 italic">Failed to load library: ${e.message}</div>`;
+    }
 }
 
-// --- LOOK-BACK ENGINE: Fetch Last Week's Curriculum ---
+// ==========================================
+// LOOK-BACK ENGINE (Time Traveler)
+// ==========================================
 async function fetchPreviousPlan(grade, subject, currentMonth, currentWeek) {
     if(!db) return null;
     const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
@@ -165,7 +179,7 @@ async function fetchPreviousPlan(grade, subject, currentMonth, currentWeek) {
     let prevWeek = "";
     
     if (currentWeek === "Week 1") {
-        if (mIdx <= 0) return null; // Can't go back further than August Week 1
+        if (mIdx <= 0) return null; 
         prevMonth = months[mIdx - 1];
     } else {
         let wNum = parseInt(currentWeek.replace("Week ", ""));
@@ -181,7 +195,6 @@ async function fetchPreviousPlan(grade, subject, currentMonth, currentWeek) {
         } catch(e) { return null; }
     };
 
-    // If it's week 1, try checking week 5 of last month, if not there, try week 4
     if (currentWeek === "Week 1" && mIdx > 0) {
         let plan = await tryFetch(prevMonth, "Week 5");
         if (!plan) plan = await tryFetch(prevMonth, "Week 4");
@@ -191,12 +204,12 @@ async function fetchPreviousPlan(grade, subject, currentMonth, currentWeek) {
     }
 }
 
-// --- STEP 1: SMART PRE-CHECK MODAL LOGIC ---
+// ==========================================
+// AI GENERATOR WORKFLOW
+// ==========================================
 window.initiateGenerationFlow = async function() {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
-    const dateRange = document.getElementById('lpDateRange').value;
-    cachedScope = `${targetWeek} of ${targetMonth} (${dateRange}) - ${targetQuarter}`;
     if (!gemKey) return alert("Missing Gemini API Key in Global Settings.");
 
     const selectedCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
@@ -218,14 +231,18 @@ window.initiateGenerationFlow = async function() {
 
     const subject = document.getElementById('lpSubjectTitle').value || "Subject";
     cachedSchedule = localStorage.getItem('lessonReview_schedule') || "No schedule provided.";
+    
     const targetMonth = document.getElementById('lpMonth').value;
     const targetWeek = document.getElementById('lpWeek').value;
     const targetQuarter = document.getElementById('lpQuarter').value;
+    const dateRangeEl = document.getElementById('lpDateRange');
+    const dateRange = dateRangeEl ? dateRangeEl.value : "";
+    
     currentTargetGrade = document.getElementById('lpGradeLevel').value;
-    cachedScope = `${targetWeek} of ${targetMonth} (${targetQuarter})`;
+    cachedScope = `${targetWeek} of ${targetMonth} (${dateRange}) - ${targetQuarter}`;
     cachedCustomInstructions = document.getElementById('lpCustomInstructions').value.trim();
 
-    // 🔥 AUTOMATIC LOOK-BACK FETCH 🔥
+    // Fetch last week's plan for AI context
     cachedPreviousPlan = await fetchPreviousPlan(currentTargetGrade, subject, targetMonth, targetWeek);
 
     if (!cachedCustomInstructions) {
@@ -237,11 +254,10 @@ window.initiateGenerationFlow = async function() {
 
     try {
         const preCheckPrompt = `
-You are an expert curriculum assistant. The user has provided basic configuration (${currentTargetGrade}, ${cachedScope}) and selected reference files. They also entered Custom Instructions.
-Review ONLY the Custom Instructions. 
-- Do NOT ask for grade level, subject, or standard topics, because those are already provided by the configuration and reference folders.
-- If the custom instructions are clear and actionable, respond with EXACTLY the word: "READY".
-- If the custom instructions are ambiguous or missing specific details about what they want changed in the lab/sessions, ask a concise clarifying question.
+You are an expert curriculum assistant. Review ONLY the Custom Instructions. 
+- Do NOT ask for grade level or subject topics, as those are handled automatically.
+- If the custom instructions are clear and actionable (like noting suspensions or exams), respond with EXACTLY the word: "READY".
+- If the instructions are ambiguous, ask a concise clarifying question.
 
 Target Grade & Scope: ${currentTargetGrade}, ${cachedScope}
 Custom Instructions: ${cachedCustomInstructions}
@@ -253,10 +269,8 @@ Custom Instructions: ${cachedCustomInstructions}
             body: JSON.stringify({ contents: [{ parts: [{ text: preCheckPrompt }] }] })
         });
 
-        if (!response.ok) {
-            const errBody = await response.text();
-            throw new Error(`Pre-check failed (${response.status}): ${errBody}`);
-        }
+        if (!response.ok) throw new Error(`Pre-check failed (${response.status})`);
+        
         const result = await response.json();
         const aiReply = result.candidates[0].content.parts[0].text.trim();
 
@@ -271,7 +285,7 @@ Custom Instructions: ${cachedCustomInstructions}
 
     } catch (e) {
         window.hideLoader();
-        executeFinalGeneration("");
+        executeFinalGeneration(""); // Force proceed if pre-check fails
     }
 };
 
@@ -285,7 +299,6 @@ window.submitClarificationAndProceed = function() {
     executeFinalGeneration(userResponse);
 };
 
-// --- STEP 2: EXECUTE FINAL GENERATION ---
 async function executeFinalGeneration(userClarification) {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
@@ -309,7 +322,6 @@ async function executeFinalGeneration(userClarification) {
 3. SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".`;
     }
 
-    // 🔥 AUTOMATIC CONTEXT INJECTION (If previous plan exists) 🔥
     let lookbackContext = "";
     if (cachedPreviousPlan) {
         lookbackContext = `
@@ -337,14 +349,19 @@ ${gradeSpecificRules}
    - "competencies" and "objectives" MUST be unique per session.
    - "learning_activities" MUST be heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb.
    - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
-   - "evaluation" MUST reference a 10-item Quipper quiz (unless overridden by custom lab instructions).
-   - SCHEDULE MAPPING: Map the provided Teacher Schedule slots into the "remarks" field. Use the Target Scope dates and School Year to determine the exact date for each day of the week. Format the remarks EXACTLY like this for every section scheduled on that day:
-     [Section Name]
-     [Session Number]
-     [Full Date, e.g., August 31, 2026]
-     [Time Slot]
+   - "evaluation" MUST reference a 10-item Quipper quiz (unless overridden by custom instructions).
+   - SCHEDULE MAPPING (CRITICAL NON-LINEAR MAPPING): Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
+     * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6", even if it happens on a Monday.
+     * RULE B: Map the 1-hour (or 50-min) blocks sequentially to "Session 1", "Session 2", and "Session 3" for the remaining days.
+     * RULE C: Use the Target Scope dates to determine the exact calendar date. Format the remarks EXACTLY like this for every section:
+       [Section Name]
+       [Session Name/Number]
+       [Full Date, e.g., August 31, 2026]
+       [Time Slot]
+       [Specific Suspension/Interruption Dates if applicable]
      
-     (If multiple sections are taught in one day, list them sequentially separated by a blank line).
+     (If multiple sections are taught in one day for that session type, list them sequentially separated by a blank line).
+     
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted "learning_activities". Set all other fields to empty strings "".
 ${lookbackContext}
@@ -434,6 +451,9 @@ ${cachedCompiledText.substring(0, 25000)}
     }
 }
 
+// ==========================================
+// RENDER UI
+// ==========================================
 function renderOverview() {
     const container = document.getElementById('weeklyOverviewContainer');
     if (!currentWeeklyOverview || !container) return;
@@ -546,7 +566,6 @@ function renderOutput() {
         container.insertAdjacentHTML('beforeend', html);
     });
 
-    // Add event listeners to textareas so manual edits sync back into `currentPlan` JSON
     document.querySelectorAll('.session-input').forEach(input => {
         input.addEventListener('input', (e) => {
             const idx = e.target.getAttribute('data-idx');
@@ -557,9 +576,8 @@ function renderOutput() {
 }
 
 // ==========================================
-// ACTION BUTTONS: SMART SAVE, LOAD, DELETE & PRINT
+// ACTION BUTTONS: SAVE, LOAD, DELETE & PRINT
 // ==========================================
-
 window.saveLessonPlan = async function() {
     if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
         alert("Please generate a lesson plan first before saving.");
@@ -574,6 +592,7 @@ window.saveLessonPlan = async function() {
     const grade = currentTargetGrade || "Grade";
     const month = document.getElementById('lpMonth').value;
     const week = document.getElementById('lpWeek').value;
+    const dateRangeEl = document.getElementById('lpDateRange');
     
     const safeDocId = `${grade}_${subject}_${month}_${week}`.replace(/[^a-zA-Z0-9_]/g, "");
 
@@ -591,7 +610,7 @@ window.saveLessonPlan = async function() {
             quarter: document.getElementById('lpQuarter').value,
             month: month,
             week: week,
-            date_range: document.getElementById('lpDateRange').value,
+            date_range: dateRangeEl ? dateRangeEl.value : "",
             grade_level: grade,
             weekly_overview: currentWeeklyOverview,
             sessions: currentPlan,
@@ -697,7 +716,10 @@ window.loadSpecificPlan = function(planData) {
     if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
     if(planData.month) document.getElementById('lpMonth').value = planData.month;
     if(planData.week) document.getElementById('lpWeek').value = planData.week;
-    document.getElementById('lpDateRange').value = planData.date_range || '';
+    
+    const dateRangeEl = document.getElementById('lpDateRange');
+    if (dateRangeEl && planData.date_range) dateRangeEl.value = planData.date_range;
+    
     if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
 
     renderOverview();
@@ -720,9 +742,9 @@ window.exportPDF = function() {
     document.getElementById('printSemester').textContent = document.getElementById('lpSemester').value || "SEMESTER";
     
     const scopeWeek = document.getElementById('lpWeek').value;
-    const scopeMonth = document.getElementById('lpMonth').value;const dateRange = document.getElementById('lpDateRange').value;
-    
-    // This will print: "Week 5 of August (Aug 31 - Sept 4)"
+    const scopeMonth = document.getElementById('lpMonth').value;
+    const dateRangeEl = document.getElementById('lpDateRange');
+    const dateRange = dateRangeEl ? dateRangeEl.value : "";
     document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth} ${dateRange ? '(' + dateRange + ')' : ''}`;
 
     document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "Teacher Name";

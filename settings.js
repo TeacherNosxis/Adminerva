@@ -284,37 +284,13 @@ function renderSectionsManagerTable() {
 window.openSectionsModal = function() {
     renderSectionsManagerTable();
     const modal = document.getElementById('sectionsModal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) modal.classList.replace('hidden', 'flex');
+    else alert("Sections Modal HTML is missing!");
 };
 
 window.closeSectionsModal = function() {
     const modal = document.getElementById('sectionsModal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.addNewSection = async function() {
-    const input = document.getElementById('newSectionInput');
-    if (!input) return;
-    const name = input.value.trim();
-    if (!name) return alert("Please type a section name.");
-
-    if (allSections.some(s => s.name.toLowerCase() === name.toLowerCase())) {
-        return alert("This section already exists.");
-    }
-
-    if (!db) return alert("Firebase is not connected.");
-
-    window.showLoader("Saving new section to Firebase...");
-    try {
-        const docRef = await addDoc(collection(db, "sections"), { name });
-        allSections.push({ id: docRef.id, name });
-        input.value = '';
-        populateSectionDropdowns();
-    } catch (e) {
-        alert("Failed to add section. Have you created the Firestore Database in the console? Error: " + e.message);
-    } finally {
-        window.hideLoader();
-    }
+    if (modal) modal.classList.replace('flex', 'hidden');
 };
 
 window.deleteSectionDoc = async function(id, name) {
@@ -423,7 +399,8 @@ window.openAddStudentModal = function() {
     }
 
     const modal = document.getElementById('studentModal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) modal.classList.replace('hidden', 'flex');
+    else alert("Student Modal HTML is missing!");
 };
 
 window.editStudent = function(docId) {
@@ -444,12 +421,13 @@ window.editStudent = function(docId) {
     safeSet('modalStudentRepo', student.repoUrl || "");
 
     const modal = document.getElementById('studentModal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) modal.classList.replace('hidden', 'flex');
+    else alert("Student Modal HTML is missing!");
 };
 
 window.closeStudentModal = function() {
     const modal = document.getElementById('studentModal');
-    if (modal) modal.classList.add('hidden');
+    if (modal) modal.classList.replace('flex', 'hidden');
 };
 
 window.saveStudentForm = async function(event) {
