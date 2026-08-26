@@ -14,16 +14,21 @@ let activeTemplateId = null;
 let editingTemplate = null;
 
 window.showLoader = function(msg = "Processing...") {
-    document.getElementById('loaderMessage').textContent = msg;
+    const msgEl = document.getElementById('loaderMessage');
+    if (msgEl) msgEl.textContent = msg;
     const loader = document.getElementById('globalLoader');
-    loader.classList.remove('hidden');
-    loader.classList.add('flex');
+    if (loader) {
+        loader.classList.remove('hidden');
+        loader.classList.add('flex');
+    }
 };
 
 window.hideLoader = function() {
     const loader = document.getElementById('globalLoader');
-    loader.classList.add('hidden');
-    loader.classList.remove('flex');
+    if (loader) {
+        loader.classList.add('hidden');
+        loader.classList.remove('flex');
+    }
 };
 
 // ==========================================
@@ -31,7 +36,7 @@ window.hideLoader = function() {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     loadSecuritySettings();
-    loadLessonReviewSettings(); // Load LessonReview settings
+    loadLessonReviewSettings(); 
     initFirebase();
     initRubrics();
 
@@ -46,9 +51,10 @@ window.switchSettingsTab = function(tabName) {
     ['repo', 'lesson'].forEach(t => {
         const pane = document.getElementById('settingsTab-' + t);
         const btn = document.getElementById('settingsTabBtn-' + t);
+        if (!pane || !btn) return;
+        
         if (t === tabName) {
             pane.classList.remove('hidden');
-            // Assuming purple for RepoReview, blue for LessonReview based on previous styling
             btn.className = `flex-1 py-4 text-sm font-bold border-b-2 transition ${tabName === 'repo' ? 'border-purple-600 text-purple-700 bg-purple-50' : 'border-blue-600 text-blue-700 bg-blue-50'}`;
         } else {
             pane.classList.add('hidden');
@@ -59,46 +65,57 @@ window.switchSettingsTab = function(tabName) {
 
 window.switchAdminTab = function(tabId) {
     ['security', 'students', 'rubrics'].forEach(id => {
-        document.getElementById('tab-' + id).classList.add('hidden');
-        document.getElementById('tab-' + id).classList.remove('block');
+        const pane = document.getElementById('tab-' + id);
         const btn = document.getElementById('tabBtn-' + id);
+        if (!pane || !btn) return;
+
+        pane.classList.add('hidden');
+        pane.classList.remove('block');
         btn.classList.remove('tab-active'); 
         btn.classList.add('tab-inactive');
     });
-    document.getElementById('tab-' + tabId).classList.remove('hidden');
-    document.getElementById('tab-' + tabId).classList.add('block');
+    
+    const activePane = document.getElementById('tab-' + tabId);
     const activeBtn = document.getElementById('tabBtn-' + tabId);
-    activeBtn.classList.add('tab-active'); 
-    activeBtn.classList.remove('tab-inactive');
+    if (activePane && activeBtn) {
+        activePane.classList.remove('hidden');
+        activePane.classList.add('block');
+        activeBtn.classList.add('tab-active'); 
+        activeBtn.classList.remove('tab-inactive');
+    }
 };
 
 // ----------------------------------------------------
 // LESSONREVIEW SETTINGS LOGIC
 // ----------------------------------------------------
 function loadLessonReviewSettings() {
-    document.getElementById('setTeacherName').value = localStorage.getItem('lessonReview_teacherName') || "";
-    document.getElementById('setSubjectTitle').value = localStorage.getItem('lessonReview_subjectTitle') || "";
-    document.getElementById('sigTeacher').value = localStorage.getItem('lessonReview_sigTeacher') || "Computer Teacher";
-    document.getElementById('sigTeacherTitle').value = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
-    document.getElementById('sigSubjectCoord').value = localStorage.getItem('lessonReview_sigSubjectCoord') || "Mr. Mer Ryanson Bañez";
-    document.getElementById('sigSubjectCoordTitle').value = localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "ICT Subject Coordinator";
-    document.getElementById('sigGradeCoord').value = localStorage.getItem('lessonReview_sigGradeCoord') || "Mr. Darwin S. Mijares";
-    document.getElementById('sigGradeCoordTitle').value = localStorage.getItem('lessonReview_sigGradeCoordTitle') || "Grade 11 Coordinator";
-    document.getElementById('sigPrincipal').value = localStorage.getItem('lessonReview_sigPrincipal') || "Mrs. Lucille Ariette A. Bautista";
-    document.getElementById('sigPrincipalTitle').value = localStorage.getItem('lessonReview_sigPrincipalTitle') || "JHS/SHS Principal";
+    const safeSet = (id, val) => { if(document.getElementById(id)) document.getElementById(id).value = val; };
+    
+    safeSet('setTeacherName', localStorage.getItem('lessonReview_teacherName') || "");
+    safeSet('setSubjectTitle', localStorage.getItem('lessonReview_subjectTitle') || "");
+    safeSet('sigTeacher', localStorage.getItem('lessonReview_sigTeacher') || "Computer Teacher");
+    safeSet('sigTeacherTitle', localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher");
+    safeSet('sigSubjectCoord', localStorage.getItem('lessonReview_sigSubjectCoord') || "Mr. Mer Ryanson Bañez");
+    safeSet('sigSubjectCoordTitle', localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "ICT Subject Coordinator");
+    safeSet('sigGradeCoord', localStorage.getItem('lessonReview_sigGradeCoord') || "Mr. Darwin S. Mijares");
+    safeSet('sigGradeCoordTitle', localStorage.getItem('lessonReview_sigGradeCoordTitle') || "Grade 11 Coordinator");
+    safeSet('sigPrincipal', localStorage.getItem('lessonReview_sigPrincipal') || "Mrs. Lucille Ariette A. Bautista");
+    safeSet('sigPrincipalTitle', localStorage.getItem('lessonReview_sigPrincipalTitle') || "JHS/SHS Principal");
 }
 
 window.saveLessonReviewSettings = function() {
-    localStorage.setItem('lessonReview_teacherName', document.getElementById('setTeacherName').value.trim());
-    localStorage.setItem('lessonReview_subjectTitle', document.getElementById('setSubjectTitle').value.trim());
-    localStorage.setItem('lessonReview_sigTeacher', document.getElementById('sigTeacher').value.trim());
-    localStorage.setItem('lessonReview_sigTeacherTitle', document.getElementById('sigTeacherTitle').value.trim());
-    localStorage.setItem('lessonReview_sigSubjectCoord', document.getElementById('sigSubjectCoord').value.trim());
-    localStorage.setItem('lessonReview_sigSubjectCoordTitle', document.getElementById('sigSubjectCoordTitle').value.trim());
-    localStorage.setItem('lessonReview_sigGradeCoord', document.getElementById('sigGradeCoord').value.trim());
-    localStorage.setItem('lessonReview_sigGradeCoordTitle', document.getElementById('sigGradeCoordTitle').value.trim());
-    localStorage.setItem('lessonReview_sigPrincipal', document.getElementById('sigPrincipal').value.trim());
-    localStorage.setItem('lessonReview_sigPrincipalTitle', document.getElementById('sigPrincipalTitle').value.trim());
+    const safeGet = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : "";
+    
+    localStorage.setItem('lessonReview_teacherName', safeGet('setTeacherName'));
+    localStorage.setItem('lessonReview_subjectTitle', safeGet('setSubjectTitle'));
+    localStorage.setItem('lessonReview_sigTeacher', safeGet('sigTeacher'));
+    localStorage.setItem('lessonReview_sigTeacherTitle', safeGet('sigTeacherTitle'));
+    localStorage.setItem('lessonReview_sigSubjectCoord', safeGet('sigSubjectCoord'));
+    localStorage.setItem('lessonReview_sigSubjectCoordTitle', safeGet('sigSubjectCoordTitle'));
+    localStorage.setItem('lessonReview_sigGradeCoord', safeGet('sigGradeCoord'));
+    localStorage.setItem('lessonReview_sigGradeCoordTitle', safeGet('sigGradeCoordTitle'));
+    localStorage.setItem('lessonReview_sigPrincipal', safeGet('sigPrincipal'));
+    localStorage.setItem('lessonReview_sigPrincipalTitle', safeGet('sigPrincipalTitle'));
     
     alert("LessonReview export defaults saved successfully!");
 };
@@ -107,70 +124,70 @@ window.saveLessonReviewSettings = function() {
 // DATABASE & SECURITY LOGIC
 // ----------------------------------------------------
 function loadSecuritySettings() {
-    document.getElementById('adminGithubToken').value = localStorage.getItem('repoReview_github_token') || "";
-    document.getElementById('adminGeminiKey').value = localStorage.getItem('repoReview_gemini_token') || "";
-    
-    // CRITICAL FIX: The default fallback is now correctly gemini-1.5-flash
-    document.getElementById('adminAiModel').value = localStorage.getItem('repoReview_ai_model') || "gemini-1.5-flash";
+    const safeSet = (id, val) => { if(document.getElementById(id)) document.getElementById(id).value = val; };
+
+    safeSet('adminGithubToken', localStorage.getItem('repoReview_github_token') || "");
+    safeSet('adminGeminiKey', localStorage.getItem('repoReview_gemini_token') || "");
+    safeSet('adminAiModel', localStorage.getItem('repoReview_ai_model') || "gemini-1.5-flash");
     
     const fbConfig = localStorage.getItem('repoReview_firebase_config');
     if (fbConfig) {
-        document.getElementById('firebaseConfigInput').value = fbConfig;
+        safeSet('firebaseConfigInput', fbConfig);
     }
 }
 
 window.saveSecuritySettings = async function() {
-    // 1. Grab ALL FOUR inputs from your HTML
-    const firebaseInput = document.getElementById('firebaseConfigInput').value.trim();
-    const githubInput = document.getElementById('adminGithubToken').value.trim();
-    const apiKeyInput = document.getElementById('adminGeminiKey').value.trim();
-    const aiModelInput = document.getElementById('adminAiModel').value.trim();
+    const safeGet = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : "";
 
-    if (!apiKeyInput || !aiModelInput) {
-        return alert("Please enter both a Gemini API Key and an AI Model name.");
-    }
+    const firebaseInput = safeGet('firebaseConfigInput');
+    const githubInput = safeGet('adminGithubToken');
+    const apiKeyInput = safeGet('adminGeminiKey');
+    const aiModelInput = safeGet('adminAiModel') || 'gemini-1.5-flash';
 
-    // 2. Safely find the button without crashing
-    // (document.activeElement finds whatever button you just clicked!)
-    const saveBtn = document.activeElement; 
+    const saveBtn = document.getElementById('saveSecurityBtn'); 
     let originalText = "Save Security Settings";
     
-    if (saveBtn && saveBtn.tagName === 'BUTTON') {
+    if (saveBtn) {
         originalText = saveBtn.innerHTML;
         saveBtn.innerHTML = "⏳ Testing Connection...";
         saveBtn.disabled = true;
     }
 
     try {
-        // 3. Test the AI Connection
-        const testPrompt = "Reply with exactly one word: SUCCESS";
-        
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModelInput}:generateContent?key=${apiKeyInput}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: testPrompt }] }]
-            })
-        });
+        // Only test the AI Connection if an API key was actually typed in
+        if (apiKeyInput) {
+            const testPrompt = "Reply with exactly one word: SUCCESS";
+            
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModelInput}:generateContent?key=${apiKeyInput}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: testPrompt }] }]
+                })
+            });
 
-        if (!response.ok) {
-            const errorDetails = await response.text();
-            throw new Error(`Error Code ${response.status}\n\nGoogle says: ${errorDetails}`);
+            if (!response.ok) {
+                const errorDetails = await response.text();
+                throw new Error(`Error Code ${response.status}\n\nGoogle says: ${errorDetails}`);
+            }
         }
 
-        // 4. If test passes, save EVERYTHING securely to local storage
-        if (firebaseInput) localStorage.setItem('repoReview_firebase_config', firebaseInput);
-        if (githubInput) localStorage.setItem('repoReview_github_token', githubInput);
+        // Save EVERYTHING securely to local storage
+        localStorage.setItem('repoReview_firebase_config', firebaseInput);
+        localStorage.setItem('repoReview_github_token', githubInput);
         localStorage.setItem('repoReview_gemini_token', apiKeyInput);
         localStorage.setItem('repoReview_ai_model', aiModelInput);
         
-        alert("✅ Security Settings Saved!\nAI Connection tested successfully. Your Firebase and GitHub settings were also saved.");
+        if (apiKeyInput) {
+            alert("✅ Security Settings Saved!\nAI Connection tested successfully. Your Firebase and GitHub settings were also saved.");
+        } else {
+            alert("✅ Settings Saved!\n(Skipped AI test because no Gemini API Key was entered).");
+        }
 
     } catch (error) {
         alert("🚨 AI TEST FAILED!\n\nSettings were NOT saved. Please fix the issue below:\n\n" + error.message);
     } finally {
-        // 5. Restore the button safely
-        if (saveBtn && saveBtn.tagName === 'BUTTON') {
+        if (saveBtn) {
             saveBtn.innerHTML = originalText;
             saveBtn.disabled = false;
         }
@@ -189,7 +206,8 @@ function initFirebase() {
         loadSectionsAndStudents();
     } catch (e) {
         console.error("Firebase Initialization Failed:", e);
-        document.getElementById('studentTableBody').innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-500 font-bold">Failed to connect to Firebase. Check your configuration.</td></tr>`;
+        const tbody = document.getElementById('studentTableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-500 font-bold">Failed to connect to Firebase. Check your configuration.</td></tr>`;
     }
 }
 
@@ -217,27 +235,21 @@ async function fetchSectionsFromFirebase() {
 
 function populateSectionDropdowns() {
     const filterSelect = document.getElementById('sectionFilterSelect');
-    
-    // Only attempt to populate if the element actually exists on the page
     if (filterSelect) {
         const curVal = filterSelect.value;
         filterSelect.innerHTML = `<option value="ALL">All Sections (All Students)</option>`;
-        
         allSections.forEach(sec => {
             const opt = document.createElement('option');
             opt.value = sec.name;
             opt.textContent = sec.name;
             filterSelect.appendChild(opt);
         });
-        
         if ([...filterSelect.options].some(o => o.value === curVal)) {
             filterSelect.value = curVal;
         }
     }
 
     const modalSelect = document.getElementById('modalStudentSection');
-    
-    // Only attempt to populate if the Add Student Modal exists
     if (modalSelect) {
         modalSelect.innerHTML = '';
         allSections.forEach(sec => {
@@ -248,16 +260,13 @@ function populateSectionDropdowns() {
         });
     }
 
-    // Wrap this in a try-catch just in case the Sections Modal is missing too
-    try {
-        renderSectionsManagerTable();
-    } catch(e) {
-        console.warn("Sections table not rendered. Modal might be missing from HTML.");
-    }
+    renderSectionsManagerTable();
 }
 
 function renderSectionsManagerTable() {
     const tbody = document.getElementById('sectionsTableBody');
+    if (!tbody) return; // Safely exit if the modal HTML is missing!
+    
     tbody.innerHTML = '';
     allSections.forEach(sec => {
         const tr = document.createElement('tr');
@@ -274,15 +283,19 @@ function renderSectionsManagerTable() {
 
 window.openSectionsModal = function() {
     renderSectionsManagerTable();
-    document.getElementById('sectionsModal').classList.remove('hidden');
+    const modal = document.getElementById('sectionsModal');
+    if (modal) modal.classList.remove('hidden');
 };
 
 window.closeSectionsModal = function() {
-    document.getElementById('sectionsModal').classList.add('hidden');
+    const modal = document.getElementById('sectionsModal');
+    if (modal) modal.classList.add('hidden');
 };
 
 window.addNewSection = async function() {
-    const name = document.getElementById('newSectionInput').value.trim();
+    const input = document.getElementById('newSectionInput');
+    if (!input) return;
+    const name = input.value.trim();
     if (!name) return alert("Please type a section name.");
 
     if (allSections.some(s => s.name.toLowerCase() === name.toLowerCase())) {
@@ -295,7 +308,7 @@ window.addNewSection = async function() {
     try {
         const docRef = await addDoc(collection(db, "sections"), { name });
         allSections.push({ id: docRef.id, name });
-        document.getElementById('newSectionInput').value = '';
+        input.value = '';
         populateSectionDropdowns();
     } catch (e) {
         alert("Failed to add section. Have you created the Firestore Database in the console? Error: " + e.message);
@@ -325,6 +338,7 @@ window.deleteSectionDoc = async function(id, name) {
 async function fetchStudentsFromFirebase() {
     if (!db) return;
     const tbody = document.getElementById('studentTableBody');
+    if (!tbody) return;
 
     try {
         const querySnapshot = await getDocs(collection(db, "students"));
@@ -333,7 +347,6 @@ async function fetchStudentsFromFirebase() {
             allStudents.push({ id: d.id, ...d.data() });
         });
 
-        // Ensure newly discovered sections from students exist
         let newSecAdded = false;
         for (let s of allStudents) {
             if (s.section && !allSections.some(sec => sec.name === s.section)) {
@@ -352,8 +365,11 @@ async function fetchStudentsFromFirebase() {
 }
 
 window.filterStudentsTable = function() {
-    const filter = document.getElementById('sectionFilterSelect').value;
+    const filterSelect = document.getElementById('sectionFilterSelect');
     const tbody = document.getElementById('studentTableBody');
+    if (!filterSelect || !tbody) return;
+    
+    const filter = filterSelect.value;
     tbody.innerHTML = '';
 
     const filtered = filter === "ALL" 
@@ -391,51 +407,64 @@ window.filterStudentsTable = function() {
 // ADD / EDIT INDIVIDUAL STUDENT (MODAL)
 // ----------------------------------------------------
 window.openAddStudentModal = function() {
-    document.getElementById('studentModalTitle').textContent = "Add New Student";
-    document.getElementById('modalStudentDocId').value = "";
-    document.getElementById('modalStudentName').value = "";
-    document.getElementById('modalStudentEmail').value = "";
-    document.getElementById('modalStudentGithub').value = "";
-    document.getElementById('modalStudentRepo').value = "";
+    const safeSet = (id, val) => { if(document.getElementById(id)) document.getElementById(id).value = val; };
+    const safeText = (id, text) => { if(document.getElementById(id)) document.getElementById(id).textContent = text; };
+
+    safeText('studentModalTitle', "Add New Student");
+    safeSet('modalStudentDocId', "");
+    safeSet('modalStudentName', "");
+    safeSet('modalStudentEmail', "");
+    safeSet('modalStudentGithub', "");
+    safeSet('modalStudentRepo', "");
     
-    const activeFilter = document.getElementById('sectionFilterSelect').value;
-    if (activeFilter !== "ALL") {
-        document.getElementById('modalStudentSection').value = activeFilter;
+    const filterSelect = document.getElementById('sectionFilterSelect');
+    if (filterSelect && filterSelect.value !== "ALL") {
+        safeSet('modalStudentSection', filterSelect.value);
     }
 
-    document.getElementById('studentModal').classList.remove('hidden');
+    const modal = document.getElementById('studentModal');
+    if (modal) modal.classList.remove('hidden');
 };
 
 window.editStudent = function(docId) {
     const student = allStudents.find(s => s.id === docId);
     if (!student) return;
 
-    document.getElementById('studentModalTitle').textContent = "Edit Student Profile";
-    document.getElementById('modalStudentDocId').value = docId;
-    document.getElementById('modalStudentSection').value = student.section || allSections[0]?.name || "";
-    document.getElementById('modalStudentName').value = student.name || "";
-    document.getElementById('modalStudentEmail').value = student.email || "";
-    document.getElementById('modalStudentGithub').value = student.githubUsername || "";
-    document.getElementById('modalStudentRepo').value = student.repoUrl || "";
+    const safeSet = (id, val) => { if(document.getElementById(id)) document.getElementById(id).value = val; };
+    
+    if (document.getElementById('studentModalTitle')) {
+        document.getElementById('studentModalTitle').textContent = "Edit Student Profile";
+    }
+    
+    safeSet('modalStudentDocId', docId);
+    safeSet('modalStudentSection', student.section || allSections[0]?.name || "");
+    safeSet('modalStudentName', student.name || "");
+    safeSet('modalStudentEmail', student.email || "");
+    safeSet('modalStudentGithub', student.githubUsername || "");
+    safeSet('modalStudentRepo', student.repoUrl || "");
 
-    document.getElementById('studentModal').classList.remove('hidden');
+    const modal = document.getElementById('studentModal');
+    if (modal) modal.classList.remove('hidden');
 };
 
 window.closeStudentModal = function() {
-    document.getElementById('studentModal').classList.add('hidden');
+    const modal = document.getElementById('studentModal');
+    if (modal) modal.classList.add('hidden');
 };
 
 window.saveStudentForm = async function(event) {
     event.preventDefault();
     if (!db) return alert("Firebase is not connected.");
 
-    const docId = document.getElementById('modalStudentDocId').value;
+    const safeGet = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : "";
+    const docId = document.getElementById('modalStudentDocId') ? document.getElementById('modalStudentDocId').value : "";
+
     const studentData = {
-        section: document.getElementById('modalStudentSection').value,
-        name: document.getElementById('modalStudentName').value.trim(),
-        email: document.getElementById('modalStudentEmail').value.trim(),
-        githubUsername: document.getElementById('modalStudentGithub').value.trim(),
-        repoUrl: document.getElementById('modalStudentRepo').value.trim()
+        section: safeGet('modalStudentSection'),
+        name: safeGet('modalStudentName'),
+        email: safeGet('modalStudentEmail'),
+        githubUsername: safeGet('modalStudentGithub'),
+        repoUrl: safeGet('modalStudentRepo')
     };
 
     window.showLoader("Saving student profile...");
@@ -574,10 +603,14 @@ function initRubrics() {
 
 function updateRubricEquippedUI() {
     const activeTpl = templates.find(t => t.id === activeTemplateId) || templates[0];
-    document.getElementById('activeEquippedBanner').textContent = activeTpl.name;
+    
+    const banner = document.getElementById('activeEquippedBanner');
+    if (banner) banner.textContent = activeTpl.name;
 
     const badge = document.getElementById('editorStatusBadge');
     const equipBtn = document.getElementById('equipTemplateBtn');
+    
+    if (!badge || !equipBtn) return;
 
     if (editingTemplate.id === activeTemplateId) {
         badge.className = "text-xs px-2.5 py-0.5 rounded-full font-bold bg-green-100 text-green-800";
@@ -596,6 +629,8 @@ function updateRubricEquippedUI() {
 
 function renderTemplateDropdown() {
     const select = document.getElementById('templateSelect');
+    if (!select) return;
+    
     select.innerHTML = '';
     templates.forEach(t => {
         const opt = document.createElement('option');
@@ -655,9 +690,14 @@ window.deleteCurrentTemplate = function() {
 };
 
 window.updateTemplatePreview = function() {
-    editingTemplate.name = document.getElementById('tplName').value.trim() || "Unnamed Template";
-    editingTemplate.scoringType = document.querySelector('input[name="tplScoreType"]:checked').value;
-    editingTemplate.generalPrompt = document.getElementById('tplGeneralPrompt').value;
+    const tplNameEl = document.getElementById('tplName');
+    if (tplNameEl) editingTemplate.name = tplNameEl.value.trim() || "Unnamed Template";
+    
+    const scoreTypeEl = document.querySelector('input[name="tplScoreType"]:checked');
+    if (scoreTypeEl) editingTemplate.scoringType = scoreTypeEl.value;
+    
+    const genPromptEl = document.getElementById('tplGeneralPrompt');
+    if (genPromptEl) editingTemplate.generalPrompt = genPromptEl.value;
     
     const rowDivs = document.querySelectorAll('.criterion-row');
     editingTemplate.criteria = [];
@@ -672,11 +712,16 @@ window.updateTemplatePreview = function() {
 };
 
 function renderTemplateEditor() {
-    document.getElementById('tplName').value = editingTemplate.name;
-    document.getElementById('tplGeneralPrompt').value = editingTemplate.generalPrompt;
+    const safeSet = (id, val) => { if(document.getElementById(id)) document.getElementById(id).value = val; };
+    
+    safeSet('tplName', editingTemplate.name);
+    safeSet('tplGeneralPrompt', editingTemplate.generalPrompt);
+    
     document.getElementsByName('tplScoreType').forEach(r => r.checked = (r.value === editingTemplate.scoringType));
 
     const container = document.getElementById('criteriaContainer');
+    if (!container) return;
+    
     container.innerHTML = '';
     let totalWeight = 0;
 
@@ -701,7 +746,11 @@ function renderTemplateEditor() {
         `;
         container.insertAdjacentHTML('beforeend', html);
     });
-    document.getElementById('tplTotalWeight').textContent = `Total: ${totalWeight}${editingTemplate.scoringType === 'percentage' ? '%' : ' pts'}`;
+    
+    const weightEl = document.getElementById('tplTotalWeight');
+    if (weightEl) {
+        weightEl.textContent = `Total: ${totalWeight}${editingTemplate.scoringType === 'percentage' ? '%' : ' pts'}`;
+    }
 }
 
 window.addCriterion = function() { 
