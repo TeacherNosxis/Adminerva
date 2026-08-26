@@ -215,6 +215,7 @@ function renderTable() {
         tr.className = "border-b hover:bg-gray-50 transition group";
         tr.dataset.rowType = row.type;
 
+        // CRITICAL FIX: step="300" locks the picker strictly to 5-minute increments.
         const timeInputHtml = isEditing 
             ? `<div class="flex flex-col gap-1 items-center justify-center">
                    <input type="time" step="300" class="time-start w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center" onchange="autoFillEndTime(this)" value="${row.startTime || ''}" title="Start Time">
