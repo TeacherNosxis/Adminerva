@@ -793,7 +793,7 @@ function buildDocumentLayout() {
     document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth} ${dateRange ? '(' + dateRange + ')' : ''}`;
 
     // 3. Signatories
-    document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "Teacher Name";
+    document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "";
     document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
     document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "Coordinator Name";
     document.getElementById('printSig2Title').textContent = localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "Coordinator";
@@ -898,21 +898,33 @@ window.exportToWordDoc = function() {
     // CRITICAL FOR WORD: Strip <thead> tags so it doesn't repeat on every page
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
 
+    // The <xml> block forces MS Word to open in Print View instead of Web Layout.
+    // The @page WordSection1 enforces Folio Landscape (13 inches by 8.5 inches).
     const htmlContent = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" 
-              xmlns:w="urn:schemas-microsoft-com:office:word" 
+        <html xmlns:v="urn:schemas-microsoft-com:vml"
+              xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:w="urn:schemas-microsoft-com:office:word"
               xmlns="http://www.w3.org/TR/REC-html40">
         <head>
             <meta charset="utf-8">
             <title>Lesson Plan</title>
+            <!--[if gte mso 9]>
+            <xml>
+                <w:WordDocument>
+                    <w:View>Print</w:View>
+                    <w:Zoom>100</w:Zoom>
+                    <w:DoNotOptimizeForBrowser/>
+                </w:WordDocument>
+            </xml>
+            <![endif]-->
             <style>
-                @page { margin: 0.5in; }
-                @page Section1 { 
-                    size: 13in 8.5in; /* Forces Landscape in Word */
+                /* WORD-SPECIFIC FOLIO LANDSCAPE OVERRIDE */
+                @page WordSection1 { 
+                    size: 13.0in 8.5in; 
                     mso-page-orientation: landscape; 
-                    margin: 0.5in; 
+                    margin: 0.5in 0.5in 0.5in 0.5in; 
                 }
-                div.Section1 { page: Section1; }
+                div.WordSection1 { page: WordSection1; }
                 
                 body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -922,7 +934,7 @@ window.exportToWordDoc = function() {
             </style>
         </head>
         <body>
-            <div class="Section1">
+            <div class="WordSection1">
                 ${cleanHtml}
             </div>
         </body>
