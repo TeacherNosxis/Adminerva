@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 let db = null;
 let currentPlan = [];
@@ -631,7 +632,6 @@ window.saveAndPrint = async function() {
 // ==========================================
 // LOAD SAVED PLANS FROM FIREBASE
 // ==========================================
-import { getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 window.openLoadPlanModal = async function() {
     const modal = document.getElementById('loadPlanModal');
