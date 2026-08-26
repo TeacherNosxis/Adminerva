@@ -88,23 +88,15 @@ window.switchAdminTab = function(tabId) {
 // ----------------------------------------------------
 // LESSONREVIEW SETTINGS LOGIC
 // ----------------------------------------------------
+// ----------------------------------------------------
+// LESSONREVIEW SETTINGS LOGIC
+// ----------------------------------------------------
 window.loadLessonReviewSettings = async function() {
     if (!db) return;
 
     try {
         const docRef = doc(db, "global_settings", "lesson_review_config");
         const docSnap = await getDoc(docRef);
-        if (data.header_image_base64) {
-    document.getElementById('settingsHeaderBase64').value = data.header_image_base64;
-    localStorage.setItem('lessonReview_headerImage', data.header_image_base64);
-
-    // Populate live preview on load
-    const previewImg = document.getElementById('headerPreview');
-    const placeholder = document.getElementById('headerPreviewPlaceholder');
-    previewImg.src = data.header_image_base64;
-    previewImg.classList.remove('hidden');
-    placeholder.classList.add('hidden');
-}
 
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -123,6 +115,21 @@ window.loadLessonReviewSettings = async function() {
             if (document.getElementById('sigPrincipal')) document.getElementById('sigPrincipal').value = data.sig_principal || '';
             if (document.getElementById('sigPrincipalTitle')) document.getElementById('sigPrincipalTitle').value = data.sig_principal_title || '';
 
+            // Handle Base64 Header Image & Preview
+            if (data.header_image_base64) {
+                const hiddenInput = document.getElementById('settingsHeaderBase64');
+                if (hiddenInput) hiddenInput.value = data.header_image_base64;
+                localStorage.setItem('lessonReview_headerImage', data.header_image_base64);
+
+                const previewImg = document.getElementById('headerPreview');
+                const placeholder = document.getElementById('headerPreviewPlaceholder');
+                if (previewImg && placeholder) {
+                    previewImg.src = data.header_image_base64;
+                    previewImg.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                }
+            }
+
             // Sync cache back to localStorage for fast access during printing
             if (data.header_image_url) localStorage.setItem('lessonReview_headerImage', data.header_image_url);
             if (data.sig_teacher) localStorage.setItem('lessonReview_sigTeacher', data.sig_teacher);
@@ -138,12 +145,12 @@ window.loadLessonReviewSettings = async function() {
         console.error("Error loading settings from cloud:", e);
     }
 };
+
 // Triggered when you select an image file
 window.previewHeaderImage = function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Optional safety check: limit image size to prevent bloating storage
     if (file.size > 800 * 1024) {
         alert("Please choose a smaller image (under 800KB) to keep the database fast.");
         return;
@@ -153,31 +160,37 @@ window.previewHeaderImage = function(event) {
     reader.onload = function(e) {
         const base64String = e.target.result;
         
-        // Store in hidden input for saving to Firebase later
-        document.getElementById('settingsHeaderBase64').value = base64String;
+        const hiddenInput = document.getElementById('settingsHeaderBase64');
+        if (hiddenInput) hiddenInput.value = base64String;
 
-        // Display Live Preview
         const previewImg = document.getElementById('headerPreview');
         const placeholder = document.getElementById('headerPreviewPlaceholder');
         
-        previewImg.src = base64String;
-        previewImg.classList.remove('hidden');
-        placeholder.classList.add('hidden');
+        if (previewImg && placeholder) {
+            previewImg.src = base64String;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
     };
     reader.readAsDataURL(file);
 };
 
 window.clearHeaderImage = function() {
-    document.getElementById('settingsHeaderBase64').value = '';
-    document.getElementById('settingsHeaderFile').value = '';
+    const hiddenInput = document.getElementById('settingsHeaderBase64');
+    const fileInput = document.getElementById('settingsHeaderFile');
+    if (hiddenInput) hiddenInput.value = '';
+    if (fileInput) fileInput.value = '';
     
     const previewImg = document.getElementById('headerPreview');
     const placeholder = document.getElementById('headerPreviewPlaceholder');
     
-    previewImg.src = '';
-    previewImg.classList.add('hidden');
-    placeholder.classList.remove('hidden');
+    if (previewImg && placeholder) {
+        previewImg.src = '';
+        previewImg.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+    }
 };
+
 window.saveLessonReviewSettings = async function() {
     if (!db) {
         alert("Firebase is not connected! Please configure it in Global Settings first.");
@@ -188,26 +201,122 @@ window.saveLessonReviewSettings = async function() {
     if (loader) loader.classList.replace('hidden', 'flex');
 
     try {
+        const headerBase64Val = document.getElementById('settingsHeaderBase64') ? document.getElementById('settingsHeaderBase64').value.trim() : "";
+
         const settingsData = {
-            teacher_name: document.getElementById('setTeacherName').value.trim(),
-            subject_title: document.getElementById('setSubjectTitle').value.trim(),
-            header_image_base64: document.getElementById('settingsHeaderBase64').value.trim(), // <--- Cloud Header Image
-            sig_teacher: document.getElementById('sigTeacher').value.trim(),
-            sig_teacher_title: document.getElementById('sigTeacherTitle').value.trim(),
-            sig_subject_coord: document.getElementById('sigSubjectCoord').value.trim(),
-            sig_subject_coord_title: document.getElementById('sigSubjectCoordTitle').value.trim(),
-            sig_grade_coord: document.getElementById('sigGradeCoord').value.trim(),
-            sig_grade_coord_title: document.getElementById('sigGradeCoordTitle').value.trim(),
-            sig_principal: document.getElementById('sigPrincipal').value.trim(),,
-            sig_principal_title: document.getElementById('sigPrincipalTitle').value.trim(),
+            teacher_name: document.getElementById('setTeacherName') ? document.getElementById('setTeacherName').value.trim() : "",
+            subject_title: document.getElementById('setSubjectTitle') ? document.getElementById('setSubjectTitle').value.trim() : "",
+            header_image_base64: headerBase64Val,
+            sig_teacher: document.getElementById('sigTeacher') ? document.getElementById('sigTeacher').value.trim() : "",
+            sig_teacher_title: document.getElementById('sigTeacherTitle') ? document.getElementById('sigTeacherTitle').value.trim() : "",
+            sig_subject_coord: document.getElementById('sigSubjectCoord') ? document.getElementById('sigSubjectCoord').value.trim() : "",
+            sig_subject_coord_title: document.getElementById('sigSubjectCoordTitle') ? document.getElementById('sigSubjectCoordTitle').value.trim() : "",
+            sig_grade_coord: document.getElementById('sigGradeCoord') ? document.getElementById('sigGradeCoord').value.trim() : "",
+            sig_grade_coord_title: document.getElementById('sigGradeCoordTitle') ? document.getElementById('sigGradeCoordTitle').value.trim() : "",
+            sig_principal: document.getElementById('sigPrincipal') ? document.getElementById('sigPrincipal').value.trim() : "",
+            sig_principal_title: document.getElementById('sigPrincipalTitle') ? document.getElementById('sigPrincipalTitle').value.trim() : "",
             updated_at: new Date().toISOString()
         };
 
         // Save to Firebase Firestore
         await setDoc(doc(db, "global_settings", "lesson_review_config"), settingsData, { merge: true });
 
-        // Also update localStorage backup for instant local retrieval
-        localStorage.setItem('lessonReview_headerImage', settingsData.header_image_base64);
+        // Update localStorage backup
+        localStorage.setItem('lessonReview_headerImage', headerBase64Val);
+        localStorage.setItem('lessonReview_sigTeacher', settingsData.sig_teacher);
+        localStorage.setItem('lessonReview_sigTeacherTitle', settingsData.sig_teacher_title);
+        localStorage.setItem('lessonReview_sigSubjectCoord', settingsData.sig_subject_coord);
+        localStorage.setItem('lessonReview_sigSubjectCoordTitle', settingsData.sig_subject_coord_title);
+        localStorage.setItem('lessonReview_sigGradeCoord', settingsData.sig_grade_coord);
+        localStorage.setItem('lessonReview_sigGradeCoordTitle', settingsData.sig_grade_coord_title);
+        localStorage.setItem('lessonReview_sigPrincipal', settingsData.sig_principal);
+        localStorage.setItem('lessonReview_sigPrincipalTitle', settingsData.sig_principal_title);
+
+        alert("✅ LessonReview settings and header image successfully saved to the cloud!");
+    } catch (e) {
+        console.error("Error saving settings:", e);
+        alert("Failed to save settings to Firebase: " + e.message);
+    } finally {
+        if (loader) loader.classList.replace('flex', 'hidden');
+    }
+};
+// Triggered when you select an image file
+window.previewHeaderImage = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > 800 * 1024) {
+        alert("Please choose a smaller image (under 800KB) to keep the database fast.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64String = e.target.result;
+        
+        const hiddenInput = document.getElementById('settingsHeaderBase64');
+        if (hiddenInput) hiddenInput.value = base64String;
+
+        const previewImg = document.getElementById('headerPreview');
+        const placeholder = document.getElementById('headerPreviewPlaceholder');
+        
+        if (previewImg && placeholder) {
+            previewImg.src = base64String;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+    };
+    reader.readAsDataURL(file);
+};
+
+window.clearHeaderImage = function() {
+    const hiddenInput = document.getElementById('settingsHeaderBase64');
+    const fileInput = document.getElementById('settingsHeaderFile');
+    if (hiddenInput) hiddenInput.value = '';
+    if (fileInput) fileInput.value = '';
+    
+    const previewImg = document.getElementById('headerPreview');
+    const placeholder = document.getElementById('headerPreviewPlaceholder');
+    
+    if (previewImg && placeholder) {
+        previewImg.src = '';
+        previewImg.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+    }
+};
+
+window.saveLessonReviewSettings = async function() {
+    if (!db) {
+        alert("Firebase is not connected! Please configure it in Global Settings first.");
+        return;
+    }
+
+    const loader = document.getElementById('globalLoader');
+    if (loader) loader.classList.replace('hidden', 'flex');
+
+    try {
+        const headerBase64Val = document.getElementById('settingsHeaderBase64') ? document.getElementById('settingsHeaderBase64').value.trim() : "";
+
+        const settingsData = {
+            teacher_name: document.getElementById('setTeacherName') ? document.getElementById('setTeacherName').value.trim() : "",
+            subject_title: document.getElementById('setSubjectTitle') ? document.getElementById('setSubjectTitle').value.trim() : "",
+            header_image_base64: headerBase64Val,
+            sig_teacher: document.getElementById('sigTeacher') ? document.getElementById('sigTeacher').value.trim() : "",
+            sig_teacher_title: document.getElementById('sigTeacherTitle') ? document.getElementById('sigTeacherTitle').value.trim() : "",
+            sig_subject_coord: document.getElementById('sigSubjectCoord') ? document.getElementById('sigSubjectCoord').value.trim() : "",
+            sig_subject_coord_title: document.getElementById('sigSubjectCoordTitle') ? document.getElementById('sigSubjectCoordTitle').value.trim() : "",
+            sig_grade_coord: document.getElementById('sigGradeCoord') ? document.getElementById('sigGradeCoord').value.trim() : "",
+            sig_grade_coord_title: document.getElementById('sigGradeCoordTitle') ? document.getElementById('sigGradeCoordTitle').value.trim() : "",
+            sig_principal: document.getElementById('sigPrincipal') ? document.getElementById('sigPrincipal').value.trim() : "",
+            sig_principal_title: document.getElementById('sigPrincipalTitle') ? document.getElementById('sigPrincipalTitle').value.trim() : "",
+            updated_at: new Date().toISOString()
+        };
+
+        // Save to Firebase Firestore
+        await setDoc(doc(db, "global_settings", "lesson_review_config"), settingsData, { merge: true });
+
+        // Update localStorage backup
+        localStorage.setItem('lessonReview_headerImage', headerBase64Val);
         localStorage.setItem('lessonReview_sigTeacher', settingsData.sig_teacher);
         localStorage.setItem('lessonReview_sigTeacherTitle', settingsData.sig_teacher_title);
         localStorage.setItem('lessonReview_sigSubjectCoord', settingsData.sig_subject_coord);
