@@ -120,23 +120,29 @@ function loadSecuritySettings() {
 }
 
 window.saveSecuritySettings = async function() {
-    // 1. Correctly match the exact IDs from your HTML!
+    // 1. Grab ALL FOUR inputs from your HTML
+    const firebaseInput = document.getElementById('firebaseConfigInput').value.trim();
+    const githubInput = document.getElementById('adminGithubToken').value.trim();
     const apiKeyInput = document.getElementById('adminGeminiKey').value.trim();
     const aiModelInput = document.getElementById('adminAiModel').value.trim();
-    
-    // Find the save button safely using its onclick attribute
-    const saveBtn = document.querySelector('button[onclick="saveSecuritySettings()"]'); 
 
     if (!apiKeyInput || !aiModelInput) {
         return alert("Please enter both a Gemini API Key and an AI Model name.");
     }
 
-    // 2. Change the button to a loading state
-    const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = "⏳ Testing Connection...";
-    saveBtn.disabled = true;
+    // 2. Safely find the button without crashing
+    // (document.activeElement finds whatever button you just clicked!)
+    const saveBtn = document.activeElement; 
+    let originalText = "Save Security Settings";
+    
+    if (saveBtn && saveBtn.tagName === 'BUTTON') {
+        originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = "⏳ Testing Connection...";
+        saveBtn.disabled = true;
+    }
 
     try {
+        // 3. Test the AI Connection
         const testPrompt = "Reply with exactly one word: SUCCESS";
         
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModelInput}:generateContent?key=${apiKeyInput}`, {
@@ -152,17 +158,22 @@ window.saveSecuritySettings = async function() {
             throw new Error(`Error Code ${response.status}\n\nGoogle says: ${errorDetails}`);
         }
 
-        // 3. Save to localStorage ONLY if the test passes
+        // 4. If test passes, save EVERYTHING securely to local storage
+        if (firebaseInput) localStorage.setItem('repoReview_firebase_config', firebaseInput);
+        if (githubInput) localStorage.setItem('repoReview_github_token', githubInput);
         localStorage.setItem('repoReview_gemini_token', apiKeyInput);
         localStorage.setItem('repoReview_ai_model', aiModelInput);
         
-        alert("✅ AI Connection Successful!\nYour API Key and Model are perfectly configured and saved.");
+        alert("✅ Security Settings Saved!\nAI Connection tested successfully. Your Firebase and GitHub settings were also saved.");
 
     } catch (error) {
         alert("🚨 AI TEST FAILED!\n\nSettings were NOT saved. Please fix the issue below:\n\n" + error.message);
     } finally {
-        saveBtn.innerHTML = originalText;
-        saveBtn.disabled = false;
+        // 5. Restore the button safely
+        if (saveBtn && saveBtn.tagName === 'BUTTON') {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+        }
     }
 };
 
