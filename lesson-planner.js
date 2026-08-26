@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore, collection, getDocs, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 let db = null;
 let currentPlan = [];
@@ -9,6 +9,7 @@ let cachedCompiledText = '';
 let cachedSchedule = '';
 let cachedScope = '';
 let cachedCustomInstructions = '';
+let cachedPreviousPlan = null;
 
 // --- TIMER & BIBLE VERSE ENGINE ---
 let timerInterval, verseInterval;
@@ -24,52 +25,12 @@ const bibleVerses = [
     "Get wisdom, get understanding; do not forget my words or turn away from them. - Proverbs 4:5",
     "The way of a fool seems right to them, but the wise listen to advice. - Proverbs 12:15",
     "He who walks with wise men will be wise, but the companion of fools will suffer harm. - Proverbs 13:20",
-    "The heart of the discerning acquires knowledge, for the ears of the wise seek it out. - Proverbs 18:15",
-    "Plans fail for lack of counsel, but with many advisers they succeed. - Proverbs 15:22",
-    "Listen to advice and accept discipline, and at the end you will be counted among the wise. - Proverbs 19:20",
-    "Apply your heart to instruction and your ears to words of knowledge. - Proverbs 23:12",
-    "By wisdom a house is built, and through understanding it is established. - Proverbs 24:3",
-    "An intelligent heart acquires knowledge, and the ear of the wise seeks knowledge. - Proverbs 18:15",
-    "Iron sharpens iron, and one man sharpens another. - Proverbs 27:17",
     "The plans of the diligent lead to profit as surely as haste leads to poverty. - Proverbs 21:5",
     "Commit to the Lord whatever you do, and he will establish your plans. - Proverbs 16:3",
-    "How much better to get wisdom than gold, to get insight rather than silver! - Proverbs 16:16",
-    "To know wisdom and instruction, to understand words of insight. - Proverbs 1:2",
     "Teach us to number our days, that we may gain a heart of wisdom. - Psalm 90:12",
     "Your word is a lamp for my feet, a light on my path. - Psalm 119:105",
     "I will instruct you and teach you in the way you should go; I will counsel you with my loving eye on you. - Psalm 32:8",
-    "Show me your ways, Lord, teach me your paths. - Psalm 25:4",
-    "Guide me in your truth and teach me, for you are God my Savior, and my hope is in you all day long. - Psalm 25:5",
-    "The unfolding of your words gives light; it gives understanding to the simple. - Psalm 119:130",
-    "Great is our Lord and mighty in power; his understanding has no limit. - Psalm 147:5",
-    "Teach me knowledge and good judgment, for I trust your commands. - Psalm 119:66",
-    "Direct my footsteps according to your word; let no sin rule over me. - Psalm 119:133",
-    "Oh, how I love your law! I meditate on it all day long. - Psalm 119:97",
-    "If any of you lacks wisdom, you should ask God, who gives generously to all without finding fault. - James 1:5",
-    "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters. - Colossians 3:23",
-    "Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who correctly handles the word of truth. - 2 Timothy 2:15",
-    "All Scripture is God-breathed and is useful for teaching, rebuking, correcting and training in righteousness. - 2 Timothy 3:16",
-    "For whatever was written in earlier times was written for our instruction, so that through perseverance and encouragement we might have hope. - Romans 15:4",
-    "But grow in the grace and knowledge of our Lord and Savior Jesus Christ. - 2 Peter 3:18",
-    "Let the message of Christ dwell among you richly as you teach and admonish one another with all wisdom. - Colossians 3:16",
-    "For God gave us a spirit not of fear but of power and love and self-control. - 2 Timothy 1:7",
-    "Therefore encourage one another and build one another up, just as you are doing. - 1 Thessalonians 5:11",
-    "The wisdom from above is first pure, then peaceable, gentle, open to reason, full of mercy and good fruits. - James 3:17",
-    "I can do all things through Christ who strengthens me. - Philippians 4:13",
-    "Let no unwholesome word come out of your mouth, but only what is helpful for building others up. - Ephesians 4:29",
-    "Be very careful, then, how you live—not as unwise but as wise, making the most of every opportunity. - Ephesians 5:15-16",
-    "Let us not become weary in doing good, for at the proper time we will reap a harvest if we do not give up. - Galatians 6:9",
-    "Fix your thoughts on what is true, and honorable, and right, and pure, and lovely, and admirable. - Philippians 4:8",
-    "Let my teaching fall like rain and my words descend like dew, like showers on new grass. - Deuteronomy 32:2",
-    "Start children off on the way they should go, and even when they are old they will not turn from it. - Proverbs 22:6",
-    "Listen, my son, and be wise, and keep your heart on the right path. - Proverbs 23:19",
-    "Buy the truth and do not sell it—wisdom, instruction and insight as well. - Proverbs 23:23",
-    "Where there is no vision, the people perish. - Proverbs 29:18",
-    "A person's wisdom yields patience; it is to one's glory to overlook an offense. - Proverbs 19:11",
-    "Listen to me, you who know what is right, you people who have taken my instruction to heart. - Isaiah 51:7",
-    "The Sovereign Lord has given me a well-instructed tongue, to know the word that sustains the weary. - Isaiah 50:4",
-    "Preach the word; be prepared in season and out of season; correct, rebuke and encourage—with great patience and careful instruction. - 2 Timothy 4:2",
-    "Now these are the gifts Christ gave to the church: the apostles, the prophets, the evangelists, and the pastors and teachers. - Ephesians 4:11"
+    "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters. - Colossians 3:23"
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -141,10 +102,47 @@ function loadLibraryFolders() {
     });
 }
 
+// --- LOOK-BACK ENGINE: Fetch Last Week's Curriculum ---
+async function fetchPreviousPlan(grade, subject, currentMonth, currentWeek) {
+    if(!db) return null;
+    const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
+    let mIdx = months.indexOf(currentMonth);
+    let prevMonth = currentMonth;
+    let prevWeek = "";
+    
+    if (currentWeek === "Week 1") {
+        if (mIdx <= 0) return null; // Can't go back further than August Week 1
+        prevMonth = months[mIdx - 1];
+    } else {
+        let wNum = parseInt(currentWeek.replace("Week ", ""));
+        prevWeek = `Week ${wNum - 1}`;
+    }
+
+    const tryFetch = async (m, w) => {
+        const id = `${grade}_${subject}_${m}_${w}`.replace(/[^a-zA-Z0-9_]/g, "");
+        const docRef = doc(db, "lesson_plans", id);
+        try {
+            const docSnap = await getDoc(docRef);
+            return docSnap.exists() ? docSnap.data() : null;
+        } catch(e) { return null; }
+    };
+
+    // If it's week 1, try checking week 5 of last month, if not there, try week 4
+    if (currentWeek === "Week 1" && mIdx > 0) {
+        let plan = await tryFetch(prevMonth, "Week 5");
+        if (!plan) plan = await tryFetch(prevMonth, "Week 4");
+        return plan;
+    } else {
+        return await tryFetch(prevMonth, prevWeek);
+    }
+}
+
 // --- STEP 1: SMART PRE-CHECK MODAL LOGIC ---
 window.initiateGenerationFlow = async function() {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
+    const dateRange = document.getElementById('lpDateRange').value;
+    cachedScope = `${targetWeek} of ${targetMonth} (${dateRange}) - ${targetQuarter}`;
     if (!gemKey) return alert("Missing Gemini API Key in Global Settings.");
 
     const selectedCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
@@ -164,6 +162,7 @@ window.initiateGenerationFlow = async function() {
 
     if (!cachedCompiledText.trim()) return alert("The selected folders do not contain any extracted documents.");
 
+    const subject = document.getElementById('lpSubjectTitle').value || "Subject";
     cachedSchedule = localStorage.getItem('lessonReview_schedule') || "No schedule provided.";
     const targetMonth = document.getElementById('lpMonth').value;
     const targetWeek = document.getElementById('lpWeek').value;
@@ -171,6 +170,9 @@ window.initiateGenerationFlow = async function() {
     currentTargetGrade = document.getElementById('lpGradeLevel').value;
     cachedScope = `${targetWeek} of ${targetMonth} (${targetQuarter})`;
     cachedCustomInstructions = document.getElementById('lpCustomInstructions').value.trim();
+
+    // 🔥 AUTOMATIC LOOK-BACK FETCH 🔥
+    cachedPreviousPlan = await fetchPreviousPlan(currentTargetGrade, subject, targetMonth, targetWeek);
 
     if (!cachedCustomInstructions) {
         executeFinalGeneration("");
@@ -233,13 +235,13 @@ window.submitClarificationAndProceed = function() {
 async function executeFinalGeneration(userClarification) {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
+    const schoolYear = document.getElementById('lpSchoolYear').value || "2026-2027";
 
     let gradeSpecificRules = "";
     if (currentTargetGrade === "Grade 11") {
         gradeSpecificRules = `
 3. SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
 4. SESSION 4-6 RULE (3-Hour Laboratory Period): 
-   - Integrate the teacher's schedule timings into the "remarks" field for Sessions 4, 5, and 6.
    - Design these sessions as a hands-on laboratory or performance task based on the custom instructions.
    - You MUST format the "learning_activities" explicitly like this:
      Session 4:
@@ -251,6 +253,21 @@ async function executeFinalGeneration(userClarification) {
     } else {
         gradeSpecificRules = `
 3. SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".`;
+    }
+
+    // 🔥 AUTOMATIC CONTEXT INJECTION (If previous plan exists) 🔥
+    let lookbackContext = "";
+    if (cachedPreviousPlan) {
+        lookbackContext = `
+7. CATCH-UP & SUSPENSION RULE (CRITICAL):
+   - Review "Last Week's Curriculum State" provided below.
+   - Look specifically at the "remarks" field for each session.
+   - If any session from last week was marked as suspended, interrupted, unfinished, or missed, you MUST make the early sessions of THIS week a catch-up/continuation for that missing content BEFORE introducing new topics.
+   - Explicitly mention in the new session's remarks that it is a catch-up from last week.
+
+LAST WEEK'S CURRICULUM STATE:
+${JSON.stringify(cachedPreviousPlan.sessions.map(s => ({name: s.session_name, activities: s.learning_activities, remarks: s.remarks})), null, 2)}
+        `;
     }
 
     const prompt = `
@@ -267,11 +284,19 @@ ${gradeSpecificRules}
    - "learning_activities" MUST be heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb.
    - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
    - "evaluation" MUST reference a 10-item Quipper quiz (unless overridden by custom lab instructions).
-   - Map the provided Teacher Schedule slots into the "remarks" field.
+   - SCHEDULE MAPPING: Map the provided Teacher Schedule slots into the "remarks" field. Use the Target Scope dates and School Year to determine the exact date for each day of the week. Format the remarks EXACTLY like this for every section scheduled on that day:
+     [Section Name]
+     [Session Number]
+     [Full Date, e.g., August 31, 2026]
+     [Time Slot]
+     
+     (If multiple sections are taught in one day, list them sequentially separated by a blank line).
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted "learning_activities". Set all other fields to empty strings "".
+${lookbackContext}
 
 Target Scope: ${cachedScope}
+School Year: ${schoolYear}
 Custom Instructions: ${cachedCustomInstructions}
 User Clarification: ${userClarification || "None"}
 Teacher Schedule:
@@ -353,7 +378,7 @@ ${cachedCompiledText.substring(0, 25000)}
     } finally {
         window.hideLoader();
     }
-};
+}
 
 function renderOverview() {
     const container = document.getElementById('weeklyOverviewContainer');
@@ -410,7 +435,7 @@ function renderOutput() {
     if(headerTitle) headerTitle.textContent = `${currentTargetGrade} Lesson Plan`;
     if(headerBadge) headerBadge.textContent = `${currentPlan.length} Sessions`;
 
-    currentPlan.forEach(session => {
+    currentPlan.forEach((session, index) => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
         
         let html = `<div class="bg-white p-5 rounded border border-gray-200 shadow-sm mb-6">
@@ -421,50 +446,59 @@ function renderOutput() {
             html += `
                 <div>
                     <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Learning Competencies</label>
-                    <textarea class="w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3">${session.competencies || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3" data-idx="${index}" data-key="competencies">${session.competencies || ''}</textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Specific Objectives</label>
-                    <textarea class="w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3">${session.objectives || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3" data-idx="${index}" data-key="objectives">${session.objectives || ''}</textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Preliminary Action</label>
-                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="3">${session.preliminary || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="3" data-idx="${index}" data-key="preliminary">${session.preliminary || ''}</textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Motivation / Recall</label>
-                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="3">${session.motivation || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="3" data-idx="${index}" data-key="motivation">${session.motivation || ''}</textarea>
                 </div>`;
         }
 
         html += `
                 <div class="md:col-span-2">
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Learning Activities</label>
-                    <textarea class="w-full p-3 border border-gray-300 rounded text-sm bg-white font-mono leading-relaxed shadow-inner" rows="6">${session.learning_activities || ''}</textarea>
+                    <textarea class="session-input w-full p-3 border border-gray-300 rounded text-sm bg-white font-mono leading-relaxed shadow-inner" rows="6" data-idx="${index}" data-key="learning_activities">${session.learning_activities || ''}</textarea>
                 </div>`;
 
         if (!isFlex) {
             html += `
                 <div>
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Evaluation</label>
-                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.evaluation || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="evaluation">${session.evaluation || ''}</textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Closing Activities</label>
-                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.closing || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="closing">${session.closing || ''}</textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Values Integration</label>
-                    <textarea class="w-full p-2 border rounded text-sm bg-gray-50" rows="2">${session.values_integration || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="values_integration">${session.values_integration || ''}</textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-amber-600 uppercase tracking-wider mb-1">Remarks / Intervention</label>
-                    <textarea class="w-full p-2 border rounded text-sm bg-amber-50 border-amber-200" rows="2">${session.remarks || ''}</textarea>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-amber-50 border-amber-200" rows="2" data-idx="${index}" data-key="remarks">${session.remarks || ''}</textarea>
                 </div>`;
         }
 
         html += `</div></div>`;
         container.insertAdjacentHTML('beforeend', html);
+    });
+
+    // Add event listeners to textareas so manual edits sync back into `currentPlan` JSON
+    document.querySelectorAll('.session-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const idx = e.target.getAttribute('data-idx');
+            const key = e.target.getAttribute('data-key');
+            currentPlan[idx][key] = e.target.value;
+        });
     });
 }
 
@@ -503,6 +537,7 @@ window.saveLessonPlan = async function() {
             quarter: document.getElementById('lpQuarter').value,
             month: month,
             week: week,
+            date_range: document.getElementById('lpDateRange').value,
             grade_level: grade,
             weekly_overview: currentWeeklyOverview,
             sessions: currentPlan,
@@ -608,6 +643,7 @@ window.loadSpecificPlan = function(planData) {
     if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
     if(planData.month) document.getElementById('lpMonth').value = planData.month;
     if(planData.week) document.getElementById('lpWeek').value = planData.week;
+    document.getElementById('lpDateRange').value = planData.date_range || '';
     if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
 
     renderOverview();
@@ -630,8 +666,10 @@ window.exportPDF = function() {
     document.getElementById('printSemester').textContent = document.getElementById('lpSemester').value || "SEMESTER";
     
     const scopeWeek = document.getElementById('lpWeek').value;
-    const scopeMonth = document.getElementById('lpMonth').value;
-    document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth}`;
+    const scopeMonth = document.getElementById('lpMonth').value;const dateRange = document.getElementById('lpDateRange').value;
+    
+    // This will print: "Week 5 of August (Aug 31 - Sept 4)"
+    document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth} ${dateRange ? '(' + dateRange + ')' : ''}`;
 
     document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "Teacher Name";
     document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
