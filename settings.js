@@ -1,13 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { 
-    getFirestore, 
-    collection, 
-    getDocs, 
-    addDoc, 
-    updateDoc, 
-    deleteDoc, 
-    doc, 
-    writeBatch 
+    getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ==========================================
@@ -38,15 +31,32 @@ window.hideLoader = function() {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     loadSecuritySettings();
+    loadLessonReviewSettings(); // Load LessonReview settings
     initFirebase();
     initRubrics();
 
-    document.getElementById('csvFileInput').addEventListener('change', handleCsvUpload);
+    const csvInput = document.getElementById('csvFileInput');
+    if(csvInput) csvInput.addEventListener('change', handleCsvUpload);
 });
 
 // ----------------------------------------------------
-// UI TABS
+// UI TABS (Main & Sub-tabs)
 // ----------------------------------------------------
+window.switchSettingsTab = function(tabName) {
+    ['repo', 'lesson'].forEach(t => {
+        const pane = document.getElementById('settingsTab-' + t);
+        const btn = document.getElementById('settingsTabBtn-' + t);
+        if (t === tabName) {
+            pane.classList.remove('hidden');
+            // Assuming purple for RepoReview, blue for LessonReview based on previous styling
+            btn.className = `flex-1 py-4 text-sm font-bold border-b-2 transition ${tabName === 'repo' ? 'border-purple-600 text-purple-700 bg-purple-50' : 'border-blue-600 text-blue-700 bg-blue-50'}`;
+        } else {
+            pane.classList.add('hidden');
+            btn.className = "flex-1 py-4 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition bg-white";
+        }
+    });
+};
+
 window.switchAdminTab = function(tabId) {
     ['security', 'students', 'rubrics'].forEach(id => {
         document.getElementById('tab-' + id).classList.add('hidden');
@@ -61,24 +71,10 @@ window.switchAdminTab = function(tabId) {
     activeBtn.classList.add('tab-active'); 
     activeBtn.classList.remove('tab-inactive');
 };
-// Switcher for the settings sub-tabs
-window.switchSettingsTab = function(tabName) {
-    ['repo', 'lesson'].forEach(t => {
-        const pane = document.getElementById('settingsTab-' + t);
-        const btn = document.getElementById('settingsTabBtn-' + t);
-        if (t === tabName) {
-            pane.classList.remove('hidden');
-            btn.className = "flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-700 bg-blue-50 transition";
-        } else {
-            pane.classList.add('hidden');
-            btn.className = "flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition";
-        }
-    });
-};
+
 // ----------------------------------------------------
-// DATABASE & SECURITY LOGIC
+// LESSONREVIEW SETTINGS LOGIC
 // ----------------------------------------------------
-// Add to your existing loadSecuritySettings() or a new function called on DOMContentLoaded:
 function loadLessonReviewSettings() {
     document.getElementById('setTeacherName').value = localStorage.getItem('lessonReview_teacherName') || "";
     document.getElementById('setSubjectTitle').value = localStorage.getItem('lessonReview_subjectTitle') || "";
@@ -106,6 +102,10 @@ window.saveLessonReviewSettings = function() {
     
     alert("LessonReview export defaults saved successfully!");
 };
+
+// ----------------------------------------------------
+// DATABASE & SECURITY LOGIC
+// ----------------------------------------------------
 function loadSecuritySettings() {
     document.getElementById('adminGithubToken').value = localStorage.getItem('repoReview_github_token') || "";
     document.getElementById('adminGeminiKey').value = localStorage.getItem('repoReview_gemini_token') || "";

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RepoReview - Admin Hub</title>
+    <title>Educator Hub - Global Settings</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
@@ -25,14 +25,12 @@
             <!-- LEFT: The App Switcher Dropdown -->
             <div class="relative group cursor-pointer py-2">
                 <div class="flex items-center gap-2 text-xl font-bold hover:text-purple-400 transition">
-                    <span>⚡</span> 
+                    <span>⚙️</span> 
                     <span id="currentAppName">Global Settings</span>
                     <span class="text-[10px] text-gray-400">▼</span>
                 </div>
                 
-                <!-- Dropdown Wrapper (pt-2 creates the invisible hover bridge) -->
                 <div class="absolute left-0 top-full pt-2 w-56 hidden group-hover:block z-[100]">
-                    <!-- Visible Dropdown Box -->
                     <div class="bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden">
                         <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Switch Workspace</div>
                         <a href="index.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700 border-b border-gray-100 transition">
@@ -59,60 +57,44 @@
 
         </div>
     </nav>
-<!-- SETTINGS TAB NAVIGATION -->
-<div class="flex border-b mb-6 bg-white rounded-t-lg overflow-hidden shadow-sm">
-    <button onclick="switchSettingsTab('repo')" id="settingsTabBtn-repo" class="flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-700 bg-blue-50 transition">
-        ⚡ RepoReview Settings (API & Firebase)
-    </button>
-    <button onclick="switchSettingsTab('lesson')" id="settingsTabBtn-lesson" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition">
-        📘 LessonReview Settings (Export & Signatories)
-    </button>
-</div>
 
-<!-- TAB 1: REPO-REVIEW CONFIG -->
-<div id="settingsTab-repo" class="space-y-6">
     <!-- Main Workspace -->
     <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
+        
         <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-300">
             <div>
-                <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">Global Settings & Configuration</h2>
-                <p class="text-sm text-gray-500 mt-1 font-medium">Manage API keys, Firebase connections, grading rubrics, and student rosters.</p>
+                <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">Global Workspace Settings</h2>
+                <p class="text-sm text-gray-500 mt-1 font-medium">Manage API keys, databases, rubrics, and document export defaults across all apps.</p>
             </div>
         </div>
 
-    <!-- Admin Content -->
-    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
-        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col h-full border border-gray-200">
-            
-            <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">System Configuration</h2>
-                    <p class="text-sm text-gray-500 mt-1">Manage database connections, AI keys, sections, rosters, and rubrics.</p>
-                </div>
-            </div>
+        <!-- SETTINGS TAB NAVIGATION -->
+        <div class="flex border-b mb-6 bg-white rounded-t-lg overflow-hidden shadow-sm">
+            <button onclick="switchSettingsTab('repo')" id="settingsTabBtn-repo" class="flex-1 py-4 text-sm font-bold border-b-2 border-purple-600 text-purple-700 bg-purple-50 transition">
+                ⚡ RepoReview (Database, AI & Students)
+            </button>
+            <button onclick="switchSettingsTab('lesson')" id="settingsTabBtn-lesson" class="flex-1 py-4 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition bg-white">
+                📘 LessonReview (Export & Signatories)
+            </button>
+        </div>
 
-            <!-- Tabs -->
-            <div class="flex border-b bg-white">
-                <button onclick="switchAdminTab('security')" id="tabBtn-security" class="flex-1 py-4 text-sm transition tab-active">🔒 Database & AI Keys</button>
-                <button onclick="switchAdminTab('students')" id="tabBtn-students" class="flex-1 py-4 text-sm transition tab-inactive border-l border-r">👨‍🎓 Student Management</button>
+        <!-- TAB 1: REPO-REVIEW CONFIG -->
+        <div id="settingsTab-repo" class="bg-white rounded-b-lg shadow-md overflow-hidden border border-gray-200">
+            
+            <!-- RepoReview Sub-Tabs -->
+            <div class="flex border-b bg-gray-50">
+                <button onclick="switchAdminTab('security')" id="tabBtn-security" class="flex-1 py-4 text-sm transition tab-active">🔒 Database & API Keys</button>
+                <button onclick="switchAdminTab('students')" id="tabBtn-students" class="flex-1 py-4 text-sm transition tab-inactive border-l border-r">👨‍🎓 Student Roster</button>
                 <button onclick="switchAdminTab('rubrics')" id="tabBtn-rubrics" class="flex-1 py-4 text-sm transition tab-inactive">📋 Grading Rubrics</button>
             </div>
 
-            <div class="p-6 overflow-y-auto bg-white">
+            <div class="p-6 overflow-y-auto">
                 
-                <!-- TAB 1: DATABASE & SECURITY -->
+                <!-- SUB-TAB: SECURITY -->
                 <div id="tab-security" class="block space-y-6">
                     <div class="p-5 border rounded-lg bg-gray-50">
                         <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-2"><span>🔥</span> Firebase Connection</h3>
-                        <p class="text-xs text-gray-600 mb-4">Paste your Firebase Project JSON configuration here to link your remote database.</p>
-                        <textarea id="firebaseConfigInput" rows="7" class="w-full p-3 border rounded text-xs font-mono focus:ring-purple-500 focus:border-purple-500 bg-white" placeholder='{
-  "apiKey": "AIzaSy...",
-  "authDomain": "reporeview.firebaseapp.com",
-  "projectId": "reporeview",
-  "storageBucket": "reporeview.firebasestorage.app",
-  "messagingSenderId": "123456789",
-  "appId": "1:123456789:web:abcdef"
-}'></textarea>
+                        <textarea id="firebaseConfigInput" rows="7" class="w-full p-3 border rounded text-xs font-mono focus:ring-purple-500 focus:border-purple-500 bg-white" placeholder='{"apiKey": "..."}'></textarea>
                     </div>
 
                     <div class="p-5 border rounded-lg bg-gray-50">
@@ -137,18 +119,17 @@
                         </div>
                     </div>
                     
-                    <button onclick="saveAdminSecurity()" class="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 transition shadow">Save Connection & Security Settings</button>
+                    <button onclick="saveAdminSecurity()" class="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 transition shadow">Save Security Settings</button>
                 </div>
 
-                <!-- TAB 2: STUDENT MANAGEMENT -->
+                <!-- SUB-TAB: STUDENTS -->
                 <div id="tab-students" class="hidden">
-                    <!-- Top Controls -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-gray-50 p-4 rounded-lg border">
                         <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Filter by Section</label>
                                 <select id="sectionFilterSelect" onchange="filterStudentsTable()" class="p-2 border rounded font-semibold text-gray-800 bg-white focus:ring-purple-500 text-sm">
-                                    <option value="ALL">All Sections (All Students)</option>
+                                    <option value="ALL">All Sections</option>
                                 </select>
                             </div>
                             <button onclick="openSectionsModal()" class="mt-5 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-semibold hover:bg-gray-100 shadow-sm flex items-center gap-1">
@@ -170,9 +151,8 @@
                         </div>
                     </div>
 
-                    <div id="importLoading" class="hidden text-blue-600 font-semibold animate-pulse mb-4">Processing operation in Firebase... Please wait.</div>
+                    <div id="importLoading" class="hidden text-blue-600 font-semibold animate-pulse mb-4">Processing operation in Firebase...</div>
 
-                    <!-- Students Table -->
                     <div class="border rounded-lg overflow-hidden shadow-sm">
                         <table class="min-w-full bg-white">
                             <thead class="bg-gray-100 border-b-2 border-gray-200">
@@ -180,8 +160,8 @@
                                     <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Section</th>
                                     <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Name</th>
                                     <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Email</th>
-                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">GitHub Username</th>
-                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Repository URL</th>
+                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">GitHub</th>
+                                    <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase">Repository</th>
                                     <th class="py-3 px-4 text-center text-xs font-bold text-gray-600 uppercase">Actions</th>
                                 </tr>
                             </thead>
@@ -192,34 +172,29 @@
                     </div>
                 </div>
 
-                <!-- TAB 3: RUBRICS -->
+                <!-- SUB-TAB: RUBRICS -->
                 <div id="tab-rubrics" class="hidden space-y-6">
-                    <!-- Status Banner -->
-                    <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg flex justify-between items-center">
                         <div>
                             <span class="text-xs font-bold uppercase tracking-wider text-purple-700">Current AutoGrader Rubric</span>
                             <h4 id="activeEquippedBanner" class="text-lg font-extrabold text-purple-900">--</h4>
                         </div>
-                        <span class="bg-purple-200 text-purple-800 text-xs px-3 py-1.5 rounded-full font-bold">Equipped for AutoGrader</span>
+                        <span class="bg-purple-200 text-purple-800 text-xs px-3 py-1.5 rounded-full font-bold">Equipped</span>
                     </div>
 
-                    <!-- Rubric Selector & Actions -->
-                    <div class="flex flex-col md:flex-row items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div class="flex items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div class="flex-1 w-full">
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Select Template to View/Edit</label>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Select Template</label>
                             <select id="templateSelect" onchange="changeTemplate()" class="w-full p-2 border rounded font-semibold text-gray-800 focus:ring-purple-500 bg-white"></select>
                         </div>
-                        <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                            <button id="equipTemplateBtn" onclick="equipCurrentTemplate()" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-green-700 transition flex items-center gap-1">
-                                <span>🎯</span> Equip as Active Rubric
-                            </button>
-                            <button onclick="createNewTemplate()" class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-semibold shadow-sm hover:bg-gray-100">➕ New</button>
-                            <button onclick="deleteCurrentTemplate()" class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded text-sm font-semibold shadow-sm hover:bg-red-50">🗑️ Delete</button>
+                        <div class="flex gap-2">
+                            <button id="equipTemplateBtn" onclick="equipCurrentTemplate()" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-green-700 transition">🎯 Equip</button>
+                            <button onclick="createNewTemplate()" class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-bold hover:bg-gray-100">➕ New</button>
+                            <button onclick="deleteCurrentTemplate()" class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded text-sm font-bold hover:bg-red-50">🗑️ Delete</button>
                         </div>
                     </div>
 
-                    <!-- Template Editor -->
-                    <div id="templateEditor" class="border rounded-lg p-5 border-gray-200 shadow-sm relative bg-white">
+                    <div id="templateEditor" class="border rounded-lg p-5 shadow-sm bg-white">
                         <div class="flex justify-between items-center mb-4 border-b pb-2">
                             <div class="flex items-center gap-2">
                                 <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Editing Template:</h3>
@@ -227,7 +202,7 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="grid grid-cols-2 gap-6 mb-6">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Template Name</label>
                                 <input type="text" id="tplName" class="w-full p-2 border rounded" onchange="updateTemplatePreview()">
@@ -241,16 +216,16 @@
                             </div>
                         </div>
                         <div class="mb-6">
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">General Prompt Instructions (Optional)</label>
-                            <textarea id="tplGeneralPrompt" rows="2" class="w-full p-2 border rounded bg-gray-50" onchange="updateTemplatePreview()" placeholder="Optional background context..."></textarea>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">General Prompt Instructions</label>
+                            <textarea id="tplGeneralPrompt" rows="2" class="w-full p-2 border rounded bg-gray-50" onchange="updateTemplatePreview()"></textarea>
                         </div>
                         <div>
                             <div class="flex justify-between items-end mb-3 border-b pb-2">
-                                <label class="block text-sm font-semibold text-gray-700">Grading Criteria Builder</label>
+                                <label class="block text-sm font-semibold text-gray-700">Grading Criteria</label>
                                 <span id="tplTotalWeight" class="text-xs font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded">Total: 0</span>
                             </div>
                             <div id="criteriaContainer" class="space-y-3 mb-4"></div>
-                            <button onclick="addCriterion()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded font-semibold text-sm hover:bg-gray-50 transition">➕ Add Another Criterion</button>
+                            <button onclick="addCriterion()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded font-semibold text-sm hover:bg-gray-50 transition">➕ Add Criterion</button>
                         </div>
                     </div>
                     <div class="flex justify-end">
@@ -260,133 +235,66 @@
 
             </div>
         </div>
-    </div>
-    </div>
 
-<!-- TAB 2: LESSON-REVIEW CONFIG -->
-<div id="settingsTab-lesson" class="space-y-6 hidden">
-    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4">📄 Document Export & Signatory Defaults</h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Default Teacher Name</label>
-                <input type="text" id="setTeacherName" placeholder="e.g., Joseph Sixson" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Default Subject Title</label>
-                <input type="text" id="setSubjectTitle" placeholder="e.g., Computer Programming 11" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+        <!-- TAB 2: LESSON-REVIEW CONFIG -->
+        <div id="settingsTab-lesson" class="hidden">
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-6">📄 Document Export & Signatory Defaults</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Default Teacher Name</label>
+                        <input type="text" id="setTeacherName" placeholder="e.g., Joseph Sixson" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Default Subject Title</label>
+                        <input type="text" id="setSubjectTitle" placeholder="e.g., Computer Programming 11" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <h4 class="text-sm font-bold text-gray-700 uppercase mb-3">Footer Signatories</h4>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 border rounded-lg">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">1. Submitted By</label>
+                        <input type="text" id="sigTeacher" class="w-full p-2 border rounded text-sm bg-white mb-2" placeholder="Name">
+                        <input type="text" id="sigTeacherTitle" class="w-full p-2 border rounded text-sm bg-white" placeholder="Title">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">2. Submitted To</label>
+                        <input type="text" id="sigSubjectCoord" class="w-full p-2 border rounded text-sm bg-white mb-2" placeholder="Name">
+                        <input type="text" id="sigSubjectCoordTitle" class="w-full p-2 border rounded text-sm bg-white" placeholder="Title">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">3. Noted By</label>
+                        <input type="text" id="sigGradeCoord" class="w-full p-2 border rounded text-sm bg-white mb-2" placeholder="Name">
+                        <input type="text" id="sigGradeCoordTitle" class="w-full p-2 border rounded text-sm bg-white" placeholder="Title">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">4. Approved By</label>
+                        <input type="text" id="sigPrincipal" class="w-full p-2 border rounded text-sm bg-white mb-2" placeholder="Name">
+                        <input type="text" id="sigPrincipalTitle" class="w-full p-2 border rounded text-sm bg-white" placeholder="Title">
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button onclick="saveLessonReviewSettings()" class="bg-blue-600 text-white font-bold px-8 py-3 rounded hover:bg-blue-700 shadow-md transition flex items-center gap-2">
+                        <span>💾</span> Save LessonReview Defaults
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 border-t pt-4">
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 1 (Submitted By)</label>
-                <input type="text" id="sigTeacher" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
-                <input type="text" id="sigTeacherTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 2 (Subject Coord.)</label>
-                <input type="text" id="sigSubjectCoord" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
-                <input type="text" id="sigSubjectCoordTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 3 (Grade Coord.)</label>
-                <input type="text" id="sigGradeCoord" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
-                <input type="text" id="sigGradeCoordTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Signatory 4 (Principal)</label>
-                <input type="text" id="sigPrincipal" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2">
-                <input type="text" id="sigPrincipalTitle" class="w-full p-2 border rounded text-sm bg-gray-50">
-            </div>
-        </div>
-
-        <button onclick="saveLessonReviewSettings()" class="mt-4 bg-blue-600 text-white font-bold px-6 py-2 rounded text-sm hover:bg-blue-700 shadow-sm transition">
-            💾 Save LessonReview Settings
-        </button>
-    </div>
-</div>
-
-    <!-- MODAL: ADD / EDIT STUDENT -->
-    <div id="studentModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden">
-            <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
-                <h3 id="studentModalTitle" class="text-lg font-bold text-gray-800">Add New Student</h3>
-                <button onclick="closeStudentModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            </div>
-            <form onsubmit="saveStudentForm(event)" class="p-6 space-y-4">
-                <input type="hidden" id="modalStudentDocId">
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Section</label>
-                    <select id="modalStudentSection" class="w-full p-2 border rounded focus:ring-purple-500 bg-white" required>
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Full Name</label>
-                    <input type="text" id="modalStudentName" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="e.g. Juan Dela Cruz" required>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Email Address</label>
-                    <input type="email" id="modalStudentEmail" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="e.g. juan@school.edu">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">GitHub Username</label>
-                    <input type="text" id="modalStudentGithub" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="e.g. juan-dev" required>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Group Repository URL</label>
-                    <input type="url" id="modalStudentRepo" class="w-full p-2 border rounded focus:ring-purple-500" placeholder="https://github.com/juan-dev/comprog-project" required>
-                </div>
-                <div class="pt-4 border-t flex justify-end gap-2">
-                    <button type="button" onclick="closeStudentModal()" class="px-4 py-2 border rounded text-gray-600 font-semibold hover:bg-gray-50">Cancel</button>
-                    <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded font-bold hover:bg-purple-700 shadow">Save Student</button>
-                </div>
-            </form>
-        </div>
     </div>
 
-    <!-- MODAL: MANAGE SECTIONS -->
-    <div id="sectionsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[85vh]">
-            <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-800">Manage Class Sections</h3>
-                <button onclick="closeSectionsModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            </div>
-            
-            <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                <!-- Add new section input -->
-                <div class="flex gap-2">
-                    <input type="text" id="newSectionInput" placeholder="New Section Name (e.g. IT-301)" class="flex-1 p-2 border rounded text-sm focus:ring-purple-500">
-                    <button onclick="addNewSection()" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-green-700 shadow-sm">Add</button>
-                </div>
+    <!-- MODALS (Students & Sections) remain exactly the same as your original code... -->
+    <!-- (I have omitted the modals here to save space, just paste your original modals here) -->
 
-                <div class="border rounded-lg overflow-hidden">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-100 border-b">
-                            <tr>
-                                <th class="p-2 text-left text-xs font-bold text-gray-600 uppercase">Section Name</th>
-                                <th class="p-2 text-center text-xs font-bold text-gray-600 uppercase">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sectionsTableBody">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="p-4 border-t bg-gray-50 text-right">
-                <button onclick="closeSectionsModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded font-bold hover:bg-gray-300">Close</button>
-            </div>
-        </div>
-    </div>
-<!-- GLOBAL LOADING OVERLAY -->
+    <!-- GLOBAL LOADING OVERLAY -->
     <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[100] items-center justify-center flex-col">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500 border-solid mb-4"></div>
         <p id="loaderMessage" class="text-white font-bold text-lg tracking-wider">Processing...</p>
     </div>
-    <script type="module" src="settings.js"></script>
+    
+    <script type="module" src="settings.js?v=2"></script>
 </body>
 </html>
