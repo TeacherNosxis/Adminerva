@@ -91,6 +91,9 @@ window.switchAdminTab = function(tabId) {
 // ----------------------------------------------------
 // LESSONREVIEW SETTINGS LOGIC
 // ----------------------------------------------------
+// ----------------------------------------------------
+// LESSONREVIEW SETTINGS LOGIC
+// ----------------------------------------------------
 window.loadLessonReviewSettings = async function() {
     if (!db) return;
 
@@ -101,10 +104,9 @@ window.loadLessonReviewSettings = async function() {
         if (docSnap.exists()) {
             const data = docSnap.data();
 
-            // Populate fields if they exist in cloud data
+            // Populate standard text inputs
             if (document.getElementById('setTeacherName')) document.getElementById('setTeacherName').value = data.teacher_name || '';
             if (document.getElementById('setSubjectTitle')) document.getElementById('setSubjectTitle').value = data.subject_title || '';
-            if (document.getElementById('settingsHeaderImage')) document.getElementById('settingsHeaderImage').value = data.header_image_url || '';
             
             if (document.getElementById('sigTeacher')) document.getElementById('sigTeacher').value = data.sig_teacher || '';
             if (document.getElementById('sigTeacherTitle')) document.getElementById('sigTeacherTitle').value = data.sig_teacher_title || '';
@@ -115,23 +117,25 @@ window.loadLessonReviewSettings = async function() {
             if (document.getElementById('sigPrincipal')) document.getElementById('sigPrincipal').value = data.sig_principal || '';
             if (document.getElementById('sigPrincipalTitle')) document.getElementById('sigPrincipalTitle').value = data.sig_principal_title || '';
 
-            // Handle Base64 Header Image & Preview
-            if (data.header_image_base64) {
+            // Handle Base64 Header Image & Settings Preview Box on Load
+            const headerBase64 = data.header_image_base64 || data.header_image_url || '';
+            if (headerBase64) {
                 const hiddenInput = document.getElementById('settingsHeaderBase64');
-                if (hiddenInput) hiddenInput.value = data.header_image_base64;
-                localStorage.setItem('lessonReview_headerImage', data.header_image_base64);
+                if (hiddenInput) hiddenInput.value = headerBase64;
+                localStorage.setItem('lessonReview_headerImage', headerBase64);
 
+                // 👇 POPULATE THE PREVIEW BOX ON PAGE LOAD 👇
                 const previewImg = document.getElementById('headerPreview');
                 const placeholder = document.getElementById('headerPreviewPlaceholder');
                 if (previewImg && placeholder) {
-                    previewImg.src = data.header_image_base64;
+                    previewImg.src = headerBase64;
                     previewImg.classList.remove('hidden');
                     placeholder.classList.add('hidden');
                 }
             }
 
             // Sync cache back to localStorage for fast access during printing
-            if (data.header_image_url) localStorage.setItem('lessonReview_headerImage', data.header_image_url);
+            if (headerBase64) localStorage.setItem('lessonReview_headerImage', headerBase64);
             if (data.sig_teacher) localStorage.setItem('lessonReview_sigTeacher', data.sig_teacher);
             if (data.sig_teacher_title) localStorage.setItem('lessonReview_sigTeacherTitle', data.sig_teacher_title);
             if (data.sig_subject_coord) localStorage.setItem('lessonReview_sigSubjectCoord', data.sig_subject_coord);
