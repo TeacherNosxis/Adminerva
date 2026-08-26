@@ -117,27 +117,52 @@ function loadSecuritySettings() {
     }
 }
 
-window.saveAdminSecurity = function() {
-    const ghToken = document.getElementById('adminGithubToken').value.trim();
-    const gemKey = document.getElementById('adminGeminiKey').value.trim();
-    const aiModel = document.getElementById('adminAiModel').value.trim();
-    const rawFbConfig = document.getElementById('firebaseConfigInput').value.trim();
+window.saveSecuritySettings = async function() {
+    // 1. Get the exact inputs you want to test
+    const apiKeyInput = document.getElementById('repoReview_gemini_token').value.trim();
+    const aiModelInput = document.getElementById('repoReview_ai_model').value.trim();
+    const saveBtn = document.getElementById('saveSecurityBtn'); // Your save button ID
 
-    localStorage.setItem('repoReview_github_token', ghToken);
-    localStorage.setItem('repoReview_gemini_token', gemKey);
-    localStorage.setItem('repoReview_ai_model', aiModel);
+    if (!apiKeyInput || !aiModelInput) {
+        return alert("Please enter both a Gemini API Key and an AI Model name.");
+    }
 
-    if (rawFbConfig) {
-        try {
-            JSON.parse(rawFbConfig);
-            localStorage.setItem('repoReview_firebase_config', rawFbConfig);
-            alert("Settings Saved! Reloading to connect to Firebase.");
-            location.reload();
-        } catch (e) {
-            alert("Invalid Firebase Configuration format. Ensure it is valid JSON.");
+    // 2. Change the button to a loading state so you know it's testing
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = "⏳ Testing Connection...";
+    saveBtn.disabled = true;
+
+    try {
+        // 3. Send a tiny "ping" to the AI to see if the door opens
+        const testPrompt = "Reply with exactly one word: SUCCESS";
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModelInput}:generateContent?key=${apiKeyInput}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: testPrompt }] }]
+            })
+        });
+
+        // 4. Trap the exact error if Google rejects the model or key
+        if (!response.ok) {
+            const errorDetails = await response.text();
+            throw new Error(`Error Code ${response.status}\n\nGoogle says: ${errorDetails}`);
         }
-    } else {
-        alert("Settings Saved locally.");
+
+        // 5. If it gets to this line, the test passed! Save the settings.
+        localStorage.setItem('repoReview_gemini_token', apiKeyInput);
+        localStorage.setItem('repoReview_ai_model', aiModelInput);
+        
+        alert("✅ AI Connection Successful!\nYour API Key and Model are perfectly configured and saved.");
+
+    } catch (error) {
+        // 6. Alert the exact reason it failed so you don't have to guess
+        alert("🚨 AI TEST FAILED!\n\nSettings were NOT saved. Please fix the issue below:\n\n" + error.message);
+    } finally {
+        // Restore the save button
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
     }
 };
 
