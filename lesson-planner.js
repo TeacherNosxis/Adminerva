@@ -1,8 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-import { getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
 let db = null;
 let currentPlan = [];
 let currentWeeklyOverview = null;
@@ -476,9 +473,8 @@ function renderOutput() {
 // ==========================================
 // ACTION BUTTONS: SAVE & PRINT ENGINE
 // ==========================================
-
 // ==========================================
-// ACTION BUTTONS: SAVE & PRINT ENGINE
+// ACTION BUTTONS: SMART SAVE, LOAD & DELETE
 // ==========================================
 
 window.saveLessonPlan = async function() {
@@ -496,8 +492,8 @@ window.saveLessonPlan = async function() {
     const month = document.getElementById('lpMonth').value;
     const week = document.getElementById('lpWeek').value;
     
-    // Create a clean unique ID like: "Grade11_ComputerProgramming_August_Week1"
-    const safeDocId = `${grade}_${subject}_${month}_${week}`.replace(/[^a-zA-Z0-9_]/g, "_");
+    // Creates a unique ID (e.g., Grade11_ComputerProgramming_August_Week1) to prevent duplicates!
+    const safeDocId = `${grade}_${subject}_${month}_${week}`.replace(/[^a-zA-Z0-9_]/g, "");
 
     const loaderText = document.querySelector('#globalLoader p');
     const originalText = loaderText.textContent;
@@ -519,9 +515,9 @@ window.saveLessonPlan = async function() {
             timestamp: new Date().toISOString()
         };
 
-        // setDoc will overwrite if it already exists, preventing duplicates entirely!
+        // setDoc overwrites existing plans for the same week instead of duplicating them
         await setDoc(doc(db, "lesson_plans", safeDocId), planData);
-        alert("Lesson Plan saved successfully! (Duplicates prevented via smart overwrite).");
+        alert("✅ Lesson Plan saved successfully!");
         return true; 
     } catch (e) {
         console.error("Error saving plan:", e);
@@ -635,6 +631,7 @@ window.saveAndPrint = async function() {
 
 window.openLoadPlanModal = async function() {
     const modal = document.getElementById('loadPlanModal');
+    if (!modal) return alert("Modal HTML is missing!");
     modal.classList.replace('hidden', 'flex');
     
     const container = document.getElementById('savedPlansListContainer');
@@ -656,7 +653,7 @@ window.openLoadPlanModal = async function() {
 
         querySnapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            const docId = docSnap.id; // Grab the unique Firebase Document ID
+            const docId = docSnap.id; 
             const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown date";
             
             const card = document.createElement('div');
@@ -668,7 +665,7 @@ window.openLoadPlanModal = async function() {
                     <p class="text-[10px] text-gray-400 mt-0.5">Saved on: ${dateStr}</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick='loadSpecificPlan(${JSON.stringify(data)})' class="px-3 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">
+                    <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">
                         📂 Load
                     </button>
                     <button onclick="deleteLessonPlan('${docId}')" class="px-3 py-2 bg-red-100 text-red-600 font-bold text-xs rounded hover:bg-red-200 shadow transition" title="Delete Plan">
@@ -689,13 +686,12 @@ window.closeLoadPlanModal = function() {
     document.getElementById('loadPlanModal').classList.replace('flex', 'hidden');
 };
 
+
 window.loadSpecificPlan = function(planData) {
-    // 1. Populate global variables
     currentWeeklyOverview = planData.weekly_overview;
     currentPlan = planData.sessions;
     currentTargetGrade = planData.grade_level;
 
-    // 2. Populate input fields back into the UI
     document.getElementById('lpTeacherName').value = planData.teacher_name || '';
     document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
     document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
@@ -705,27 +701,19 @@ window.loadSpecificPlan = function(planData) {
     if(planData.week) document.getElementById('lpWeek').value = planData.week;
     if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
 
-    // 3. Render overview and output cards
     renderOverview();
     renderOutput();
-
-    // 4. Close modal
     closeLoadPlanModal();
     alert("✅ Lesson plan loaded successfully!");
 };
-window.deleteLessonPlan = async function(docId) {
-    if (!confirm("Are you sure you want to delete this saved lesson plan from Firebase?")) return;
-    
-    if (!db) return alert("Firebase is not connected.");
 
-    window.showLoader("Deleting lesson plan...");
+window.deleteLessonPlan = async function(docId) {
+    if (!confirm("Are you sure you want to delete this saved lesson plan?")) return;
+    window.showLoader();
     try {
         await deleteDoc(doc(db, "lesson_plans", docId));
-        alert("✅ Lesson plan deleted successfully.");
-        // Refresh the modal list
-        window.openLoadPlanModal();
+        window.openLoadPlanModal(); // Refresh the list
     } catch (e) {
-        console.error("Error deleting plan:", e);
         alert("Failed to delete plan: " + e.message);
     } finally {
         window.hideLoader();
