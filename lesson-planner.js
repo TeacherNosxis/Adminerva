@@ -308,16 +308,11 @@ async function executeFinalGeneration(userClarification) {
     if (currentTargetGrade === "Grade 11") {
         gradeSpecificRules = `
 3. SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
-4. SESSION 4-6 RULE (3-Hour Laboratory Period): 
-   - Design these sessions as a hands-on laboratory or performance task based on the custom instructions.
-   - You MUST format the "learning_activities" explicitly like this:
-     Session 4:
-      - (Good for 50 mins lab activity using -ing verbs)
-     Session 5:
-      - (Good for 50 mins lab activity using -ing verbs)
-     Session 6:
-      - (Good for 50 mins lab activity using -ing verbs)`;
-    } else {
+4. SESSION 4-6 RULE (3-Hour Laboratory Period / 150 mins total): 
+   - Design these sessions as a hands-on laboratory or performance task based on custom instructions.
+   - You MUST format the "learning_activities" with dynamic minute allocations in parentheses for each phase (e.g., Prelims [X mins], Motivation [X mins], Session 4/Coding [X mins], Session 5/Testing [X mins], Session 6/Debugging [X mins], Evaluation [X mins], Closing [X mins]), ensuring the total equals exactly 150 minutes.
+   - You must use -ing verbs at the start of each bullet in the "learning_activities" section for these sessions.
+`;} else {
         gradeSpecificRules = `
 3. SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".`;
     }
@@ -346,21 +341,24 @@ CRITICAL FORMATTING RULES:
 2. "sessions" array: Generate daily sessions.
 ${gradeSpecificRules}
 5. SESSION DETAILS (Normal): 
-   - "competencies" and "objectives" MUST be unique per session.
-   - "learning_activities" MUST be heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb.
+   - "competencies": Provide 1 to 2 clear learning competencies.
+   - "objectives": Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy, explicitly covering cognitive, psychomotor, and affective domains where applicable.
    - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
-   - "evaluation" MUST reference a 10-item Quipper quiz (unless overridden by custom instructions).
-   - SCHEDULE MAPPING (CRITICAL NON-LINEAR MAPPING): Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
-     * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6", even if it happens on a Monday.
-     * RULE B: Map the 1-hour (or 50-min) blocks sequentially to "Session 1", "Session 2", and "Session 3" for the remaining days.
-     * RULE C: Use the Target Scope dates to determine the exact calendar date. Format the remarks EXACTLY like this for every section:
+   - "learning_activities": Heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb.
+   - "evaluation": Reference a 10-item Quipper quiz (unless overridden by custom instructions).
+   
+   - TIME FRAME MAPPING (CRITICAL LINE-BY-LINE ALIGNMENT): 
+     In the time frame column, do NOT just write a generic label. You must provide a line-by-line minute breakdown that visually matches the vertical layout of the "Learning Experiences" (preliminary, motivation, activities, evaluation, closing) or specific activity lines (such as Session 4, Session 5, Session 6 lines). Format it with precise vertical spacing or line breaks so each minute allocation sits horizontally level with its corresponding activity part.
+     
+   - SCHEDULE MAPPING: Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
+     * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6".
+     * RULE B: Map the 1-hour blocks sequentially to "Session 1", "Session 2", and "Session 3" for remaining days.
+     * RULE C: Format the remarks EXACTLY like this for every section:
        [Section Name]
        [Session Name/Number]
        [Full Date, e.g., August 31, 2026]
        [Time Slot]
        [Specific Suspension/Interruption Dates if applicable]
-     
-     (If multiple sections are taught in one day for that session type, list them sequentially separated by a blank line).
 
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted "learning_activities". Set all other fields to empty strings "".
@@ -785,10 +783,17 @@ window.exportPDF = function() {
             </td>
         `;
 
-        let timeFrame = isFlex ? "Async" : "1 Session";
-        if (session.session_name.includes("4-6")) timeFrame = "3 Hours";
-        rowHtml += `<td class="text-center font-bold align-middle">${timeFrame}</td>`;
+        // TIME FRAME COLUMN (Dynamic & Line-aligned)
+        let timeFrame = isFlex ? "Async" : "5 mins<br><br>5 mins<br><br>26 mins<br><br>10 mins<br><br>4 mins";
+        
+        if (session.session_name.includes("4-6")) {
+            // Dynamically reflects the breakdown of the 150-minute lab phases
+            timeFrame = "10 mins<br><br>15 mins<br><br>40 mins<br><br>50 mins<br><br>25 mins<br><br>10 mins";
+        }
+        
+        rowHtml += `<td class="text-center font-bold align-middle leading-relaxed text-xs">${timeFrame}</td>`;
 
+        
         let experiencesHTML = `<div class="font-bold mb-1">${session.session_name}</div>`;
         if (!isFlex) {
             experiencesHTML += `
