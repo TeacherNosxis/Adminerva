@@ -127,26 +127,31 @@ window.toggleEditMode = async function() {
 };
 
 // --- TIME CALCULATIONS ---
-window.autoFillEndTime = function(startInput) {
-    if (!startInput.value) return;
-    const row = startInput.closest('tr');
+window.autoFillEndTime = function(dateStr, startInputElement) {
+    if (!dateStr) return; // Exit if no time is selected
     
-    // Target the actual flatpickr instance element, not just the visual input
+    // Find the row we are currently editing
+    const row = startInputElement.closest('tr');
+    if (!row) return;
+    
+    // Find the end-time input in this exact row
     const endInput = row.querySelector('.time-end');
+    if (!endInput) return;
     
-    const [hours, minutes] = startInput.value.split(':').map(Number);
+    // Calculate +50 mins based on Flatpickr's explicit data
+    const [hours, minutes] = dateStr.split(':').map(Number);
     const date = new Date();
-    date.setHours(hours, minutes + 50, 0, 0); // Adds exactly 50 mins
+    date.setHours(hours, minutes + 50, 0, 0); 
     
     const endHours = String(date.getHours()).padStart(2, '0');
     const endMinutes = String(date.getMinutes()).padStart(2, '0');
     const finalTime = `${endHours}:${endMinutes}`;
     
-    endInput.value = finalTime;
-    
-    // Command the new Flatpickr UI to visually update
+    // Command the Flatpickr End-Time UI to visually update
     if (endInput._flatpickr) {
-        endInput._flatpickr.setDate(finalTime);
+        endInput._flatpickr.setDate(finalTime, true); // 'true' forces a hard UI refresh
+    } else {
+        endInput.value = finalTime; // Fallback
     }
 };
 
