@@ -295,12 +295,13 @@ function renderTable() {
         flatpickr(".time-start", {
             enableTime: true,
             noCalendar: true,
-            dateFormat: "H:i", // Under-the-hood 24h format for saving
+            dateFormat: "H:i", 
             altInput: true,
-            altFormat: "h:i K", // Visual 12h AM/PM format for the user
-            minuteIncrement: 5, // STRICTLY forces 5-minute jumps!
+            altFormat: "h:i K", 
+            minuteIncrement: 5, 
             onChange: function(selectedDates, dateStr, instance) {
-                window.autoFillEndTime(instance.element);
+                // Pass Flatpickr's exact time string directly to the math function!
+                window.autoFillEndTime(dateStr, instance.element);
             }
         });
         
@@ -310,7 +311,7 @@ function renderTable() {
             dateFormat: "H:i",
             altInput: true,
             altFormat: "h:i K",
-            minuteIncrement: 5 // STRICTLY forces 5-minute jumps!
+            minuteIncrement: 5 
         });
     }
 }
