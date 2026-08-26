@@ -202,7 +202,10 @@ Custom Instructions: ${cachedCustomInstructions}
             body: JSON.stringify({ contents: [{ parts: [{ text: preCheckPrompt }] }] })
         });
 
-        if (!response.ok) throw new Error("Pre-check failed.");
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Pre-check failed (${response.status}): ${errBody}`);
+        }
         const result = await response.json();
         const aiReply = result.candidates[0].content.parts[0].text.trim();
 
@@ -335,7 +338,10 @@ ${cachedCompiledText.substring(0, 25000)}
             })
         });
 
-        if (!response.ok) throw new Error("API Error: " + response.statusText);
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`API Error (${response.status}): ${errBody}`);
+        }
         
         const aiResult = await response.json();
         let rawJson = aiResult.candidates[0].content.parts[0].text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
