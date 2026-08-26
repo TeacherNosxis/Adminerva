@@ -78,8 +78,19 @@ const bibleVerses = [
 
 document.addEventListener('DOMContentLoaded', () => {
     loadLibraryFolders();
+    initFirebase();
 });
-
+function initFirebase() {
+    const configStr = localStorage.getItem('repoReview_firebase_config');
+    if (!configStr) return;
+    try {
+        const firebaseConfig = JSON.parse(configStr);
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+    } catch (e) {
+        console.error("Firebase Initialization Failed:", e);
+    }
+}
 window.showLoader = function() { 
     document.getElementById('globalLoader').classList.replace('hidden', 'flex'); 
     elapsedSeconds = 0;
@@ -451,3 +462,154 @@ function renderOutput() {
         container.insertAdjacentHTML('beforeend', html);
     });
 }
+// ==========================================
+// ACTION BUTTONS: SAVE & PRINT ENGINE
+// ==========================================
+
+window.saveLessonPlan = async function() {
+    if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
+        alert("Please generate a lesson plan first before saving.");
+        return false; // Failed
+    }
+    if (!db) {
+        alert("Firebase is not connected! Please configure it in Global Settings.");
+        return false; // Failed
+    }
+
+    const loaderText = document.querySelector('#globalLoader p');
+    const originalText = loaderText.textContent;
+    loaderText.textContent = "Saving to Database...";
+    document.getElementById('globalLoader').classList.replace('hidden', 'flex');
+
+    try {
+        const planData = {
+            teacher_name: document.getElementById('lpTeacherName').value || "Unassigned",
+            subject_title: document.getElementById('lpSubjectTitle').value || "Unassigned",
+            school_year: document.getElementById('lpSchoolYear').value,
+            semester: document.getElementById('lpSemester').value,
+            quarter: document.getElementById('lpQuarter').value,
+            month: document.getElementById('lpMonth').value,
+            week: document.getElementById('lpWeek').value,
+            grade_level: currentTargetGrade,
+            weekly_overview: currentWeeklyOverview,
+            sessions: currentPlan,
+            timestamp: new Date().toISOString()
+        };
+
+        await addDoc(collection(db, "lesson_plans"), planData);
+        alert("Lesson Plan saved successfully to Firebase!");
+        return true; // Success
+    } catch (e) {
+        console.error("Error saving plan:", e);
+        alert("Failed to save to database: " + e.message);
+        return false; // Failed
+    } finally {
+        loaderText.textContent = originalText;
+        document.getElementById('globalLoader').classList.replace('flex', 'hidden');
+    }
+};
+
+window.exportPDF = function() {
+    if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
+        return alert("Please generate a lesson plan first before printing.");
+    }
+
+    // 1. Populate the Document Header
+    document.getElementById('printSubject').textContent = document.getElementById('lpSubjectTitle').value || "SUBJECT";
+    document.getElementById('printSY').textContent = document.getElementById('lpSchoolYear').value || "2026-2027";
+    document.getElementById('printQuarter').textContent = document.getElementById('lpQuarter').value || "QUARTER";
+    document.getElementById('printSemester').textContent = document.getElementById('lpSemester').value || "SEMESTER";
+    
+    const scopeWeek = document.getElementById('lpWeek').value;
+    const scopeMonth = document.getElementById('lpMonth').value;
+    document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth}`;
+
+    // 2. Populate Signatories from LocalStorage
+    document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "Teacher Name";
+    document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
+    document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "Coordinator Name";
+    document.getElementById('printSig2Title').textContent = localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "Coordinator";
+    document.getElementById('printSig3Name').textContent = localStorage.getItem('lessonReview_sigGradeCoord') || "Coordinator Name";
+    document.getElementById('printSig3Title').textContent = localStorage.getItem('lessonReview_sigGradeCoordTitle') || "Coordinator";
+    document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sigPrincipal') || "Principal Name";
+    document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sigPrincipalTitle') || "Principal";
+
+    // 3. Populate the 7-Column Table
+    const tbody = document.getElementById('printTableBody');
+    tbody.innerHTML = ''; // Clear previous
+
+    const rowCount = currentPlan.length;
+
+    currentPlan.forEach((session, index) => {
+        const isFlex = session.session_name.toLowerCase().includes('flex');
+        const tr = document.createElement('tr');
+        
+        let rowHtml = ``;
+
+        // Col 1 & 2 (Content, Standards) merge across ALL rows
+        if (index === 0) {
+            rowHtml += `
+                <td rowspan="${rowCount}" class="font-bold text-center align-middle">${currentWeeklyOverview.topic || ''}</td>
+                <td rowspan="${rowCount}">
+                    <strong>Content Standard:</strong><br>${currentWeeklyOverview.content_standard || ''}<br><br>
+                    <strong>Performance Standard:</strong><br>${currentWeeklyOverview.performance_standard || ''}<br><br>
+                    <strong>Formation Standard:</strong><br>${currentWeeklyOverview.formation_standard || ''}
+                </td>
+            `;
+        }
+
+        // Col 3: Competencies & Objectives
+        rowHtml += `
+            <td>
+                <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
+                <strong>Objectives:</strong><br>${session.objectives || 'N/A'}
+            </td>
+        `;
+
+        // Col 4: Time Frame
+        let timeFrame = isFlex ? "Async" : "1 Session";
+        if (session.session_name.includes("4-6")) timeFrame = "3 Hours";
+        rowHtml += `<td class="text-center font-bold align-middle">${timeFrame}</td>`;
+
+        // Col 5: Learning Experiences
+        let experiencesHTML = `<div class="font-bold mb-1">${session.session_name}</div>`;
+        if (!isFlex) {
+            experiencesHTML += `
+                <strong>Preliminary:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.preliminary || ''}</div><br>
+                <strong>Motivation:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.motivation || ''}</div><br>
+            `;
+        }
+        experiencesHTML += `<strong>Activities:</strong><br><div class="pl-2 whitespace-pre-wrap font-mono">${session.learning_activities || ''}</div>`;
+        if (!isFlex) {
+            experiencesHTML += `
+                <br><strong>Evaluation:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.evaluation || ''}</div><br>
+                <strong>Closing:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.closing || ''}</div><br>
+                <strong>Values Integration:</strong><br><div class="pl-2 whitespace-pre-wrap">${session.values_integration || ''}</div>
+            `;
+        }
+        rowHtml += `<td>${experiencesHTML}</td>`;
+
+        // Col 6 (Materials) merges across ALL rows
+        if (index === 0) {
+            rowHtml += `<td rowspan="${rowCount}" class="whitespace-pre-wrap align-middle">${currentWeeklyOverview.materials || ''}</td>`;
+        }
+
+        // Col 7: Remarks
+        rowHtml += `<td class="whitespace-pre-wrap align-middle">${session.remarks || ''}</td>`;
+
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+    });
+
+    // 4. Trigger browser print dialog
+    setTimeout(() => {
+        window.print();
+    }, 300);
+};
+
+window.saveAndPrint = async function() {
+    const isSaved = await window.saveLessonPlan();
+    if (isSaved) {
+        window.exportPDF();
+    }
+};
