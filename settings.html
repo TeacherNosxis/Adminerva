@@ -251,6 +251,11 @@
                         <input type="text" id="setSubjectTitle" placeholder="e.g., Computer Programming 11" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
                     </div>
                 </div>
+                <div class="mb-8 p-4 bg-gray-50 border rounded-lg">
+            <h4 class="text-xs font-bold text-gray-700 uppercase mb-1">Print Header / School Logo URL</h4>
+            <p class="text-[11px] text-gray-500 mb-2">Paste the image URL or Base64 string for the banner/logo displayed at the top of printed documents.</p>
+            <input type="text" id="settingsHeaderImage" placeholder="https://example.com/school-logo.png" class="w-full p-2 border rounded text-sm bg-white">
+        </div>
 
                 <h4 class="text-sm font-bold text-gray-700 uppercase mb-3">Footer Signatories</h4>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 border rounded-lg">
@@ -274,7 +279,9 @@
                         <input type="text" id="sigPrincipal" class="w-full p-2 border rounded text-sm bg-white mb-2" placeholder="Name">
                         <input type="text" id="sigPrincipalTitle" class="w-full p-2 border rounded text-sm bg-white" placeholder="Title">
                     </div>
+                    
                 </div>
+                
 
                 <div class="flex justify-end">
                     <button onclick="saveLessonReviewSettings()" class="bg-blue-600 text-white font-bold px-8 py-3 rounded hover:bg-blue-700 shadow-md transition flex items-center gap-2">

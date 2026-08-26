@@ -610,6 +610,9 @@ window.saveLessonPlan = async function() {
             week: week,
             date_range: dateRangeEl ? dateRangeEl.value : "",
             grade_level: grade,
+            custom_instructions: document.getElementById('lpCustomInstructions').value.trim(),
+            schedule: localStorage.getItem('lessonReview_schedule') || "",
+            reference_folders: Array.from(document.querySelectorAll('.folder-checkbox:checked')).map(cb => cb.value),
             weekly_overview: currentWeeklyOverview,
             sessions: currentPlan,
             timestamp: new Date().toISOString()
@@ -710,6 +713,13 @@ window.loadSpecificPlan = function(planData) {
     document.getElementById('lpTeacherName').value = planData.teacher_name || '';
     document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
     document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
+    document.querySelectorAll('.folder-checkbox').forEach(cb => cb.checked = false);
+    if (planData.reference_folders && Array.isArray(planData.reference_folders)) {
+        planData.reference_folders.forEach(folderId => {
+            const checkbox = document.querySelector(`.folder-checkbox[value="${folderId}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
     if(planData.semester) document.getElementById('lpSemester').value = planData.semester;
     if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
     if(planData.month) document.getElementById('lpMonth').value = planData.month;
@@ -717,9 +727,11 @@ window.loadSpecificPlan = function(planData) {
     
     const dateRangeEl = document.getElementById('lpDateRange');
     if (dateRangeEl && planData.date_range) dateRangeEl.value = planData.date_range;
-    
+    const customInstructionsEl = document.getElementById('lpCustomInstructions');
     if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
-
+    if (planData.schedule) {
+        localStorage.setItem('lessonReview_schedule', planData.schedule);
+    }
     renderOverview();
     renderOutput();
     closeLoadPlanModal();
@@ -727,6 +739,19 @@ window.loadSpecificPlan = function(planData) {
 };
 
 window.exportPDF = function() {
+    // --- HEADER LOGO / BANNER CONFIG ---
+    const headerImgUrl = localStorage.getItem('lessonReview_headerImage');
+    const headerImgEl = document.getElementById('printHeaderImage');
+    const headerContainer = document.getElementById('printHeaderBannerContainer');
+    
+    if (headerImgUrl && headerImgEl) {
+        headerImgEl.src = headerImgUrl;
+        headerImgEl.classList.remove('hidden');
+        if (headerContainer) headerContainer.classList.remove('hidden');
+    } else if (headerContainer) {
+        headerContainer.classList.add('hidden');
+    }
+    
     if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
         return alert("Please generate a lesson plan first before printing.");
     }
@@ -793,7 +818,7 @@ window.exportPDF = function() {
         
         rowHtml += `<td class="text-center font-bold align-middle leading-relaxed text-xs">${timeFrame}</td>`;
 
-        
+
         let experiencesHTML = `<div class="font-bold mb-1">${session.session_name}</div>`;
         if (!isFlex) {
             experiencesHTML += `
