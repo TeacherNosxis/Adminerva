@@ -1,3 +1,7 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+let db = null;
 let currentPlan = [];
 let currentWeeklyOverview = null;
 let currentTargetGrade = '';
@@ -5,7 +9,6 @@ let cachedCompiledText = '';
 let cachedSchedule = '';
 let cachedScope = '';
 let cachedCustomInstructions = '';
-
 // --- TIMER & 200+ BIBLE VERSE ENGINE ---
 let timerInterval, verseInterval;
 let elapsedSeconds = 0;
@@ -466,14 +469,18 @@ function renderOutput() {
 // ACTION BUTTONS: SAVE & PRINT ENGINE
 // ==========================================
 
+// ==========================================
+// ACTION BUTTONS: SAVE & PRINT ENGINE
+// ==========================================
+
 window.saveLessonPlan = async function() {
     if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
         alert("Please generate a lesson plan first before saving.");
-        return false; // Failed
+        return false; 
     }
     if (!db) {
         alert("Firebase is not connected! Please configure it in Global Settings.");
-        return false; // Failed
+        return false; 
     }
 
     const loaderText = document.querySelector('#globalLoader p');
@@ -498,11 +505,11 @@ window.saveLessonPlan = async function() {
 
         await addDoc(collection(db, "lesson_plans"), planData);
         alert("Lesson Plan saved successfully to Firebase!");
-        return true; // Success
+        return true; 
     } catch (e) {
         console.error("Error saving plan:", e);
         alert("Failed to save to database: " + e.message);
-        return false; // Failed
+        return false; 
     } finally {
         loaderText.textContent = originalText;
         document.getElementById('globalLoader').classList.replace('flex', 'hidden');
@@ -524,7 +531,7 @@ window.exportPDF = function() {
     const scopeMonth = document.getElementById('lpMonth').value;
     document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth}`;
 
-    // 2. Populate Signatories from LocalStorage
+    // 2. Populate Signatories
     document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "Teacher Name";
     document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
     document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "Coordinator Name";
@@ -536,7 +543,7 @@ window.exportPDF = function() {
 
     // 3. Populate the 7-Column Table
     const tbody = document.getElementById('printTableBody');
-    tbody.innerHTML = ''; // Clear previous
+    tbody.innerHTML = ''; 
 
     const rowCount = currentPlan.length;
 
@@ -558,7 +565,6 @@ window.exportPDF = function() {
             `;
         }
 
-        // Col 3: Competencies & Objectives
         rowHtml += `
             <td>
                 <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
@@ -566,12 +572,10 @@ window.exportPDF = function() {
             </td>
         `;
 
-        // Col 4: Time Frame
         let timeFrame = isFlex ? "Async" : "1 Session";
         if (session.session_name.includes("4-6")) timeFrame = "3 Hours";
         rowHtml += `<td class="text-center font-bold align-middle">${timeFrame}</td>`;
 
-        // Col 5: Learning Experiences
         let experiencesHTML = `<div class="font-bold mb-1">${session.session_name}</div>`;
         if (!isFlex) {
             experiencesHTML += `
@@ -589,22 +593,17 @@ window.exportPDF = function() {
         }
         rowHtml += `<td>${experiencesHTML}</td>`;
 
-        // Col 6 (Materials) merges across ALL rows
         if (index === 0) {
             rowHtml += `<td rowspan="${rowCount}" class="whitespace-pre-wrap align-middle">${currentWeeklyOverview.materials || ''}</td>`;
         }
 
-        // Col 7: Remarks
         rowHtml += `<td class="whitespace-pre-wrap align-middle">${session.remarks || ''}</td>`;
 
         tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
     });
 
-    // 4. Trigger browser print dialog
-    setTimeout(() => {
-        window.print();
-    }, 300);
+    setTimeout(() => { window.print(); }, 300);
 };
 
 window.saveAndPrint = async function() {
