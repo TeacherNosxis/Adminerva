@@ -36,7 +36,61 @@ const bibleVerses = [
 document.addEventListener('DOMContentLoaded', () => {
     loadLibraryFolders();
     initFirebase();
+    setupDateCalculator(); // Start the auto-calculator
 });
+
+function setupDateCalculator() {
+    const syInput = document.getElementById('lpSchoolYear');
+    const monthSelect = document.getElementById('lpMonth');
+    const weekSelect = document.getElementById('lpWeek');
+    const dateRangeInput = document.getElementById('lpDateRange');
+
+    if (!syInput || !monthSelect || !weekSelect || !dateRangeInput) return;
+
+    function calculateDateRange() {
+        const sy = syInput.value.trim(); 
+        const monthName = monthSelect.value;
+        const weekNum = parseInt(weekSelect.value.replace("Week ", "")) - 1;
+
+        if (!sy.includes("-")) return;
+        const startYear = parseInt(sy.split('-')[0]);
+        const endYear = parseInt(sy.split('-')[1]);
+
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const monthIdx = months.indexOf(monthName);
+
+        // Academic year logic: Aug-Dec use startYear, Jan-May use endYear
+        const year = (monthIdx >= 0 && monthIdx <= 6) ? endYear : startYear;
+
+        // Find the 1st day of the selected month
+        const firstDayOfMonth = new Date(year, monthIdx, 1);
+        const dayOfWeek = firstDayOfMonth.getDay(); // 0 is Sun, 1 is Mon, 6 is Sat
+
+        // Find the Monday of Week 1
+        // If the 1st is a Sat/Sun, Week 1 starts on the NEXT Monday.
+        // If the 1st is Mon-Fri, Week 1 starts on the Monday of THAT week (which might bleed into the previous month).
+        const diff = (dayOfWeek === 0 || dayOfWeek === 6) ? (dayOfWeek === 0 ? 1 : 2) : (1 - dayOfWeek);
+        const firstMonday = new Date(year, monthIdx, 1 + diff);
+
+        // Add the weeks to find the target Monday and Friday
+        const targetMonday = new Date(firstMonday);
+        targetMonday.setDate(firstMonday.getDate() + (weekNum * 7));
+        
+        const targetFriday = new Date(targetMonday);
+        targetFriday.setDate(targetMonday.getDate() + 4);
+
+        const formatOpts = { month: 'short', day: 'numeric' };
+        dateRangeInput.value = `${targetMonday.toLocaleDateString('en-US', formatOpts)} - ${targetFriday.toLocaleDateString('en-US', formatOpts)}`;
+    }
+
+    // Tell the system to recalculate whenever you change the year, month, or week!
+    syInput.addEventListener('input', calculateDateRange);
+    monthSelect.addEventListener('change', calculateDateRange);
+    weekSelect.addEventListener('change', calculateDateRange);
+
+    // Run it once immediately on page load
+    calculateDateRange();
+}
 
 function initFirebase() {
     const configStr = localStorage.getItem('repoReview_firebase_config');
