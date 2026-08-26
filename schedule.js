@@ -167,36 +167,29 @@ function formatTimeToAMPM(time24) {
 
 // --- TABLE RENDERING & DATA MANAGEMENT ---
 window.addRow = function(type) {
-    const savedJson = getTableDataFromDOM();
+    const savedJson = getTableDataFromDOM(); // Gets clean 24h data
     let inheritedStartTime = '';
     let inheritedEndTime = '';
 
-    // Specifically target the hidden input where Flatpickr stores the clean 24h mathematical time
-    const allEndInputs = document.querySelectorAll('input.time-end[type="hidden"]');
-    if (allEndInputs.length > 0) {
-        const lastEndInput = allEndInputs[allEndInputs.length - 1];
-        if (lastEndInput && lastEndInput.value) {
-            inheritedStartTime = lastEndInput.value;
-        }
-    } 
-    
-    // Fallback if the DOM hasn't rendered inputs yet
-    if (!inheritedStartTime && savedJson.length > 0) {
+    // Directly use the last row's end time from the cleaned data
+    if (savedJson.length > 0) {
         const lastRow = savedJson[savedJson.length - 1];
         if (lastRow.endTime) {
             inheritedStartTime = lastRow.endTime;
         }
     }
 
-    // Automatically calculate the +50 mins based on the inherited time
-    if (inheritedStartTime) {
+    // Safely calculate the +50 mins based on the inherited 24h time
+    if (inheritedStartTime && inheritedStartTime.includes(':')) {
         const [hours, minutes] = inheritedStartTime.split(':').map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes + 50, 0, 0);
-        
-        const endHours = String(date.getHours()).padStart(2, '0');
-        const endMinutes = String(date.getMinutes()).padStart(2, '0');
-        inheritedEndTime = `${endHours}:${endMinutes}`;
+        if (!isNaN(hours) && !isNaN(minutes)) {
+            const date = new Date();
+            date.setHours(hours, minutes + 50, 0, 0);
+            
+            const endHours = String(date.getHours()).padStart(2, '0');
+            const endMinutes = String(date.getMinutes()).padStart(2, '0');
+            inheritedEndTime = `${endHours}:${endMinutes}`;
+        }
     }
 
     if (type === 'class') {
@@ -338,9 +331,10 @@ function getTableDataFromDOM() {
     rows.forEach(tr => {
         const type = tr.dataset.rowType;
         
-        // Target Flatpickr's hidden 24h input first, fallback to standard if not active
-        const startInput = tr.querySelector('input.time-start[type="hidden"]') || tr.querySelector('.time-start');
-        const endInput = tr.querySelector('input.time-end[type="hidden"]') || tr.querySelector('.time-end');
+        // Target Flatpickr's original input holding the raw 24h data, fallback to standard if not active
+        let startInput = tr.querySelector('.time-start.flatpickr-input') || tr.querySelector('.time-start');
+        let endInput = tr.querySelector('.time-end.flatpickr-input') || tr.querySelector('.time-end');
+        
         if (!startInput) return; 
 
         const startTime = startInput.value;
