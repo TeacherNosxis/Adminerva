@@ -94,6 +94,17 @@ window.loadLessonReviewSettings = async function() {
     try {
         const docRef = doc(db, "global_settings", "lesson_review_config");
         const docSnap = await getDoc(docRef);
+        if (data.header_image_base64) {
+    document.getElementById('settingsHeaderBase64').value = data.header_image_base64;
+    localStorage.setItem('lessonReview_headerImage', data.header_image_base64);
+
+    // Populate live preview on load
+    const previewImg = document.getElementById('headerPreview');
+    const placeholder = document.getElementById('headerPreviewPlaceholder');
+    previewImg.src = data.header_image_base64;
+    previewImg.classList.remove('hidden');
+    placeholder.classList.add('hidden');
+}
 
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -127,6 +138,46 @@ window.loadLessonReviewSettings = async function() {
         console.error("Error loading settings from cloud:", e);
     }
 };
+// Triggered when you select an image file
+window.previewHeaderImage = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Optional safety check: limit image size to prevent bloating storage
+    if (file.size > 800 * 1024) {
+        alert("Please choose a smaller image (under 800KB) to keep the database fast.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64String = e.target.result;
+        
+        // Store in hidden input for saving to Firebase later
+        document.getElementById('settingsHeaderBase64').value = base64String;
+
+        // Display Live Preview
+        const previewImg = document.getElementById('headerPreview');
+        const placeholder = document.getElementById('headerPreviewPlaceholder');
+        
+        previewImg.src = base64String;
+        previewImg.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+};
+
+window.clearHeaderImage = function() {
+    document.getElementById('settingsHeaderBase64').value = '';
+    document.getElementById('settingsHeaderFile').value = '';
+    
+    const previewImg = document.getElementById('headerPreview');
+    const placeholder = document.getElementById('headerPreviewPlaceholder');
+    
+    previewImg.src = '';
+    previewImg.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+};
 window.saveLessonReviewSettings = async function() {
     if (!db) {
         alert("Firebase is not connected! Please configure it in Global Settings first.");
@@ -140,14 +191,14 @@ window.saveLessonReviewSettings = async function() {
         const settingsData = {
             teacher_name: document.getElementById('setTeacherName').value.trim(),
             subject_title: document.getElementById('setSubjectTitle').value.trim(),
-            header_image_url: document.getElementById('settingsHeaderImage').value.trim(), // <--- Cloud Header Image
+            header_image_base64: document.getElementById('settingsHeaderBase64').value.trim(), // <--- Cloud Header Image
             sig_teacher: document.getElementById('sigTeacher').value.trim(),
             sig_teacher_title: document.getElementById('sigTeacherTitle').value.trim(),
             sig_subject_coord: document.getElementById('sigSubjectCoord').value.trim(),
             sig_subject_coord_title: document.getElementById('sigSubjectCoordTitle').value.trim(),
             sig_grade_coord: document.getElementById('sigGradeCoord').value.trim(),
             sig_grade_coord_title: document.getElementById('sigGradeCoordTitle').value.trim(),
-            sig_principal: document.getElementById('sigPrincipal').value.trim(),
+            sig_principal: document.getElementById('sigPrincipal').value.trim(),,
             sig_principal_title: document.getElementById('sigPrincipalTitle').value.trim(),
             updated_at: new Date().toISOString()
         };
@@ -156,7 +207,7 @@ window.saveLessonReviewSettings = async function() {
         await setDoc(doc(db, "global_settings", "lesson_review_config"), settingsData, { merge: true });
 
         // Also update localStorage backup for instant local retrieval
-        localStorage.setItem('lessonReview_headerImage', settingsData.header_image_url);
+        localStorage.setItem('lessonReview_headerImage', settingsData.header_image_base64);
         localStorage.setItem('lessonReview_sigTeacher', settingsData.sig_teacher);
         localStorage.setItem('lessonReview_sigTeacherTitle', settingsData.sig_teacher_title);
         localStorage.setItem('lessonReview_sigSubjectCoord', settingsData.sig_subject_coord);

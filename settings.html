@@ -252,10 +252,28 @@
                     </div>
                 </div>
                 <div class="mb-8 p-4 bg-gray-50 border rounded-lg">
-            <h4 class="text-xs font-bold text-gray-700 uppercase mb-1">Print Header / School Logo URL</h4>
-            <p class="text-[11px] text-gray-500 mb-2">Paste the image URL or Base64 string for the banner/logo displayed at the top of printed documents.</p>
-            <input type="text" id="settingsHeaderImage" placeholder="https://example.com/school-logo.png" class="w-full p-2 border rounded text-sm bg-white">
-        </div>
+    <h4 class="text-xs font-bold text-gray-700 uppercase mb-1">Print Header / School Logo Upload</h4>
+    <p class="text-[11px] text-gray-500 mb-3">Upload your school banner/logo. It will be converted and saved securely to the cloud.</p>
+    
+    <!-- Live Preview Container -->
+    <div class="mb-3 p-2 bg-white border rounded flex items-center justify-center h-24">
+        <img id="headerPreview" src="" alt="No header uploaded yet" class="max-h-full object-contain hidden">
+        <span id="headerPreviewPlaceholder" class="text-xs text-gray-400 italic">No header image selected</span>
+    </div>
+
+    <!-- File Input (Hidden) & Trigger Button -->
+    <input type="file" id="settingsHeaderFile" accept="image/*" class="hidden" onchange="previewHeaderImage(event)">
+    <div class="flex gap-2">
+        <button type="button" onclick="document.getElementById('settingsHeaderFile').click()" class="bg-gray-800 text-white font-bold px-4 py-2 rounded text-xs hover:bg-gray-700 transition">
+            📁 Select Image File
+        </button>
+        <button type="button" onclick="clearHeaderImage()" class="bg-red-100 text-red-600 font-bold px-3 py-2 rounded text-xs hover:bg-red-200 transition">
+            🗑️ Remove Header
+        </button>
+    </div>
+    <!-- Hidden input to store the Base64 string for saving -->
+    <input type="hidden" id="settingsHeaderBase64">
+</div>
 
                 <h4 class="text-sm font-bold text-gray-700 uppercase mb-3">Footer Signatories</h4>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 border rounded-lg">
