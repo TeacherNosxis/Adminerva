@@ -314,12 +314,12 @@
     <!-- PRINT-ONLY CURRICULUM MAP CONTAINER -->
 <div id="printDocumentWrapper" style="font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
 
-    <!-- 1. IMAGE CENTERED PROPERLY FOR WORD -->
+    <!-- 1. IMAGE CENTERED PROPERLY FOR WORD & PDF (Fixed Size) -->
     <div id="printHeaderBannerContainer" style="text-align: center; margin-bottom: 10px;">
-        <img id="printHeaderImage" src="" alt="School Header" height="80" style="margin: 0 auto; display: inline-block;" class="hidden">
+        <img id="printHeaderImage" src="" alt="School Header" style="max-height: 85px !important; width: auto !important; max-width: 500px !important; margin: 0 auto; display: inline-block;" class="hidden">
     </div>
     
-    <!-- 2. TITLES: CHANGED FROM <p>/<h2> TO <div> TO KILL WORD'S DEFAULT SPACING & FORCE FONT -->
+    <!-- TITLES -->
     <div style="text-align: center; margin-bottom: 15px;">
         <div id="printMainTitle" style="font-size: 11pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;">CURRICULUM MAP / LEARNING PLAN IN SUBJECT</div>
         <div id="printSYHeader" style="font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;">SCHOOL YEAR 2026 - 2027</div>
@@ -329,17 +329,16 @@
     <table class="print-table" style="width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
         <thead>
             <tr>
-                <th style="width: 12%; border: 1px solid #000; padding: 6px; text-align: center;">Topic / Content</th>
-                <th style="width: 15%; border: 1px solid #000; padding: 6px; text-align: center;">Curriculum Standards</th>
-                <th style="width: 15%; border: 1px solid #000; padding: 6px; text-align: center;">Competencies & Objectives</th>
+                <th style="width: 12%; border: 1px solid #000; padding: 6px; text-align: center;">Content</th>
+                <th style="width: 15%; border: 1px solid #000; padding: 6px; text-align: center;">Learning Standards</th>
+                <th style="width: 15%; border: 1px solid #000; padding: 6px; text-align: center;">Learning Competencies</th>
                 <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center;">Time Frame</th>
-                <!-- 3. FORCED NEW LINE USING <br> INSTEAD OF CSS -->
                 <th style="width: 30%; border: 1px solid #000; padding: 6px; text-align: center;">
                     Learning Experiences & Activities<br>
                     <span id="printScopeHeader" style="font-weight: normal; font-size: 10pt;"></span>
                 </th>
-                <th style="width: 10%; border: 1px solid #000; padding: 6px; text-align: center;">Materials</th>
-                <th style="width: 10%; border: 1px solid #000; padding: 6px; text-align: center;">Remarks</th>
+                <th style="width: 10%; border: 1px solid #000; padding: 6px; text-align: center;">Learning Materials &<br>Technology Integration</th>
+                <th style="width: 10%; border: 1px solid #000; padding: 6px; text-align: center;">Remarks and Interventions</th>
             </tr>
         </thead>
         <tbody id="printTableBody">
@@ -347,7 +346,7 @@
         </tbody>
     </table>
 
-    <!-- 4. SIGNATORIES FOOTER - FORCED TO 10PT ARIAL NARROW -->
+    <!-- SIGNATORIES FOOTER -->
     <table style="width: 100%; margin-top: 40px; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
         <tr>
             <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
