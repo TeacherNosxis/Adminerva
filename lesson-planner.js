@@ -726,6 +726,7 @@ window.loadSpecificPlan = function(planData) {
     document.getElementById('lpTeacherName').value = planData.teacher_name || '';
     document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
     document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
+    
     document.querySelectorAll('.folder-checkbox').forEach(cb => cb.checked = false);
     if (planData.reference_folders && Array.isArray(planData.reference_folders)) {
         planData.reference_folders.forEach(folderId => {
@@ -733,6 +734,7 @@ window.loadSpecificPlan = function(planData) {
             if (checkbox) checkbox.checked = true;
         });
     }
+    
     if(planData.semester) document.getElementById('lpSemester').value = planData.semester;
     if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
     if(planData.month) document.getElementById('lpMonth').value = planData.month;
@@ -740,11 +742,16 @@ window.loadSpecificPlan = function(planData) {
     
     const dateRangeEl = document.getElementById('lpDateRange');
     if (dateRangeEl && planData.date_range) dateRangeEl.value = planData.date_range;
+    
+    // 🚀 THE FIX: THIS LOADS YOUR SAVED CUSTOM INSTRUCTIONS
     const customInstructionsEl = document.getElementById('lpCustomInstructions');
+    if (customInstructionsEl) customInstructionsEl.value = planData.custom_instructions || '';
+    
     if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
     if (planData.schedule) {
         localStorage.setItem('lessonReview_schedule', planData.schedule);
     }
+    
     renderOverview();
     renderOutput();
     closeLoadPlanModal();
