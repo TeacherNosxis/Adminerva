@@ -9,6 +9,7 @@ window.initiateGenerationFlow = async function() {
     if (selectedCheckboxes.length === 0 && !customInstructionsText) {
         return alert("Please select at least one reference folder OR provide Custom Instructions to generate a plan.");
     }
+    
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
     window.cachedCompiledText = "";
 
@@ -26,20 +27,24 @@ window.initiateGenerationFlow = async function() {
             return alert("The selected folders are empty. Please provide Custom Instructions or select a folder with documents.");
         }
     }
-    const subject = document.getElementById('lpSubjectTitle').value || "Subject";
+
+    // 🚀 EXACT SETTINGS DATA MAP
+    const subject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
     window.cachedSchedule = localStorage.getItem('lessonReview_schedule') || "No schedule provided.";
 
-    const targetMonth = document.getElementById('lpMonth').value;
-    const targetWeek = document.getElementById('lpWeek').value;
-    const targetQuarter = document.getElementById('lpQuarter').value;
-    const dateRangeEl = document.getElementById('lpDateRange');
-    const dateRange = dateRangeEl ? dateRangeEl.value : "";
+    // 🚀 EXACT 5-COLUMN UI MAP
+    const academicTerm = document.getElementById('lpAcademicTerm').value;
+    const courseWeek = document.getElementById('lpCourseWeek').value;
+    const dateRange = document.getElementById('lpDateRange').value || "No Dates Provided";
 
     window.currentTargetGrade = document.getElementById('lpGradeLevel').value;
-    window.cachedScope = `${targetWeek} of ${targetMonth} (${dateRange}) - ${targetQuarter}`;
+    
+    // Format scope nicely for the AI Prompt
+    window.cachedScope = `${courseWeek}: ${dateRange} (${academicTerm})`;
     window.cachedCustomInstructions = document.getElementById('lpCustomInstructions').value.trim();
 
-    window.cachedPreviousPlan = await window.fetchPreviousPlan(window.currentTargetGrade, subject, targetMonth, targetWeek);
+    // Look back for suspension/catch-up data using the new Term/Week strings
+    window.cachedPreviousPlan = await window.fetchPreviousPlan(window.currentTargetGrade, subject, academicTerm, courseWeek);
 
     if (!window.cachedCustomInstructions) {
         window.executeFinalGeneration("");
