@@ -300,32 +300,34 @@
     </div>
 
     <!-- PRINT-ONLY CURRICULUM MAP CONTAINER -->
-<div id="printDocumentWrapper" style="display: none;">
-    <div id="printHeaderBannerContainer" class="text-center mb-4">
-        <img id="printHeaderImage" src="" alt="School Header" class="max-h-20 mx-auto object-contain hidden">
+<div id="printDocumentWrapper" style="display: none; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
+    
+    <!-- 1. IMAGE CENTERED PROPERLY FOR WORD -->
+    <div id="printHeaderBannerContainer" style="text-align: center; margin-bottom: 10px;">
+        <img id="printHeaderImage" src="" alt="School Header" height="80" style="margin: 0 auto; display: inline-block;" class="hidden">
     </div>
     
-    <!-- UPDATED TITLE FORMATTING -->
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="font-size: 16px; font-weight: bold; margin: 0; padding: 0;" id="printMainTitle">CURRICULUM MAP / LEARNING PLAN IN SUBJECT</h2>
-        <p style="font-size: 14px; font-weight: bold; margin: 2px 0; padding: 0;" id="printSYHeader">SCHOOL YEAR 2026 - 2027</p>
-        <p style="font-size: 12px; font-weight: bold; margin: 4px 0 0 0; padding: 0;"><span id="printSemester"></span> — <span id="printQuarter"></span></p>
+    <!-- 2. TITLES: CHANGED FROM <p>/<h2> TO <div> TO KILL WORD'S DEFAULT SPACING & FORCE FONT -->
+    <div style="text-align: center; margin-bottom: 15px;">
+        <div id="printMainTitle" style="font-size: 11pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;">CURRICULUM MAP / LEARNING PLAN IN SUBJECT</div>
+        <div id="printSYHeader" style="font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;">SCHOOL YEAR 2026 - 2027</div>
+        <div style="font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;"><span id="printSemester"></span> — <span id="printQuarter"></span></div>
     </div>
 
-    <table class="print-table">
+    <table class="print-table" style="width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
         <thead>
             <tr>
-                <th style="width: 12%;">Topic / Content</th>
-                <th style="width: 15%;">Curriculum Standards</th>
-                <th style="width: 15%;">Competencies & Objectives</th>
-                <th style="width: 8%;">Time Frame</th>
-                <!-- DATE RANGE MOVED HERE -->
-                <th style="width: 30%;">
-                    Learning Experiences & Activities
-                    <span id="printScopeHeader" style="display: block; font-weight: normal; font-size: 10px; margin-top: 4px;"></span>
+                <th style="width: 12%; border: 1px solid #000; padding: 6px; text-align: center;">Topic / Content</th>
+                <th style="width: 15%; border: 1px solid #000; padding: 6px; text-align: center;">Curriculum Standards</th>
+                <th style="width: 15%; border: 1px solid #000; padding: 6px; text-align: center;">Competencies & Objectives</th>
+                <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center;">Time Frame</th>
+                <!-- 3. FORCED NEW LINE USING <br> INSTEAD OF CSS -->
+                <th style="width: 30%; border: 1px solid #000; padding: 6px; text-align: center;">
+                    Learning Experiences & Activities<br>
+                    <span id="printScopeHeader" style="font-weight: normal; font-size: 10pt;"></span>
                 </th>
-                <th style="width: 10%;">Materials</th>
-                <th style="width: 10%;">Remarks</th>
+                <th style="width: 10%; border: 1px solid #000; padding: 6px; text-align: center;">Materials</th>
+                <th style="width: 10%; border: 1px solid #000; padding: 6px; text-align: center;">Remarks</th>
             </tr>
         </thead>
         <tbody id="printTableBody">
@@ -333,33 +335,32 @@
         </tbody>
     </table>
 
-    <!-- SIGNATORIES FOOTER -->
+    <!-- 4. SIGNATORIES FOOTER - FORCED TO 10PT ARIAL NARROW -->
     <table style="width: 100%; margin-top: 40px; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
-        
-            <tr>
-                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                    <p style="margin-bottom: 30px;">Prepared by:</p>
-                    <p style="font-weight: bold; text-decoration: underline;" id="printSig1Name"></p>
-                    <p id="printSig1Title" style="font-size: 10px; color: #555;"></p>
-                </td>
-                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                    <p style="margin-bottom: 30px;">Submitted to:</p>
-                    <p style="font-weight: bold; text-decoration: underline;" id="printSig2Name"></p>
-                    <p id="printSig2Title" style="font-size: 10px; color: #555;"></p>
-                </td>
-                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                    <p style="margin-bottom: 30px;">Noted by:</p>
-                    <p style="font-weight: bold; text-decoration: underline;" id="printSig3Name"></p>
-                    <p id="printSig3Title" style="font-size: 10px; color: #555;"></p>
-                </td>
-                <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                    <p style="margin-bottom: 30px;">Approved by:</p>
-                    <p style="font-weight: bold; text-decoration: underline;" id="printSig4Name"></p>
-                    <p id="printSig4Title" style="font-size: 10px; color: #555;"></p>
-                </td>
-            </tr>
-        </table>
-    </div>
+        <tr>
+            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                <div style="margin-bottom: 30px;">Prepared by:</div>
+                <div style="font-weight: bold; text-decoration: underline;" id="printSig1Name"></div>
+                <div id="printSig1Title" style="font-size: 10pt; color: #333;"></div>
+            </td>
+            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                <div style="margin-bottom: 30px;">Submitted to:</div>
+                <div style="font-weight: bold; text-decoration: underline;" id="printSig2Name"></div>
+                <div id="printSig2Title" style="font-size: 10pt; color: #333;"></div>
+            </td>
+            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                <div style="margin-bottom: 30px;">Noted by:</div>
+                <div style="font-weight: bold; text-decoration: underline;" id="printSig3Name"></div>
+                <div id="printSig3Title" style="font-size: 10pt; color: #333;"></div>
+            </td>
+            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
+                <div style="margin-bottom: 30px;">Approved by:</div>
+                <div style="font-weight: bold; text-decoration: underline;" id="printSig4Name"></div>
+                <div id="printSig4Title" style="font-size: 10pt; color: #333;"></div>
+            </td>
+        </tr>
+    </table>
+</div>
 
     <script type="module" src="lesson-planner.js?v=7"></script>
 </body>
