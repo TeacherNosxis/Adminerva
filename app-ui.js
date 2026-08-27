@@ -1,0 +1,292 @@
+// ==========================================
+// 1. GLOBAL STATE MANAGER
+// ==========================================
+window.db = null;
+window.currentPlan = [];
+window.currentWeeklyOverview = null;
+window.currentTargetGrade = '';
+window.cachedCompiledText = '';
+window.cachedSchedule = '';
+window.cachedScope = '';
+window.cachedCustomInstructions = '';
+window.cachedPreviousPlan = null;
+window.currentAnchoredWeek = 1;
+
+window.timerInterval = null;
+window.verseInterval = null;
+window.elapsedSeconds = 0;
+
+window.bibleVerses = [
+    "The fear of the Lord is the beginning of knowledge, but fools despise wisdom and instruction. - Proverbs 1:7",
+    "For the Lord gives wisdom; from his mouth come knowledge and understanding. - Proverbs 2:6",
+    "Trust in the Lord with all your heart and lean not on your own understanding. - Proverbs 3:5",
+    "In all your ways submit to him, and he will make your paths straight. - Proverbs 3:6",
+    "Blessed are those who find wisdom, those who gain understanding. - Proverbs 3:13",
+    "Wisdom is the principal thing; therefore get wisdom: and with all thy getting get understanding. - Proverbs 4:7",
+    "The way of a fool seems right to them, but the wise listen to advice. - Proverbs 12:15",
+    "Plans fail for lack of counsel, but with many advisers they succeed. - Proverbs 15:22",
+    "Commit to the Lord whatever you do, and he will establish your plans. - Proverbs 16:3",
+    "Your word is a lamp for my feet, a light on my path. - Psalm 119:105",
+    "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters. - Colossians 3:23"
+];
+
+// ==========================================
+// 2. INITIALIZATION
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    if(window.initFirebase) window.initFirebase();
+    window.setupDateCalculator();
+});
+
+// ==========================================
+// 3. UI & CALENDAR HELPERS
+// ==========================================
+window.showLoader = function() { 
+    const loader = document.getElementById('globalLoader');
+    const isAlreadyRunning = loader.classList.contains('flex');
+
+    loader.classList.replace('hidden', 'flex'); 
+    if (isAlreadyRunning) return; 
+
+    clearInterval(window.timerInterval);
+    clearInterval(window.verseInterval);
+
+    window.elapsedSeconds = 0;
+    const timeEl = document.getElementById('elapsedTime');
+    if (timeEl) timeEl.textContent = '0s';
+
+    const verseEl = document.getElementById('bibleVerse');
+    if (verseEl) verseEl.textContent = window.bibleVerses[Math.floor(Math.random() * window.bibleVerses.length)];
+
+    window.timerInterval = setInterval(() => {
+        window.elapsedSeconds++;
+        if (timeEl) timeEl.textContent = window.elapsedSeconds + 's';
+    }, 1000);
+
+    window.verseInterval = setInterval(() => {
+        if (!verseEl) return;
+        verseEl.style.opacity = 0;
+        setTimeout(() => {
+            verseEl.textContent = window.bibleVerses[Math.floor(Math.random() * window.bibleVerses.length)];
+            verseEl.style.opacity = 1;
+        }, 300);
+    }, 5000);
+};
+
+window.hideLoader = function() { 
+    document.getElementById('globalLoader').classList.replace('flex', 'hidden'); 
+    clearInterval(window.timerInterval);
+    clearInterval(window.verseInterval);
+    window.timerInterval = null;
+    window.verseInterval = null;
+};
+
+window.setupDateCalculator = function() {
+    const syInput = document.getElementById('lpSchoolYear');
+    const monthSelect = document.getElementById('lpMonth');
+    const weekSelect = document.getElementById('lpWeek');
+    const dateRangeInput = document.getElementById('lpDateRange');
+
+    if (!syInput || !monthSelect || !weekSelect || !dateRangeInput) return;
+
+    function calculateDateRange() {
+        const sy = syInput.value.trim(); 
+        const monthName = monthSelect.value;
+        const weekNum = parseInt(weekSelect.value.replace("Week ", "")) - 1;
+
+        if (!sy.includes("-")) return;
+        const startYear = parseInt(sy.split('-')[0]);
+        const endYear = parseInt(sy.split('-')[1]);
+
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const monthIdx = months.indexOf(monthName);
+
+        const year = (monthIdx >= 0 && monthIdx <= 6) ? endYear : startYear;
+
+        const firstDayOfMonth = new Date(year, monthIdx, 1);
+        const dayOfWeek = firstDayOfMonth.getDay(); 
+        const diff = (dayOfWeek === 0 || dayOfWeek === 6) ? (dayOfWeek === 0 ? 1 : 2) : (1 - dayOfWeek);
+
+        const firstMonday = new Date(year, monthIdx, 1 + diff);
+        const targetMonday = new Date(firstMonday);
+        targetMonday.setDate(firstMonday.getDate() + (weekNum * 7));
+
+        const targetFriday = new Date(targetMonday);
+        targetFriday.setDate(targetMonday.getDate() + 4);
+
+        const formatOpts = { month: 'short', day: 'numeric' };
+        dateRangeInput.value = `${targetMonday.toLocaleDateString('en-US', formatOpts)} - ${targetFriday.toLocaleDateString('en-US', formatOpts)}`;
+    }
+
+    syInput.addEventListener('input', calculateDateRange);
+    monthSelect.addEventListener('change', calculateDateRange);
+    weekSelect.addEventListener('change', calculateDateRange);
+    calculateDateRange();
+};
+
+window.renderOverview = function() {
+    const container = document.getElementById('weeklyOverviewContainer');
+    if (!window.currentWeeklyOverview || !container) return;
+
+    container.classList.remove('hidden');
+    container.classList.add('flex');
+    container.innerHTML = `
+        <div class="p-6">
+            <h3 class="text-sm font-extrabold text-gray-400 uppercase tracking-widest mb-4">Weekly Curriculum Overview</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase">Topic / Content</label>
+                    <textarea class="w-full p-2 border border-transparent rounded text-sm bg-white font-bold text-gray-800" rows="1">${window.currentWeeklyOverview.topic || ''}</textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Content Standard</label>
+                        <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${window.currentWeeklyOverview.content_standard || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Performance Standard</label>
+                        <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${window.currentWeeklyOverview.performance_standard || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Formation Standard</label>
+                        <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${window.currentWeeklyOverview.formation_standard || ''}</textarea>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase">Materials & Tech</label>
+                    <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="1">${window.currentWeeklyOverview.materials || ''}</textarea>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+window.renderOutput = function() {
+    const container = document.getElementById('outputContainer');
+    const headerTitle = document.getElementById('planHeaderTitle');
+    const headerBadge = document.getElementById('planHeaderBadge');
+    if(!container) return;
+
+    container.innerHTML = '';
+
+    if (!window.currentPlan || !window.currentPlan.length) {
+        if(headerTitle) headerTitle.textContent = "Generated Plan";
+        if(headerBadge) headerBadge.textContent = "No Data";
+        container.innerHTML = '<div class="text-center text-gray-400 italic mt-20">Select your scope, grade level, and folders to generate plans.</div>';
+        return;
+    }
+
+    if(headerTitle) headerTitle.textContent = `${window.currentTargetGrade} Lesson Plan`;
+    if(headerBadge) headerBadge.textContent = `${window.currentPlan.length} Sessions`;
+
+    window.currentPlan.forEach((session, index) => {
+        const isFlex = session.session_name.toLowerCase().includes('flex');
+
+        let html = `<div class="bg-white p-5 rounded border border-gray-200 shadow-sm mb-6">
+            <h3 class="text-lg font-bold ${isFlex ? 'text-amber-600' : 'text-blue-800'} mb-4 border-b pb-2">${session.session_name} ${isFlex ? '(Asynchronous)' : ''}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
+
+        if (!isFlex) {
+            html += `
+                <div>
+                    <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Learning Competencies</label>
+                    <textarea class="session-input w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3" data-idx="${index}" data-key="competencies">${session.competencies || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Specific Objectives</label>
+                    <textarea class="session-input w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3" data-idx="${index}" data-key="objectives">${session.objectives || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Preliminary Action</label>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="3" data-idx="${index}" data-key="preliminary">${session.preliminary || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Motivation / Recall</label>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="3" data-idx="${index}" data-key="motivation">${session.motivation || ''}</textarea>
+                </div>`;
+        }
+
+        html += `
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Learning Activities</label>
+                    <textarea class="session-input w-full p-3 border border-gray-300 rounded text-sm bg-white font-mono leading-relaxed shadow-inner" rows="6" data-idx="${index}" data-key="learning_activities">${session.learning_activities || ''}</textarea>
+                </div>`;
+
+        if (!isFlex) {
+            html += `
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Evaluation</label>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="evaluation">${session.evaluation || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Closing Activities</label>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="closing">${session.closing || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Values Integration</label>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="values_integration">${session.values_integration || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-amber-600 uppercase tracking-wider mb-1">Remarks / Intervention</label>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-amber-50 border-amber-200" rows="2" data-idx="${index}" data-key="remarks">${session.remarks || ''}</textarea>
+                </div>`;
+        }
+
+        html += `</div></div>`;
+        container.insertAdjacentHTML('beforeend', html);
+    });
+
+    document.querySelectorAll('.session-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const idx = e.target.getAttribute('data-idx');
+            const key = e.target.getAttribute('data-key');
+            window.currentPlan[idx][key] = e.target.value;
+        });
+    });
+};
+
+window.closeLoadPlanModal = function() {
+    const modal = document.getElementById('loadPlanModal');
+    if (modal) modal.classList.replace('flex', 'hidden');
+};
+
+window.loadSpecificPlan = function(planData) {
+    window.currentWeeklyOverview = planData.weekly_overview;
+    window.currentPlan = planData.sessions;
+    window.currentTargetGrade = planData.grade_level;
+
+    document.getElementById('lpTeacherName').value = planData.teacher_name || '';
+    document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
+    document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
+
+    document.querySelectorAll('.folder-checkbox').forEach(cb => cb.checked = false);
+    if (planData.reference_folders && Array.isArray(planData.reference_folders)) {
+        planData.reference_folders.forEach(folderId => {
+            const checkbox = document.querySelector(`.folder-checkbox[value="${folderId}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+
+    if(planData.semester) document.getElementById('lpSemester').value = planData.semester;
+    if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
+    if(planData.month) document.getElementById('lpMonth').value = planData.month;
+    if(planData.week) document.getElementById('lpWeek').value = planData.week;
+
+    const dateRangeEl = document.getElementById('lpDateRange');
+    if (dateRangeEl && planData.date_range) dateRangeEl.value = planData.date_range;
+
+    const customInstructionsEl = document.getElementById('lpCustomInstructions');
+    if (customInstructionsEl) customInstructionsEl.value = planData.custom_instructions || '';
+
+    if(planData.grade_level) document.getElementById('lpGradeLevel').value = planData.grade_level;
+    if (planData.schedule) {
+        localStorage.setItem('lessonReview_schedule', planData.schedule);
+    }
+
+    window.currentAnchoredWeek = planData.absoluteWeek || 1; 
+
+    window.renderOverview();
+    window.renderOutput();
+    window.closeLoadPlanModal();
+    alert("✅ Lesson plan loaded successfully!");
+};
