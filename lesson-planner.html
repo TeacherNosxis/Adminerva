@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LessonReview - AI Curriculum Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
-<!-- 👇 ADD THIS SCRIPT FOR TRUE .DOCX EXPORT 👇 -->
-<script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
     <style>
 /* HIDE PRINT WRAPPER ON THE COMPUTER SCREEN */
 @media screen {
@@ -131,56 +129,17 @@
         <!-- TOP SECTION: Configuration Banner (Full Width) -->
         <div class="w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Lesson Configuration</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-    <div>
-        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Teacher Name</label>
-        <input type="text" id="lpTeacherName" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-    </div>
-    <div>
-        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Subject Title</label>
-        <input type="text" id="lpSubjectTitle" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-    </div>
-</div>
-            <div class="grid grid-cols-1 md:grid-cols-7 gap-4 mb-4">
+            
+            <!-- NEW STREAMLINED 5-COLUMN GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                
+                <!-- 1. School Year (Kept for AI/Printing) -->
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">School Year</label>
-                    <input type="text" id="lpSchoolYear" value="2026-2027" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                    <input type="text" id="lpSchoolYear" value="2026-2027" class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Semester</label>
-                    <select id="lpSemester" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-                        <option>1st Semester</option><option>2nd Semester</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Quarter</label>
-                    <select id="lpQuarter" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
-                        <option>1st Quarter</option><option>2nd Quarter</option><option>3rd Quarter</option><option>4th Quarter</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Target Month</label>
-                    <select id="lpMonth" class="w-full p-2 border rounded text-sm bg-white focus:ring-blue-500 shadow-sm">
-                        <option value="August">August</option><option value="September">September</option>
-                        <option value="October">October</option><option value="November">November</option>
-                        <option value="December">December</option><option value="January">January</option>
-                        <option value="February">February</option><option value="March">March</option>
-                        <option value="April">April</option><option value="May">May</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Target Week</label>
-                    <select id="lpWeek" class="w-full p-2 border rounded text-sm bg-white focus:ring-blue-500 shadow-sm">
-                        <option value="Week 1">Week 1</option><option value="Week 2">Week 2</option>
-                        <option value="Week 3">Week 3</option><option value="Week 4">Week 4</option>
-                        <option value="Week 5">Week 5</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Date Range</label>
-                    <!-- Added readonly and changed background to gray to show it is automated -->
-                    <input type="text" id="lpDateRange" readonly class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-100 font-bold text-blue-800 shadow-inner cursor-not-allowed">
-                </div>
+
+                <!-- 2. Target Grade (Kept for AI/Printing) -->
                 <div>
                     <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Target Grade</label>
                     <select id="lpGradeLevel" class="w-full p-2 border rounded text-sm bg-blue-50 border-blue-200 focus:ring-blue-500 shadow-sm font-bold">
@@ -188,7 +147,42 @@
                         <option value="Grade 12">Grade 12 (4 Sessions)</option>
                     </select>
                 </div>
+
+                <!-- 3. Academic Term (Combined) -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Academic Term</label>
+                    <select id="lpAcademicTerm" class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm">
+                        <option value="FIRST SEMESTER/FIRST QUARTER">FIRST SEMESTER/FIRST QUARTER</option>
+                        <option value="FIRST SEMESTER/SECOND QUARTER">FIRST SEMESTER/SECOND QUARTER</option>
+                        <option value="SECOND SEMESTER/THIRD QUARTER">SECOND SEMESTER/THIRD QUARTER</option>
+                        <option value="SECOND SEMESTER/FOURTH QUARTER">SECOND SEMESTER/FOURTH QUARTER</option>
+                    </select>
+                </div>
+
+                <!-- 4. Course Week (Absolute Anchor) -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Course Week</label>
+                    <select id="lpCourseWeek" class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm">
+                        <option value="Week 1">Week 1</option>
+                        <option value="Week 2">Week 2</option>
+                        <option value="Week 3">Week 3</option>
+                        <option value="Week 4">Week 4</option>
+                        <option value="Week 5">Week 5</option>
+                        <option value="Week 6">Week 6</option>
+                        <option value="Week 7">Week 7</option>
+                        <option value="Week 8">Week 8</option>
+                        <option value="Week 9">Week 9</option>
+                        <option value="Week 10">Week 10</option>
+                    </select>
+                </div>
+
+                <!-- 5. Physical Dates (Manual String) -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Physical Dates</label>
+                    <input type="text" id="lpDateRange" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:ring-blue-500 shadow-sm" placeholder="E.g. Aug 31-Sep 4, 2026">
+                </div>
             </div>
+
 
             <!-- Custom Instructions & Folders Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
