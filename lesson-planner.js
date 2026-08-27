@@ -366,7 +366,7 @@ ${gradeSpecificRules}
    - SCHEDULE MAPPING: Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
      * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6".
      * RULE B: Map the 1-hour blocks sequentially to "Session 1", "Session 2", and "Session 3" for remaining days.
-     * RULE C: Format the remarks EXACTLY like this for every section:
+     * RULE C: Format the remarks EXACTLY using new lines. Do NOT use pipes (|) or semicolons (;). Format it EXACTLY like this:
        [Section Name]
        [Session Name/Number]
        [Full Date, e.g., August 31, 2026]
@@ -752,59 +752,29 @@ window.loadSpecificPlan = function(planData) {
 };
 
 // ==========================================
-// FORMATTING HELPERS
+// FORMATTING HELPERS (Unified List Formatter)
 // ==========================================
-function formatObjectivesForPrint(text) {
+function formatListForPrint(text, isOrdered = true) {
     if (!text) return '';
-    const items = text.split(/(?:^|\n)\s*(?:\d+[\.\)]|[-•*])\s*/).filter(Boolean);
-    if (items.length <= 1) return text;
-    let html = '<ol style="margin: 0; padding-left: 15px; list-style-type: decimal;">';
-    items.forEach(item => { html += `<li style="margin-bottom: 3px;">${item.trim()}</li>`; });
-    html += '</ol>';
-    return html;
-}
-
-function formatMaterialsForPrint(text) {
-    if (!text) return '';
-    const items = text.split(/[-•]\s*/).filter(Boolean);
-    if (items.length <= 1) return text;
-    let html = '<ul style="margin: 0; padding-left: 15px; list-style-type: disc;">';
-    items.forEach(item => { html += `<li style="margin-bottom: 3px;">${item.trim()}</li>`; });
-    html += '</ul>';
-    return html;
-}
-
-// NEW: Forces Preliminary Activities into a numbered list
-function formatPreliminaryForPrint(text) {
-    if (!text) return '';
-    const items = text.split(/\n/).filter(item => item.trim() !== '');
-    let html = '<ol style="margin: 0; padding-left: 15px; list-style-type: decimal;">';
-    items.forEach(item => { 
-        // Strips any existing dashes or numbers so we don't get double numbering
-        let cleanItem = item.trim().replace(/^([-•*]|\d+[\.\)])\s*/, '');
-        html += `<li style="margin-bottom: 3px;">${cleanItem}</li>`; 
-    });
-    html += '</ol>';
-    return html;
-}
-
-// NEW: Forces Learning Activities into a numbered list
-function formatLearningActivitiesForPrint(text) {
-    if (!text) return '';
-    // Split by dashes, bullets, or numbers at the start of a line
-    let items = text.split(/(?:^|\n)\s*(?:[-•*]|\d+[\.\)])\s+/).filter(Boolean);
+    // Split by literal newlines first
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return '';
     
-    // Fallback: if it didn't split well, just split by newlines
-    if (items.length <= 1) {
-        items = text.split(/\n/).filter(item => item.trim() !== '');
+    // If it's just one line and doesn't have a bullet/number, return raw text
+    if (lines.length === 1 && !/^([-•*]|\d+[\.\)])/.test(lines[0])) {
+        return text;
     }
 
-    let html = '<ol style="margin: 0; padding-left: 15px; list-style-type: decimal;">';
-    items.forEach(item => { 
-        let cleanItem = item.trim().replace(/^[-•*]\s*/, '');
-        html += `<li style="margin-bottom: 3px;">${cleanItem}</li>`; 
+    const tag = isOrdered ? 'ol' : 'ul';
+    const type = isOrdered ? 'decimal' : 'disc';
+    
+    let html = `<${tag} style="margin: 0; padding-left: 20px; list-style-type: ${type};">`;
+    lines.forEach(line => {
+        // Scrub AI's dashes, bullets, or numbers so we don't get double-numbering
+        let cleanLine = line.replace(/^([-•*]|\d+[\.\)])\s*/, '').trim();
+        if (cleanLine) html += `<li style="margin-bottom: 4px;">${cleanLine}</li>`;
     });
-    html += '</ol>';
+    html += `</${tag}>`;
     return html;
 }
 
@@ -817,13 +787,15 @@ function buildDocumentLayout() {
         return false;
     }
 
-    // 1. Header Image
+    // 1. Header Image (Forced Centering)
     const headerImgUrl = localStorage.getItem('lessonReview_headerImage');
     const headerImgEl = document.getElementById('printHeaderImage');
     const headerContainer = document.getElementById('printHeaderBannerContainer');
     if (headerImgUrl && headerImgEl) {
         headerImgEl.src = headerImgUrl;
         headerImgEl.classList.remove('hidden');
+        headerImgEl.style.display = 'block';
+        headerImgEl.style.margin = '0 auto';
         if (headerContainer) headerContainer.classList.remove('hidden');
     }
 
@@ -840,13 +812,13 @@ function buildDocumentLayout() {
     document.getElementById('printQuarter').textContent = formatOrdinal(document.getElementById('lpQuarter').value || "QUARTER");
     document.getElementById('printSemester').textContent = formatOrdinal(document.getElementById('lpSemester').value || "SEMESTER");
     
+    // 3. SCOPE FORMAT FIX: Output is now "Week 1 (Aug 10 - Aug 14)"
     const scopeWeek = document.getElementById('lpWeek').value;
-    const scopeMonth = document.getElementById('lpMonth').value;
     const dateRangeEl = document.getElementById('lpDateRange');
     const dateRange = dateRangeEl ? dateRangeEl.value : "";
-    document.getElementById('printScopeHeader').textContent = `${scopeWeek} of ${scopeMonth} ${dateRange ? '(' + dateRange + ')' : ''}`;
+    document.getElementById('printScopeHeader').textContent = `${scopeWeek} ${dateRange ? '(' + dateRange + ')' : ''}`;
 
-    // 3. Signatories
+    // 4. Signatories
     document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "";
     document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "";
     document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "";
@@ -856,7 +828,7 @@ function buildDocumentLayout() {
     document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sigPrincipal') || "";
     document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sigPrincipalTitle') || "";
 
-    // 4. Build Table Rows
+    // 5. Build Table Rows
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
@@ -865,7 +837,6 @@ function buildDocumentLayout() {
         const tr = document.createElement('tr');
         let rowHtml = ``;
 
-        // Content Standards only print on the first row
         if (index === 0) {
             rowHtml += `
                 <td style="font-weight: bold; text-align: center; vertical-align: middle;">${currentWeeklyOverview.topic || ''}</td>
@@ -879,11 +850,11 @@ function buildDocumentLayout() {
             rowHtml += `<td></td><td></td>`;
         }
 
-        // Apply all formatters to ensure strict list rendering
-        const objText = formatObjectivesForPrint(session.objectives || 'N/A');
-        const matText = formatMaterialsForPrint(currentWeeklyOverview.materials || '');
-        const prelimText = formatPreliminaryForPrint(session.preliminary || '');
-        const activitiesText = formatLearningActivitiesForPrint(session.learning_activities || '');
+        // Apply Unified List Formatter
+        const objText = formatListForPrint(session.objectives || 'N/A', true); // TRUE = Numbered list
+        const matText = formatListForPrint(currentWeeklyOverview.materials || '', false); // FALSE = Bulleted list
+        const prelimText = formatListForPrint(session.preliminary || '', true);
+        const activitiesText = formatListForPrint(session.learning_activities || '', true);
 
         rowHtml += `
             <td style="vertical-align: top;">
@@ -898,7 +869,6 @@ function buildDocumentLayout() {
         }
         rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: middle; font-size: 10pt; line-height: 1.6;">${timeFrame}</td>`;
 
-        // FULL LABELS RESTORED HERE
         let experiencesHTML = `<div style="font-weight: bold; margin-bottom: 4px;">${session.session_name}</div>`;
         if (!isFlex) {
             experiencesHTML += `
@@ -918,11 +888,11 @@ function buildDocumentLayout() {
         }
         rowHtml += `<td style="vertical-align: top;">${experiencesHTML}</td>`;
 
-        // PRINT MATERIALS ON EVERY ROW (Removed the index === 0 check)
-        rowHtml += `<td style="white-space: pre-wrap; vertical-align: top;">${matText}</td>`;
+        rowHtml += `<td style="vertical-align: top;">${matText}</td>`;
 
-        // REMARKS
-        rowHtml += `<td style="white-space: pre-wrap; vertical-align: top;">${session.remarks || ''}</td>`;
+        // FORCE REMARKS INTO CLEAN LINE BREAKS (Scrubbing pipes and semicolons)
+        const cleanRemarks = (session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\n/g, '<br>');
+        rowHtml += `<td style="vertical-align: top;">${cleanRemarks}</td>`;
 
         tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
@@ -946,6 +916,7 @@ window.saveAndPrint = async function() {
         setTimeout(() => { window.print(); }, 300);
     }
 };
+
 // ==========================================
 // TRUE .DOCX EXPORTER (Landscape + Embedded Images)
 // ==========================================
@@ -960,10 +931,11 @@ window.exportToWordDoc = function() {
     const printWrapper = document.getElementById('printDocumentWrapper');
     
     // Strip <thead> tags so headers DO NOT repeat on every page
-let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
+    let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
 
-// MS Word ignores CSS image sizing. Force the height directly onto the img tag!
-cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
+    // MS Word ignores CSS image sizing. Force the height directly onto the img tag!
+    cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
+    
     // Wrap in a pristine, standard HTML shell designed for the generator
     const htmlContent = `
         <!DOCTYPE html>
@@ -988,7 +960,9 @@ cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
             </style>
         </head>
         <body>
-            ${cleanHtml}
+            <div class="WordSection1">
+                ${cleanHtml}
+            </div>
         </body>
         </html>
     `;
@@ -999,9 +973,13 @@ cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
         margins: { top: 720, right: 720, bottom: 720, left: 720 } // 720 twips = 0.5 inches
     });
     
-    // Download as a true .docx file
-    const subjectTitle = document.getElementById('lpSubjectTitle')?.value || "Lesson_Plan";
-    const filename = `${subjectTitle.replace(/[^a-zA-Z0-9]/g, "_")}_LessonPlan.docx`; 
+    // Dynamic File Naming to prevent (1), (2) duplicates
+    const rawSubject = document.getElementById('lpSubjectTitle')?.value.replace(/[^a-zA-Z0-9]/g, "_") || "Subject";
+    const rawGrade = currentTargetGrade.replace(/\s+/g, "") || "Grade";
+    const rawMonth = document.getElementById('lpMonth')?.value || "Month";
+    const rawWeek = document.getElementById('lpWeek')?.value.replace(/\s+/g, "") || "Week";
+    
+    const filename = `${rawSubject}_${rawGrade}_${rawMonth}_${rawWeek}_LessonPlan.docx`; 
     
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
