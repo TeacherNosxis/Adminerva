@@ -780,12 +780,21 @@ function buildDocumentLayout() {
         if (headerContainer) headerContainer.classList.remove('hidden');
     }
 
-    // 2. Metadata
-    document.getElementById('printSubject').textContent = document.getElementById('lpSubjectTitle').value || "SUBJECT";
-    document.getElementById('printSY').textContent = document.getElementById('lpSchoolYear').value || "2026-2027";
-    document.getElementById('printQuarter').textContent = document.getElementById('lpQuarter').value || "QUARTER";
-    document.getElementById('printSemester').textContent = document.getElementById('lpSemester').value || "SEMESTER";
+    // 2. Updated Title & Metadata Formatting
+    const rawSubject = document.getElementById('lpSubjectTitle').value || "SUBJECT";
+    const rawSY = document.getElementById('lpSchoolYear').value || "2026-2027";
     
+    document.getElementById('printMainTitle').textContent = `CURRICULUM MAP / LEARNING PLAN IN ${rawSubject.toUpperCase()}`;
+    document.getElementById('printSYHeader').textContent = `SCHOOL YEAR ${rawSY}`;
+    
+    // Ordinal Converter (1st -> First)
+    const textMap = {"1st": "First", "2nd": "Second", "3rd": "Third", "4th": "Fourth"};
+    const formatOrdinal = (str) => str.replace(/1st|2nd|3rd|4th/g, match => textMap[match]);
+    
+    document.getElementById('printQuarter').textContent = formatOrdinal(document.getElementById('lpQuarter').value || "QUARTER");
+    document.getElementById('printSemester').textContent = formatOrdinal(document.getElementById('lpSemester').value || "SEMESTER");
+    
+    // Move Scope/Date Range to Table Header
     const scopeWeek = document.getElementById('lpWeek').value;
     const scopeMonth = document.getElementById('lpMonth').value;
     const dateRangeEl = document.getElementById('lpDateRange');
@@ -794,13 +803,13 @@ function buildDocumentLayout() {
 
     // 3. Signatories
     document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "";
-    document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "Teacher";
-    document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "Coordinator Name";
-    document.getElementById('printSig2Title').textContent = localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "Coordinator";
-    document.getElementById('printSig3Name').textContent = localStorage.getItem('lessonReview_sigGradeCoord') || "Coordinator Name";
-    document.getElementById('printSig3Title').textContent = localStorage.getItem('lessonReview_sigGradeCoordTitle') || "Coordinator";
-    document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sigPrincipal') || "Principal Name";
-    document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sigPrincipalTitle') || "Principal";
+    document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "";
+    document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "";
+    document.getElementById('printSig2Title').textContent = localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "";
+    document.getElementById('printSig3Name').textContent = localStorage.getItem('lessonReview_sigGradeCoord') || "";
+    document.getElementById('printSig3Title').textContent = localStorage.getItem('lessonReview_sigGradeCoordTitle') || "";
+    document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sigPrincipal') || "";
+    document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sigPrincipalTitle') || "";
 
     // 4. Build Table Rows
     const tbody = document.getElementById('printTableBody');
@@ -811,7 +820,6 @@ function buildDocumentLayout() {
         const tr = document.createElement('tr');
         let rowHtml = ``;
 
-        // Topic and Standards only on the first row
         if (index === 0) {
             rowHtml += `
                 <td style="font-weight: bold; text-align: center; vertical-align: middle;">${currentWeeklyOverview.topic || ''}</td>
@@ -858,7 +866,6 @@ function buildDocumentLayout() {
         }
         rowHtml += `<td style="vertical-align: top;">${experiencesHTML}</td>`;
 
-        // Materials only on first row
         if (index === 0) {
             rowHtml += `<td style="white-space: pre-wrap; vertical-align: middle;">${matText}</td>`;
         } else {
@@ -889,54 +896,42 @@ window.saveAndPrint = async function() {
         setTimeout(() => { window.print(); }, 300);
     }
 };
-
+// ==========================================
+// EXPORT TO WORD DOC
+// ==========================================
 window.exportToWordDoc = function() {
     if (!buildDocumentLayout()) return;
 
     const printWrapper = document.getElementById('printDocumentWrapper');
     
-    // CRITICAL FOR WORD: Strip <thead> tags so it doesn't repeat on every page
+    // Strip <thead> tags so headers DO NOT repeat on every page
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
 
-    // The <xml> block forces MS Word to open in Print View instead of Web Layout.
-    // The @page WordSection1 enforces Folio Landscape (13 inches by 8.5 inches).
     const htmlContent = `
-        <html xmlns:v="urn:schemas-microsoft-com:vml"
-              xmlns:o="urn:schemas-microsoft-com:office:office"
-              xmlns:w="urn:schemas-microsoft-com:office:word"
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+              xmlns:w="urn:schemas-microsoft-com:office:word" 
               xmlns="http://www.w3.org/TR/REC-html40">
         <head>
             <meta charset="utf-8">
             <title>Lesson Plan</title>
-            <!--[if gte mso 9]>
-            <xml>
-                <w:WordDocument>
-                    <w:View>Print</w:View>
-                    <w:Zoom>100</w:Zoom>
-                    <w:DoNotOptimizeForBrowser/>
-                </w:WordDocument>
-            </xml>
-            <![endif]-->
             <style>
-                /* WORD-SPECIFIC FOLIO LANDSCAPE OVERRIDE */
-                @page WordSection1 { 
-                    size: 13.0in 8.5in; 
+                /* BULLETPROOF WORD LANDSCAPE SETTINGS */
+                @page { 
+                    size: 13.0in 8.5in; /* Folio Size */
                     mso-page-orientation: landscape; 
-                    margin: 0.5in 0.5in 0.5in 0.5in; 
+                    margin: 0.5in; 
                 }
-                div.WordSection1 { page: WordSection1; }
                 
                 body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
                 th, td { border: 1px solid #000; padding: 6px 8px; font-size: 9pt; vertical-align: top; }
                 th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
+                .text-center { text-align: center; }
             </style>
         </head>
         <body>
-            <div class="WordSection1">
-                ${cleanHtml}
-            </div>
+            ${cleanHtml}
         </body>
         </html>
     `;
