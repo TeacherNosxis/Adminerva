@@ -18,12 +18,10 @@
         display: none !important;
     }
 
-    /* 2. RESTORE PROPER DOCUMENT FLOW FOR PRINT WRAPPER */
-    #printDocumentWrapper {
-        display: block !important;
-        position: relative !important;
-        width: 100% !important;
-        background: white !important;
+    /* FORCE GLOBAL ARIAL NARROW & FONT SIZE */
+    #printDocumentWrapper, #printDocumentWrapper * {
+        visibility: visible !important;
+        font-family: "Arial Narrow", Arial, sans-serif !important;
     }
 
     /* 3. FORCE TABLE LINES AND PADDING */
@@ -33,11 +31,11 @@
         margin-top: 10px !important;
     }
     .print-table th, .print-table td {
-        border: 1px solid #000000 !important; /* This fixes the missing lines! */
+        border: 1px solid #000000 !important;
         padding: 6px 8px !important;
         vertical-align: top !important;
         text-align: left;
-        font-size: 11px !important;
+        font-size: 10pt !important; /* Force 10pt size */
     }
     .print-table th {
         text-align: center !important;
@@ -336,7 +334,7 @@
     </table>
 
     <!-- SIGNATORIES FOOTER -->
-    <table style="width: 100%; margin-top: 40px; border-collapse: collapse; font-size: 11px;">
+    <table style="width: 100%; margin-top: 40px; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
         
             <tr>
                 <td style="width: 25%; text-align: center; border: none; vertical-align: top;">

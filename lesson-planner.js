@@ -847,7 +847,7 @@ function buildDocumentLayout() {
         if (session.session_name.includes("4-6")) {
             timeFrame = "10 mins<br><br>15 mins<br><br>40 mins<br><br>50 mins<br><br>25 mins<br><br>10 mins";
         }
-        rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: middle; font-size: 12px; line-height: 1.6;">${timeFrame}</td>`;
+        rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: middle; font-size: 10pt; line-height: 1.6;">${timeFrame}</td>`;
 
         let experiencesHTML = `<div style="font-weight: bold; margin-bottom: 4px;">${session.session_name}</div>`;
         if (!isFlex) {
@@ -856,7 +856,7 @@ function buildDocumentLayout() {
                 <strong>Motivation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div><br>
             `;
         }
-        experiencesHTML += `<strong>Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap; font-family: monospace;">${session.learning_activities || ''}</div>`;
+        experiencesHTML += `<strong>Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.learning_activities || ''}</div>`;
         if (!isFlex) {
             experiencesHTML += `
                 <br><strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div><br>
@@ -909,9 +909,11 @@ window.exportToWordDoc = function() {
 
     const printWrapper = document.getElementById('printDocumentWrapper');
     
-    // Clean up HTML: Remove <thead> so headers do not repeat on every page
-    let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
+    // Strip <thead> tags so headers DO NOT repeat on every page
+let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
 
+// MS Word ignores CSS image sizing. Force the height directly onto the img tag!
+cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
     // Wrap in a pristine, standard HTML shell designed for the generator
     const htmlContent = `
         <!DOCTYPE html>
@@ -919,9 +921,18 @@ window.exportToWordDoc = function() {
         <head>
             <meta charset="utf-8">
             <style>
-                body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #333; }
+                /* WORD-SPECIFIC FOLIO LANDSCAPE OVERRIDE */
+                @page WordSection1 { 
+                    size: 13.0in 8.5in; 
+                    mso-page-orientation: landscape; 
+                    margin: 0.5in 0.5in 0.5in 0.5in; 
+                }
+                div.WordSection1 { page: WordSection1; }
+                
+                /* FORCE ARIAL NARROW AND 10PT GLOBALLY */
+                body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                th, td { border: 1px solid #000000; padding: 6px 8px; font-size: 9pt; vertical-align: top; }
+                th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
                 th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
