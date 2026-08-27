@@ -255,8 +255,6 @@ window.loadSpecificPlan = function(planData) {
     window.currentPlan = planData.sessions;
     window.currentTargetGrade = planData.grade_level;
 
-    document.getElementById('lpTeacherName').value = planData.teacher_name || '';
-    document.getElementById('lpSubjectTitle').value = planData.subject_title || '';
     document.getElementById('lpSchoolYear').value = planData.school_year || '2026-2027';
 
     document.querySelectorAll('.folder-checkbox').forEach(cb => cb.checked = false);
@@ -267,25 +265,26 @@ window.loadSpecificPlan = function(planData) {
         });
     }
 
-    if(planData.semester) document.getElementById('lpSemester').value = planData.semester;
-    if(planData.quarter) document.getElementById('lpQuarter').value = planData.quarter;
-    if(planData.month) document.getElementById('lpMonth').value = planData.month;
-    if(planData.week) document.getElementById('lpWeek').value = planData.week;
-
-    // 🚀 SMART DATE LOADER
+    // 🚀 SMART UI MAPPING (Handles both old and new data seamlessly)
+    if(document.getElementById('lpAcademicTerm')) {
+        document.getElementById('lpAcademicTerm').value = planData.safeTerm || planData.academic_term || "FIRST SEMESTER/FIRST QUARTER";
+    }
+    if(document.getElementById('lpCourseWeek')) {
+        document.getElementById('lpCourseWeek').value = planData.safeWeek || planData.course_week || "Week 1";
+    }
+    
+    // Check if the rolling date dropdown exists and inject old physical dates safely
     const dateRangeEl = document.getElementById('lpDateRange');
-    if (planData.date_range && dateRangeEl) {
-        // Check if the loaded date already exists in our rolling 13-week window
-        let exists = Array.from(dateRangeEl.options).some(opt => opt.value === planData.date_range);
-        
-        // If it's an older plan that fell off the dropdown, forcefully re-inject it!
-        if (!exists) {
+    const physicalDateStr = planData.safeDate || planData.date_range;
+    if (dateRangeEl && physicalDateStr) {
+        let exists = Array.from(dateRangeEl.options).some(opt => opt.value === physicalDateStr);
+        if (!exists && physicalDateStr !== "No physical dates") {
             const historyOpt = document.createElement('option');
-            historyOpt.value = planData.date_range;
-            historyOpt.textContent = `💾 Loaded: ${planData.date_range}`;
+            historyOpt.value = physicalDateStr;
+            historyOpt.textContent = `💾 Loaded: ${physicalDateStr}`;
             dateRangeEl.appendChild(historyOpt);
         }
-        dateRangeEl.value = planData.date_range;
+        dateRangeEl.value = physicalDateStr;
     }
 
     const customInstructionsEl = document.getElementById('lpCustomInstructions');
@@ -295,8 +294,6 @@ window.loadSpecificPlan = function(planData) {
     if (planData.schedule) {
         localStorage.setItem('lessonReview_schedule', planData.schedule);
     }
-
-    window.currentAnchoredWeek = planData.absoluteWeek || 1; 
 
     window.renderOverview();
     window.renderOutput();

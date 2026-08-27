@@ -186,101 +186,132 @@ window.openLoadPlanModal = async function() {
         container.innerHTML = '';
         
         if (querySnapshot.empty) {
-            container.innerHTML = `
-                <div class="text-center py-12">
-                    <span class="text-4xl block mb-3">🗂️</span>
-                    <p class="text-gray-500 font-bold">No saved plans found.</p>
-                    <p class="text-xs text-gray-400 mt-1">Generate and save your first lesson plan to see it here.</p>
-                </div>
-            `;
+            container.innerHTML = `<div class="text-center py-12"><p class="text-gray-500 font-bold">No saved plans found.</p></div>`;
             return;
         }
 
         const allPlans = [];
-        querySnapshot.forEach(docSnap => allPlans.push({ id: docSnap.id, ...docSnap.data() }));
+        const conflictTracker = {};
 
-        // Sort chronologically
-        allPlans.sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
-
-        const quarters = { "1": [], "2": [], "3": [], "4": [] };
-        allPlans.forEach(plan => {
-            let qtrNum = "1";
-            // Check new academic_term key first, fallback to old quarter key
-            if (plan.academic_term && plan.academic_term.includes("SECOND QUARTER")) qtrNum = "2";
-            else if (plan.academic_term && plan.academic_term.includes("THIRD QUARTER")) qtrNum = "3";
-            else if (plan.academic_term && plan.academic_term.includes("FOURTH QUARTER")) qtrNum = "4";
-            else if (plan.quarter && /2|second/i.test(plan.quarter)) qtrNum = "2";
-            else if (plan.quarter && /3|third/i.test(plan.quarter)) qtrNum = "3";
-            else if (plan.quarter && /4|fourth/i.test(plan.quarter)) qtrNum = "4";
+        // 1. NORMALIZE & SCAN FOR OVERLAPS
+        querySnapshot.forEach(docSnap => {
+            const data = docSnap.data();
             
-            quarters[qtrNum].push(plan);
+            // Normalize Legacy Data to New Format safely
+            const safeSY = data.school_year || "2026-2027";
+            const safeSubject = data.subject_title || "Unknown Subject";
+            
+            let safeTerm = data.academic_term || "";
+            if (!safeTerm) {
+                // If it's an old file, stitch the old quarter/semester together
+                const sem = /2|second/i.test(data.semester || "") ? "SECOND SEMESTER" : "FIRST SEMESTER";
+                let qtr = "FIRST QUARTER";
+                if(/2|second/i.test(data.quarter || "")) qtr = "SECOND QUARTER";
+                if(/3|third/i.test(data.quarter || "")) qtr = "THIRD QUARTER";
+                if(/4|fourth/i.test(data.quarter || "")) qtr = "FOURTH QUARTER";
+                safeTerm = `${sem}/${qtr}`;
+            }
+
+            let safeWeek = data.course_week || "";
+            if (!safeWeek) {
+                // If it's an old file, convert the absoluteWeek to the new Course Week format
+                safeWeek = `Week ${data.absoluteWeek || 1}`;
+            }
+
+            // Apply patched data back to object
+            data.safeSY = safeSY;
+            data.safeTerm = safeTerm;
+            data.safeSubject = safeSubject;
+            data.safeWeek = safeWeek;
+            data.safeDate = data.date_range || "No physical dates";
+
+            const plan = { id: docSnap.id, ...data };
+            allPlans.push(plan);
+
+            // Build Conflict Key (e.g., "2026-2027_FIRST SEMESTER/FIRST QUARTER_Computer Programming 11_Week 1")
+            const conflictKey = `${safeSY}_${safeTerm}_${safeSubject}_${safeWeek}`;
+            if (!conflictTracker[conflictKey]) conflictTracker[conflictKey] = 0;
+            conflictTracker[conflictKey]++;
+            plan.conflictKey = conflictKey;
         });
 
-        // Render UI
-        Object.keys(quarters).sort().forEach(q => {
-            if (quarters[q].length > 0) {
-                container.insertAdjacentHTML('beforeend', `
-                    <div class="mt-8 mb-4 flex items-center gap-3">
-                        <h3 class="text-sm font-extrabold text-blue-900 uppercase tracking-widest bg-blue-100 px-3 py-1 rounded-md">Quarter ${q}</h3>
-                        <div class="h-px bg-gray-200 flex-grow"></div>
-                    </div>
-                `);
+        // Sort by timestamp (newest first)
+        allPlans.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
 
-                const gridContainer = document.createElement('div');
-                gridContainer.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
-                container.appendChild(gridContainer);
+        // Group purely by Academic Term for the GDrive folder look
+        const termGroups = {};
+        allPlans.forEach(plan => {
+            if (!termGroups[plan.safeTerm]) termGroups[plan.safeTerm] = [];
+            termGroups[plan.safeTerm].push(plan);
+        });
 
-                quarters[q].forEach((data) => {
-                    const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown";
-                    
-                    // Extract exact numbers for the badges
-                    let semNum = "1";
-                    if (data.academic_term && data.academic_term.includes("SECOND SEMESTER")) semNum = "2";
-                    else if (data.semester && /2|second/i.test(data.semester)) semNum = "2";
-                    
-                    let weekNum = "1";
-                    if (data.course_week) weekNum = data.course_week.replace(/\D/g, "") || "1";
-                    else if (data.absoluteWeek) weekNum = data.absoluteWeek;
+        // 2. RENDER GOOGLE DRIVE STYLE UI
+        Object.keys(termGroups).sort().forEach(term => {
+            // Term Folder Header
+            container.insertAdjacentHTML('beforeend', `
+                <div class="mt-6 mb-2">
+                    <h3 class="text-sm font-extrabold text-blue-900 bg-blue-50 px-3 py-2 rounded-t-lg border-b-2 border-blue-200 flex items-center gap-2">
+                        📁 ${term}
+                    </h3>
+                </div>
+            `);
 
-                    const card = document.createElement('div');
-                    card.className = "group relative p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-400 transition-all duration-200 flex flex-col justify-between";
-                    card.innerHTML = `
-                        <div>
-                            <div class="flex justify-between items-start mb-3">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                                    Course Week ${weekNum}
-                                </span>
-                                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                                    Sem ${semNum}
-                                </span>
-                            </div>
-                            
-                            <h4 class="font-extrabold text-gray-900 text-base mb-1 leading-tight line-clamp-1" title="${data.subject_title || 'Subject'}">
-                                ${data.subject_title || 'Subject'}
-                            </h4>
-                            
-                            <!-- 🚀 THE FIX: DIRECTLY RENDERING THE DATE RANGE STRING -->
-                            <p class="text-[11px] text-gray-500 mb-4 font-bold flex items-center gap-1">
-                                🗓️ ${data.date_range || 'No physical dates provided'}
-                            </p>
-                        </div>
-                        
-                        <div class="pt-4 border-t border-gray-100 flex justify-between items-center">
-                            <span class="text-[9px] text-gray-400 font-medium">💾 ${dateStr.split(',')[0]}</span>
-                            <div class="flex gap-2">
-                                <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="flex items-center gap-1 px-4 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-sm transition">
+            // Start Table
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = "overflow-x-auto border border-gray-200 rounded-b-lg mb-6 shadow-sm";
+            
+            let tableHTML = `
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                        <tr>
+                            <th class="px-4 py-3 font-bold">Course Week</th>
+                            <th class="px-4 py-3 font-bold">Subject</th>
+                            <th class="px-4 py-3 font-bold">Physical Dates</th>
+                            <th class="px-4 py-3 font-bold text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+            `;
+
+            termGroups[term].forEach((data) => {
+                // Check if this plan shares a slot with another plan
+                const isConflict = conflictTracker[data.conflictKey] > 1;
+                
+                // Style warnings for overlaps
+                const rowClass = isConflict ? "bg-amber-50 hover:bg-amber-100 transition" : "hover:bg-gray-50 transition";
+                const warningIcon = isConflict ? `<span title="Duplicate/Overlap Warning" class="text-amber-600 mr-1">⚠️</span>` : ``;
+
+                tableHTML += `
+                    <tr class="${rowClass}">
+                        <td class="px-4 py-3 font-bold ${isConflict ? 'text-amber-800' : 'text-blue-900'}">
+                            ${warningIcon} ${data.safeWeek}
+                            <div class="text-[9px] text-gray-400 font-normal mt-0.5">${data.safeSY}</div>
+                        </td>
+                        <td class="px-4 py-3 font-bold text-gray-700 truncate max-w-[200px]" title="${data.safeSubject}">
+                            ${data.safeSubject}
+                        </td>
+                        <td class="px-4 py-3 text-xs text-gray-600 font-medium">
+                            🗓️ ${data.safeDate}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex justify-center gap-2">
+                                <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-1.5 bg-blue-600 text-white font-bold text-[10px] rounded hover:bg-blue-700 shadow-sm transition">
                                     Load
                                 </button>
-                                <button onclick="deleteLessonPlan('${data.id}')" class="flex items-center justify-center w-8 h-8 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 hover:text-red-700 transition" title="Delete Plan">
+                                <button onclick="deleteLessonPlan('${data.id}')" class="px-2 py-1.5 bg-red-50 text-red-600 font-bold text-[10px] rounded hover:bg-red-100 transition" title="Delete">
                                     ✖
                                 </button>
                             </div>
-                        </div>
-                    `;
-                    gridContainer.appendChild(card);
-                });
-            }
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `</tbody></table>`;
+            tableWrapper.innerHTML = tableHTML;
+            container.appendChild(tableWrapper);
         });
+
     } catch (e) {
         container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">Error: ${e.message}</div>`;
     }
