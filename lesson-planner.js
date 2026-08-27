@@ -348,14 +348,17 @@ CRITICAL FORMATTING RULES:
 1. "weekly_overview": 
    - "topic": Keep short and punchy.
    - "content_standard", "performance_standard", "formation_standard", and "materials": MANDATORY FIELDS. Professionally infer them based on the text if needed.
+   - FALLBACK KNOWLEDGE: If no Reference Text is provided, or if this is a Tech-Voc/TVL subject, you MUST utilize standard DepEd (Department of Education) and TESDA curriculum guides to formulate standards and content accurately.
 2. "sessions" array: Generate daily sessions.
 ${gradeSpecificRules}
 5. SESSION DETAILS (Normal): 
    - "competencies": Provide 1 to 2 clear learning competencies.
    - "objectives": Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy, explicitly covering cognitive, psychomotor, and affective domains where applicable.
    - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
-   - "learning_activities": Heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb.
-   - "evaluation": Reference a 10-item Quipper quiz (unless overridden by custom instructions).
+   - "motivation": Briefly describe the activity AND explicitly state the specific teaching strategy used (e.g., "Guessing the parts of the computer with the use of Picture Analysis").
+   - "learning_activities": Heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb AND you must explicitly integrate the teaching strategies utilized (e.g., "Discussing different types of computers using the Think-Pair-Share strategy").
+   - "evaluation": Suggest diverse and appropriate formative or summative assessments based on the topic (e.g., Venn diagram, performance task, short quiz, oral recitation). Do NOT default to a Quipper quiz.
+   - "values_integration": Output ONLY core value keywords, optionally followed by a short phrase or definition connecting it to the lesson (e.g., "Resilience - debugging code without giving up").
    
    - TIME FRAME MAPPING (CRITICAL LINE-BY-LINE ALIGNMENT): 
      In the time frame column, do NOT just write a generic label. You must provide a line-by-line minute breakdown that visually matches the vertical layout of the "Learning Experiences" (preliminary, motivation, activities, evaluation, closing) or specific activity lines (such as Session 4, Session 5, Session 6 lines). Format it with precise vertical spacing or line breaks so each minute allocation sits horizontally level with its corresponding activity part.
