@@ -8,6 +8,14 @@
 <!-- 👇 ADD THIS SCRIPT FOR TRUE .DOCX EXPORT 👇 -->
 <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
     <style>
+/* HIDE PRINT WRAPPER ON THE COMPUTER SCREEN */
+@media screen {
+    #printDocumentWrapper {
+        display: none !important;
+    }
+}
+
+/* SHOW PRINT WRAPPER AND HIDE APP UI ON THE PRINTER */
 @media print {
     /* 1. CLEANLY HIDE ALL WEB UI ELEMENTS */
     body > nav, 
@@ -16,6 +24,14 @@
     body > #aiClarificationModal, 
     body > #loadPlanModal {
         display: none !important;
+    }
+
+    /* 2. RESTORE PROPER DOCUMENT FLOW FOR PRINT WRAPPER */
+    #printDocumentWrapper {
+        display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        background: white !important;
     }
 
     /* FORCE GLOBAL ARIAL NARROW & FONT SIZE */
@@ -300,8 +316,8 @@
     </div>
 
     <!-- PRINT-ONLY CURRICULUM MAP CONTAINER -->
-<div id="printDocumentWrapper" style="display: none; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
-    
+<div id="printDocumentWrapper" style="font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
+
     <!-- 1. IMAGE CENTERED PROPERLY FOR WORD -->
     <div id="printHeaderBannerContainer" style="text-align: center; margin-bottom: 10px;">
         <img id="printHeaderImage" src="" alt="School Header" height="80" style="margin: 0 auto; display: inline-block;" class="hidden">
