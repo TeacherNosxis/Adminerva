@@ -587,6 +587,14 @@ function renderOutput() {
 }
 
 
+    // ==========================================
+// ACTION BUTTONS: SAVE, LOAD, DELETE & PRINT
+// ==========================================
+window.saveLessonPlan = async function() {
+    if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
+        alert("Please generate a lesson plan first before saving.");
+        return false; 
+    }
     if (!db) {
         alert("Firebase is not connected! Please configure it in Global Settings.");
         return false; 
@@ -596,24 +604,50 @@ function renderOutput() {
     const grade = currentTargetGrade || "Grade";
     const month = document.getElementById('lpMonth').value;
     const week = document.getElementById('lpWeek').value;
+    const quarter = document.getElementById('lpQuarter').value;
     const dateRangeEl = document.getElementById('lpDateRange');
     
     const safeDocId = `${grade}_${subject}_${month}_${week}`.replace(/[^a-zA-Z0-9_]/g, "");
 
     const loaderText = document.querySelector('#globalLoader p');
     const originalText = loaderText ? loaderText.textContent : "Processing...";
-    if(loaderText) loaderText.textContent = "Saving to Database...";
+    if(loaderText) loaderText.textContent = "Anchoring Week Sequence...";
     document.getElementById('globalLoader').classList.replace('hidden', 'flex');
 
     try {
+        // --- GAP-FILLING ANCHOR LOGIC ---
+        const docRef = doc(db, "lesson_plans", safeDocId);
+        const docSnap = await getDoc(docRef);
+        let anchoredWeek = 1;
+
+        if (docSnap.exists() && docSnap.data().absoluteWeek) {
+            // If overwriting an existing plan, KEEP its original anchored week
+            anchoredWeek = docSnap.data().absoluteWeek;
+        } else {
+            // If brand new, find all used weeks for this Quarter and fill the lowest gap
+            const qSnap = await getDocs(collection(db, "lesson_plans"));
+            let usedWeeks = [];
+            qSnap.forEach(d => {
+                const data = d.data();
+                if (data.subject_title === subject && data.grade_level === grade && data.quarter === quarter) {
+                    if (data.absoluteWeek) usedWeeks.push(data.absoluteWeek);
+                }
+            });
+            // Auto-prioritize the missing gap (e.g., if 1, 3, 4 exist, it assigns 2)
+            while (usedWeeks.includes(anchoredWeek)) {
+                anchoredWeek++;
+            }
+        }
+
         const planData = {
             teacher_name: document.getElementById('lpTeacherName').value || "Unassigned",
             subject_title: subject,
             school_year: document.getElementById('lpSchoolYear').value,
             semester: document.getElementById('lpSemester').value,
-            quarter: document.getElementById('lpQuarter').value,
+            quarter: quarter,
             month: month,
             week: week,
+            absoluteWeek: anchoredWeek, // PERMANENT STAMP
             date_range: dateRangeEl ? dateRangeEl.value : "",
             grade_level: grade,
             custom_instructions: document.getElementById('lpCustomInstructions').value.trim(),
@@ -624,8 +658,12 @@ function renderOutput() {
             timestamp: new Date().toISOString()
         };
 
-        await setDoc(doc(db, "lesson_plans", safeDocId), planData);
-        alert("✅ Lesson Plan saved successfully!");
+        await setDoc(docRef, planData);
+        
+        // Cache it globally so the Exporter can use it instantly
+        window.currentAnchoredWeek = anchoredWeek; 
+        
+        alert(`✅ Lesson Plan saved and anchored as Week ${anchoredWeek}!`);
         return true; 
     } catch (e) {
         console.error("Error saving plan:", e);
@@ -937,6 +975,7 @@ window.saveAndPrint = async function() {
         setTimeout(() => { window.print(); }, 300);
     }
 };
+
 
 // ==========================================
 // TRUE .DOCX EXPORTER (Landscape, Embedded Images, Smart Naming)
