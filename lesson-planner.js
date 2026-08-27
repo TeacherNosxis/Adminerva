@@ -586,14 +586,7 @@ function renderOutput() {
     });
 }
 
-// ==========================================
-// ACTION BUTTONS: SAVE, LOAD, DELETE & PRINT
-// ==========================================
-window.saveLessonPlan = async function() {
-    if (!currentPlan || currentPlan.length === 0 || !currentWeeklyOverview) {
-        alert("Please generate a lesson plan first before saving.");
-        return false; 
-    }
+
     if (!db) {
         alert("Firebase is not connected! Please configure it in Global Settings.");
         return false; 
@@ -660,40 +653,61 @@ window.openLoadPlanModal = async function() {
     try {
         const querySnapshot = await getDocs(collection(db, "lesson_plans"));
         container.innerHTML = '';
-
         if (querySnapshot.empty) {
-            container.innerHTML = `<p class="text-gray-400 italic text-center py-8">No saved lesson plans found in database.</p>`;
+            container.innerHTML = `<p class="text-gray-400 italic text-center py-8">No saved plans found.</p>`;
             return;
         }
 
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const docId = docSnap.id; 
-            const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown date";
-            
-            const card = document.createElement('div');
-            card.className = "p-4 border rounded-lg bg-gray-50 hover:bg-blue-50 transition flex justify-between items-center shadow-sm";
-            card.innerHTML = `
-                <div>
-                    <h4 class="font-bold text-blue-900">${data.subject_title || 'Untitled Subject'} (${data.grade_level || 'Grade N/A'})</h4>
-                    <p class="text-xs text-gray-600 mt-1">Scope: <strong>${data.month || ''} ${data.week || ''}</strong> | Quarter: ${data.quarter || ''}</p>
-                    <p class="text-[10px] text-gray-400 mt-0.5">Saved on: ${dateStr}</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">
-                        📂 Load
-                    </button>
-                    <button onclick="deleteLessonPlan('${docId}')" class="px-3 py-2 bg-red-100 text-red-600 font-bold text-xs rounded hover:bg-red-200 shadow transition" title="Delete Plan">
-                        🗑️
-                    </button>
-                </div>
-            `;
-            container.appendChild(card);
+        const allPlans = [];
+        querySnapshot.forEach(docSnap => allPlans.push({ id: docSnap.id, ...docSnap.data() }));
+        
+        // Sort chronologically
+        allPlans.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+
+        // Group by Quarter
+        const quarters = { "1": [], "2": [], "3": [], "4": [] };
+        allPlans.forEach(plan => {
+            let qtrNum = "1";
+            if(/2|second/i.test(plan.quarter || "")) qtrNum = "2";
+            if(/3|third/i.test(plan.quarter || "")) qtrNum = "3";
+            if(/4|fourth/i.test(plan.quarter || "")) qtrNum = "4";
+            quarters[qtrNum].push(plan);
         });
 
+        // Render UI
+        Object.keys(quarters).sort().forEach(q => {
+            if (quarters[q].length > 0) {
+                container.insertAdjacentHTML('beforeend', `<h3 class="w-full text-xs font-extrabold text-gray-500 uppercase tracking-widest mt-6 mb-2 border-b-2 border-gray-200 pb-1">Quarter ${q}</h3>`);
+
+                quarters[q].forEach((data) => {
+                    const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown";
+                    const rawGrade = (data.grade_level || "11").replace(/\D/g, "");
+                    const semNum = /2|second/i.test(data.semester || "") ? "2" : "1";
+                    const shortSubject = (data.subject_title || "").split(/\s+/).map(w => w.match(/\d+/) ? w : w.substring(0, 4)).join('').replace(/[^a-zA-Z0-9]/g, "");
+                    
+                    // READS THE PERMANENT STAMP OR DEFAULTS TO 1
+                    const anchoredWeek = data.absoluteWeek || 1; 
+                    const displayTitle = `${rawGrade}-Sem${semNum},Qtr${q},W${anchoredWeek}(${shortSubject})`;
+                    
+                    const card = document.createElement('div');
+                    card.className = "p-4 border rounded-lg bg-gray-50 hover:bg-blue-50 transition flex justify-between items-center shadow-sm mb-2";
+                    card.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-blue-900">${displayTitle}</h4>
+                            <p class="text-xs text-gray-600 mt-1">Target: <strong>${data.month || ''} ${data.week || ''}</strong></p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Saved on: ${dateStr}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">📂 Load</button>
+                            <button onclick="deleteLessonPlan('${data.id}')" class="px-3 py-2 bg-red-100 text-red-600 font-bold text-xs rounded hover:bg-red-200 shadow transition" title="Delete Plan">🗑️</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+        });
     } catch (e) {
-        console.error("Error loading plans:", e);
-        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error loading plans: ${e.message}</p>`;
+        container.innerHTML = `<p class="text-red-500">Error: ${e.message}</p>`;
     }
 };
 
@@ -925,75 +939,110 @@ window.saveAndPrint = async function() {
 };
 
 // ==========================================
-// TRUE .DOCX EXPORTER (Landscape + Embedded Images)
+// TRUE .DOCX EXPORTER (Landscape, Embedded Images, Smart Naming)
 // ==========================================
-window.exportToWordDoc = function() {
-    if (typeof htmlDocx === 'undefined') {
-        alert("The Word Document generator is still loading. Please wait a second and try again.");
-        return;
-    }
+    window.exportToWordDoc = async function() {
+        if (typeof htmlDocx === 'undefined') {
+            alert("The Word Document generator is still loading. Please wait a second and try again.");
+            return;
+        }
 
-    if (!buildDocumentLayout()) return;
+        if (!buildDocumentLayout()) return;
+        
+        // 1. SHOW LOADER WHILE CALCULATING ABSOLUTE WEEK
+        const loaderText = document.querySelector('#globalLoader p');
+        const originalText = loaderText ? loaderText.textContent : "Processing...";
+        if(loaderText) loaderText.textContent = "Calculating Absolute Week...";
+        document.getElementById('globalLoader').classList.replace('hidden', 'flex');
 
-    const printWrapper = document.getElementById('printDocumentWrapper');
-    
-    // Strip <thead> tags so headers DO NOT repeat on every page
-    let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
+        try {
+            // 2. EXTRACT SMART METADATA
+            const rawGrade = currentTargetGrade.replace(/\D/g, "") || "11";
+            
+            const rawSem = document.getElementById('lpSemester')?.value || "1st";
+            const semNum = /2|second/i.test(rawSem) ? "2" : "1";
+            
+            const rawQtr = document.getElementById('lpQuarter')?.value || "1st";
+            let qtrNum = "1";
+            if(/2|second/i.test(rawQtr)) qtrNum = "2";
+            if(/3|third/i.test(rawQtr)) qtrNum = "3";
+            if(/4|fourth/i.test(rawQtr)) qtrNum = "4";
 
-    // MS Word ignores CSS image sizing. Force the height directly onto the img tag!
-    cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
-    
-    // Wrap in a pristine, standard HTML shell designed for the generator
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                /* WORD-SPECIFIC FOLIO LANDSCAPE OVERRIDE */
-                @page WordSection1 { 
-                    size: 13.0in 8.5in; 
-                    mso-page-orientation: landscape; 
-                    margin: 0.5in 0.5in 0.5in 0.5in; 
-                }
-                div.WordSection1 { page: WordSection1; }
+            const rawSubject = document.getElementById('lpSubjectTitle')?.value || "Subject";
+            // Convert "Computer Programming 11" to "CompProg11"
+            const shortSubject = rawSubject.split(/\s+/).map(w => w.match(/\d+/) ? w : w.substring(0, 4)).join('').replace(/[^a-zA-Z0-9]/g, "");
+
+            // 3. CALCULATE ABSOLUTE WEEK VIA FIREBASE
+            let absoluteWeek = 1;
+            if (db) {
+                const snap = await getDocs(collection(db, "lesson_plans"));
+                let matchingPlans = [];
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if (d.subject_title === rawSubject && d.grade_level === currentTargetGrade) {
+                        matchingPlans.push({ id: doc.id, ts: new Date(d.timestamp || 0).getTime() });
+                    }
+                });
                 
-                /* FORCE ARIAL NARROW AND 10PT GLOBALLY */
-                body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
-                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
-                th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
-                img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
-            </style>
-        </head>
-        <body>
-            <div class="WordSection1">
-                ${cleanHtml}
-            </div>
-        </body>
-        </html>
-    `;
+                // Sort chronologically by creation time
+                matchingPlans.sort((a, b) => a.ts - b.ts);
+                
+                const currentMonth = document.getElementById('lpMonth').value;
+                const currentWeek = document.getElementById('lpWeek').value;
+                const currentId = `${currentTargetGrade}_${rawSubject}_${currentMonth}_${currentWeek}`.replace(/[^a-zA-Z0-9_]/g, "");
+                
+                const existingIndex = matchingPlans.findIndex(p => p.id === currentId);
+                if (existingIndex !== -1) {
+                    absoluteWeek = existingIndex + 1; // It's an already saved plan
+                } else {
+                    absoluteWeek = matchingPlans.length + 1; // It's a brand new plan
+                }
+            }
 
-    // 🚀 THE MAGIC: Generate a REAL .docx file in Landscape mode with 0.5-inch margins
-    const blob = htmlDocx.asBlob(htmlContent, { 
-        orientation: 'landscape',
-        margins: { top: 720, right: 720, bottom: 720, left: 720 } // 720 twips = 0.5 inches
-    });
-    
-    // Dynamic File Naming to prevent (1), (2) duplicates
-    const rawSubject = document.getElementById('lpSubjectTitle')?.value.replace(/[^a-zA-Z0-9]/g, "_") || "Subject";
-    const rawGrade = currentTargetGrade.replace(/\s+/g, "") || "Grade";
-    const rawMonth = document.getElementById('lpMonth')?.value || "Month";
-    const rawWeek = document.getElementById('lpWeek')?.value.replace(/\s+/g, "") || "Week";
-    
-    const filename = `${rawSubject}_${rawGrade}_${rawMonth}_${rawWeek}_LessonPlan.docx`; 
-    
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-};
+            // 4. BUILD THE FILE NAME: 11-Sem1,Qtr2,W1(CompProg)
+            const filename = `${rawGrade}-Sem${semNum},Qtr${qtrNum},W${absoluteWeek}(${shortSubject}).docx`;
+
+            // 5. GENERATE THE DOCUMENT
+            const printWrapper = document.getElementById('printDocumentWrapper');
+            let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
+            cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
+            
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        @page WordSection1 { size: 13.0in 8.5in; mso-page-orientation: landscape; margin: 0.5in; }
+                        div.WordSection1 { page: WordSection1; }
+                        body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                        th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
+                        th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+                        img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
+                    </style>
+                </head>
+                <body>
+                    <div class="WordSection1">${cleanHtml}</div>
+                </body> 
+                </html>
+            `;
+
+            const blob = htmlDocx.asBlob(htmlContent, { orientation: 'landscape', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+        } catch (e) {
+            alert("Error generating document: " + e.message);
+        } finally {
+            if(loaderText) loaderText.textContent = originalText;
+            document.getElementById('globalLoader').classList.replace('flex', 'hidden');
+        }
+    };
