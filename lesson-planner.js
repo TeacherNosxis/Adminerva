@@ -897,37 +897,33 @@ window.saveAndPrint = async function() {
     }
 };
 // ==========================================
-// EXPORT TO WORD DOC
+// TRUE .DOCX EXPORTER (Landscape + Embedded Images)
 // ==========================================
 window.exportToWordDoc = function() {
+    if (typeof htmlDocx === 'undefined') {
+        alert("The Word Document generator is still loading. Please wait a second and try again.");
+        return;
+    }
+
     if (!buildDocumentLayout()) return;
 
     const printWrapper = document.getElementById('printDocumentWrapper');
     
-    // Strip <thead> tags so headers DO NOT repeat on every page
+    // Clean up HTML: Remove <thead> so headers do not repeat on every page
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
 
+    // Wrap in a pristine, standard HTML shell designed for the generator
     const htmlContent = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" 
-              xmlns:w="urn:schemas-microsoft-com:office:word" 
-              xmlns="http://www.w3.org/TR/REC-html40">
+        <!DOCTYPE html>
+        <html>
         <head>
             <meta charset="utf-8">
-            <title>Lesson Plan</title>
             <style>
-                /* BULLETPROOF WORD LANDSCAPE SETTINGS */
-                @page { 
-                    size: 13.0in 8.5in; /* Folio Size */
-                    mso-page-orientation: landscape; 
-                    margin: 0.5in; 
-                }
-                
                 body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                th, td { border: 1px solid #000; padding: 6px 8px; font-size: 9pt; vertical-align: top; }
+                th, td { border: 1px solid #000000; padding: 6px 8px; font-size: 9pt; vertical-align: top; }
                 th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
-                .text-center { text-align: center; }
             </style>
         </head>
         <body>
@@ -936,9 +932,15 @@ window.exportToWordDoc = function() {
         </html>
     `;
 
-    const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
+    // 🚀 THE MAGIC: Generate a REAL .docx file in Landscape mode with 0.5-inch margins
+    const blob = htmlDocx.asBlob(htmlContent, { 
+        orientation: 'landscape',
+        margins: { top: 720, right: 720, bottom: 720, left: 720 } // 720 twips = 0.5 inches
+    });
+    
+    // Download as a true .docx file
     const subjectTitle = document.getElementById('lpSubjectTitle')?.value || "Lesson_Plan";
-    const filename = `${subjectTitle.replace(/[^a-zA-Z0-9]/g, "_")}_LessonPlan.doc`;
+    const filename = `${subjectTitle.replace(/[^a-zA-Z0-9]/g, "_")}_LessonPlan.docx`; 
     
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
