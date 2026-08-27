@@ -35,7 +35,7 @@ window.bibleVerses = [
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     if(window.initFirebase) window.initFirebase();
-    window.setupDateCalculator();
+    window.generateRollingWeekDropdown();
 });
 
 // ==========================================
@@ -272,8 +272,21 @@ window.loadSpecificPlan = function(planData) {
     if(planData.month) document.getElementById('lpMonth').value = planData.month;
     if(planData.week) document.getElementById('lpWeek').value = planData.week;
 
+    // 🚀 SMART DATE LOADER
     const dateRangeEl = document.getElementById('lpDateRange');
-    if (dateRangeEl && planData.date_range) dateRangeEl.value = planData.date_range;
+    if (planData.date_range && dateRangeEl) {
+        // Check if the loaded date already exists in our rolling 13-week window
+        let exists = Array.from(dateRangeEl.options).some(opt => opt.value === planData.date_range);
+        
+        // If it's an older plan that fell off the dropdown, forcefully re-inject it!
+        if (!exists) {
+            const historyOpt = document.createElement('option');
+            historyOpt.value = planData.date_range;
+            historyOpt.textContent = `💾 Loaded: ${planData.date_range}`;
+            dateRangeEl.appendChild(historyOpt);
+        }
+        dateRangeEl.value = planData.date_range;
+    }
 
     const customInstructionsEl = document.getElementById('lpCustomInstructions');
     if (customInstructionsEl) customInstructionsEl.value = planData.custom_instructions || '';
@@ -289,4 +302,52 @@ window.loadSpecificPlan = function(planData) {
     window.renderOutput();
     window.closeLoadPlanModal();
     alert("✅ Lesson plan loaded successfully!");
+};
+
+window.generateRollingWeekDropdown = function() {
+    const selectEl = document.getElementById('lpDateRange');
+    if (!selectEl) return;
+    
+    selectEl.innerHTML = '';
+    
+    // Get today's exact date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Find THIS week's Monday
+    const day = today.getDay();
+    const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+    const thisMonday = new Date(today);
+    thisMonday.setDate(diffToMonday);
+
+    // Loop from -6 weeks to +6 weeks
+    for (let i = -6; i <= 6; i++) {
+        const mon = new Date(thisMonday);
+        mon.setDate(thisMonday.getDate() + (i * 7));
+        
+        const fri = new Date(mon);
+        fri.setDate(mon.getDate() + 4);
+
+        const mMonth = mon.toLocaleString('en-US', { month: 'long' });
+        const mDay = mon.getDate();
+        const fMonth = fri.toLocaleString('en-US', { month: 'long' });
+        const fDay = fri.getDate();
+        const year = fri.getFullYear();
+
+        // Format exactly as requested: "August 24-28, 2026" or "August 31-September 4, 2026"
+        let dateStr = "";
+        if (mMonth === fMonth) {
+            dateStr = `${mMonth} ${mDay}-${fDay}, ${year}`;
+        } else {
+            dateStr = `${mMonth} ${mDay}-${fMonth} ${fDay}, ${year}`;
+        }
+
+        const opt = document.createElement('option');
+        opt.value = dateStr;
+        // Add a visual indicator for the current week
+        opt.textContent = i === 0 ? `👉 Current: ${dateStr}` : dateStr;
+        if (i === 0) opt.selected = true;
+        
+        selectEl.appendChild(opt);
+    }
 };

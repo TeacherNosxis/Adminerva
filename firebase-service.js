@@ -169,67 +169,120 @@ window.openLoadPlanModal = async function() {
     modal.classList.replace('hidden', 'flex');
 
     const container = document.getElementById('savedPlansListContainer');
-    container.innerHTML = `<p class="text-gray-500 italic text-center py-8">Fetching saved plans from cloud...</p>`;
+    container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12">
+            <svg class="animate-spin h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p class="text-gray-500 font-medium animate-pulse">Fetching curriculum cloud data...</p>
+        </div>
+    `;
 
     if (!window.db) {
-        container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Firebase is not connected!</p>`;
+        container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-center font-bold border border-red-200">Firebase is not connected!</div>`;
         return;
     }
 
     try {
         const querySnapshot = await getDocs(collection(window.db, "lesson_plans"));
         container.innerHTML = '';
+        
         if (querySnapshot.empty) {
-            container.innerHTML = `<p class="text-gray-400 italic text-center py-8">No saved plans found.</p>`;
+            container.innerHTML = `
+                <div class="text-center py-12">
+                    <span class="text-4xl block mb-3">🗂️</span>
+                    <p class="text-gray-500 font-bold">No saved plans found.</p>
+                    <p class="text-xs text-gray-400 mt-1">Generate and save your first lesson plan to see it here.</p>
+                </div>
+            `;
             return;
         }
 
         const allPlans = [];
         querySnapshot.forEach(docSnap => allPlans.push({ id: docSnap.id, ...docSnap.data() }));
 
-        allPlans.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+        // Sort chronologically
+        allPlans.sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
 
         const quarters = { "1": [], "2": [], "3": [], "4": [] };
         allPlans.forEach(plan => {
             let qtrNum = "1";
-            if(/2|second/i.test(plan.quarter || "")) qtrNum = "2";
-            if(/3|third/i.test(plan.quarter || "")) qtrNum = "3";
-            if(/4|fourth/i.test(plan.quarter || "")) qtrNum = "4";
+            // Check new academic_term key first, fallback to old quarter key
+            if (plan.academic_term && plan.academic_term.includes("SECOND QUARTER")) qtrNum = "2";
+            else if (plan.academic_term && plan.academic_term.includes("THIRD QUARTER")) qtrNum = "3";
+            else if (plan.academic_term && plan.academic_term.includes("FOURTH QUARTER")) qtrNum = "4";
+            else if (plan.quarter && /2|second/i.test(plan.quarter)) qtrNum = "2";
+            else if (plan.quarter && /3|third/i.test(plan.quarter)) qtrNum = "3";
+            else if (plan.quarter && /4|fourth/i.test(plan.quarter)) qtrNum = "4";
+            
             quarters[qtrNum].push(plan);
         });
 
+        // Render UI
         Object.keys(quarters).sort().forEach(q => {
             if (quarters[q].length > 0) {
-                container.insertAdjacentHTML('beforeend', `<h3 class="w-full text-xs font-extrabold text-gray-500 uppercase tracking-widest mt-6 mb-2 border-b-2 border-gray-200 pb-1">Quarter ${q}</h3>`);
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="mt-8 mb-4 flex items-center gap-3">
+                        <h3 class="text-sm font-extrabold text-blue-900 uppercase tracking-widest bg-blue-100 px-3 py-1 rounded-md">Quarter ${q}</h3>
+                        <div class="h-px bg-gray-200 flex-grow"></div>
+                    </div>
+                `);
+
+                const gridContainer = document.createElement('div');
+                gridContainer.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+                container.appendChild(gridContainer);
 
                 quarters[q].forEach((data) => {
                     const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : "Unknown";
-                    const rawGrade = (data.grade_level || "11").replace(/\D/g, "");
-                    const semNum = /2|second/i.test(data.semester || "") ? "2" : "1";
-                    const shortSubject = (data.subject_title || "").split(/\s+/).map(w => w.match(/\d+/) ? w : w.substring(0, 4)).join('').replace(/[^a-zA-Z0-9]/g, "");
-
-                    const anchoredWeek = data.absoluteWeek || 1; 
-                    const displayTitle = `${rawGrade}-Sem${semNum},Qtr${q},W${anchoredWeek}(${shortSubject})`;
+                    
+                    // Extract exact numbers for the badges
+                    let semNum = "1";
+                    if (data.academic_term && data.academic_term.includes("SECOND SEMESTER")) semNum = "2";
+                    else if (data.semester && /2|second/i.test(data.semester)) semNum = "2";
+                    
+                    let weekNum = "1";
+                    if (data.course_week) weekNum = data.course_week.replace(/\D/g, "") || "1";
+                    else if (data.absoluteWeek) weekNum = data.absoluteWeek;
 
                     const card = document.createElement('div');
-                    card.className = "p-4 border rounded-lg bg-gray-50 hover:bg-blue-50 transition flex justify-between items-center shadow-sm mb-2";
+                    card.className = "group relative p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-400 transition-all duration-200 flex flex-col justify-between";
                     card.innerHTML = `
                         <div>
-                            <h4 class="font-bold text-blue-900">${displayTitle}</h4>
-                            <p class="text-xs text-gray-600 mt-1">Target: <strong>${data.month || ''} ${data.week || ''}</strong></p>
-                            <p class="text-[10px] text-gray-400 mt-0.5">Saved on: ${dateStr}</p>
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                    Course Week ${weekNum}
+                                </span>
+                                <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                                    Sem ${semNum}
+                                </span>
+                            </div>
+                            
+                            <h4 class="font-extrabold text-gray-900 text-base mb-1 leading-tight line-clamp-1" title="${data.subject_title || 'Subject'}">
+                                ${data.subject_title || 'Subject'}
+                            </h4>
+                            
+                            <!-- 🚀 THE FIX: DIRECTLY RENDERING THE DATE RANGE STRING -->
+                            <p class="text-[11px] text-gray-500 mb-4 font-bold flex items-center gap-1">
+                                🗓️ ${data.date_range || 'No physical dates provided'}
+                            </p>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-2 bg-blue-600 text-white font-bold text-xs rounded hover:bg-blue-700 shadow transition">📂 Load</button>
-                            <button onclick="deleteLessonPlan('${data.id}')" class="px-3 py-2 bg-red-100 text-red-600 font-bold text-xs rounded hover:bg-red-200 shadow transition" title="Delete Plan">🗑️</button>
+                        
+                        <div class="pt-4 border-t border-gray-100 flex justify-between items-center">
+                            <span class="text-[9px] text-gray-400 font-medium">💾 ${dateStr.split(',')[0]}</span>
+                            <div class="flex gap-2">
+                                <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="flex items-center gap-1 px-4 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-sm transition">
+                                    Load
+                                </button>
+                                <button onclick="deleteLessonPlan('${data.id}')" class="flex items-center justify-center w-8 h-8 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 hover:text-red-700 transition" title="Delete Plan">
+                                    ✖
+                                </button>
+                            </div>
                         </div>
                     `;
-                    container.appendChild(card);
+                    gridContainer.appendChild(card);
                 });
             }
         });
     } catch (e) {
-        container.innerHTML = `<p class="text-red-500">Error: ${e.message}</p>`;
+        container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">Error: ${e.message}</div>`;
     }
 };
 
