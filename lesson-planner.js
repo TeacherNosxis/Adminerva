@@ -212,23 +212,33 @@ window.initiateGenerationFlow = async function() {
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
     if (!gemKey) return alert("Missing Gemini API Key in Global Settings.");
 
+    // 1. Grab Custom Instructions FIRST
+    const customInstructionsText = document.getElementById('lpCustomInstructions').value.trim();
     const selectedCheckboxes = document.querySelectorAll('.folder-checkbox:checked');
-    if (selectedCheckboxes.length === 0) return alert("Please select at least one reference folder.");
-
+    
+    // 2. The "Either/Or" Validation Rule
+    if (selectedCheckboxes.length === 0 && !customInstructionsText) {
+        return alert("Please select at least one reference folder OR provide Custom Instructions to generate a plan.");
+    }
     const libraryData = JSON.parse(localStorage.getItem('lessonReview_library') || '[]');
     cachedCompiledText = "";
     
-    selectedCheckboxes.forEach(cb => {
-        const folder = libraryData.find(f => f.id === cb.value);
-        if (folder && folder.documents) {
-            folder.documents.forEach(doc => {
-                cachedCompiledText += `\n\n--- DOCUMENT: ${doc.title} ---\n${doc.text}`;
-            });
+    // 3. Only extract folder text if checkboxes were actually selected
+    if (selectedCheckboxes.length > 0) {
+        selectedCheckboxes.forEach(cb => {
+            const folder = libraryData.find(f => f.id === cb.value);
+            if (folder && folder.documents) {
+                folder.documents.forEach(doc => {
+                    cachedCompiledText += `\n\n--- DOCUMENT: ${doc.title} ---\n${doc.text}`;
+                });
+            }
+        });
+        
+        // If they checked a folder but it had zero documents inside, AND they have no custom instructions
+        if (!cachedCompiledText.trim() && !customInstructionsText) {
+            return alert("The selected folders are empty. Please provide Custom Instructions or select a folder with documents.");
         }
-    });
-
-    if (!cachedCompiledText.trim()) return alert("The selected folders do not contain any extracted documents.");
-
+    }
     const subject = document.getElementById('lpSubjectTitle').value || "Subject";
     cachedSchedule = localStorage.getItem('lessonReview_schedule') || "No schedule provided.";
     
@@ -743,7 +753,7 @@ window.loadSpecificPlan = function(planData) {
 // ==========================================
 function formatObjectivesForPrint(text) {
     if (!text) return '';
-    const items = text.split(/\d+[\.\)]\s*/).filter(Boolean);
+    const items = text.split(/(?:^|\n)\s*(?:\d+[\.\)]|[-•*])\s*/).filter(Boolean);
     if (items.length <= 1) return text;
     let html = '<ol style="margin: 0; padding-left: 15px; list-style-type: decimal;">';
     items.forEach(item => { html += `<li style="margin-bottom: 3px;">${item.trim()}</li>`; });
@@ -758,6 +768,40 @@ function formatMaterialsForPrint(text) {
     let html = '<ul style="margin: 0; padding-left: 15px; list-style-type: disc;">';
     items.forEach(item => { html += `<li style="margin-bottom: 3px;">${item.trim()}</li>`; });
     html += '</ul>';
+    return html;
+}
+
+// NEW: Forces Preliminary Activities into a numbered list
+function formatPreliminaryForPrint(text) {
+    if (!text) return '';
+    const items = text.split(/\n/).filter(item => item.trim() !== '');
+    let html = '<ol style="margin: 0; padding-left: 15px; list-style-type: decimal;">';
+    items.forEach(item => { 
+        // Strips any existing dashes or numbers so we don't get double numbering
+        let cleanItem = item.trim().replace(/^([-•*]|\d+[\.\)])\s*/, '');
+        html += `<li style="margin-bottom: 3px;">${cleanItem}</li>`; 
+    });
+    html += '</ol>';
+    return html;
+}
+
+// NEW: Forces Learning Activities into a numbered list
+function formatLearningActivitiesForPrint(text) {
+    if (!text) return '';
+    // Split by dashes, bullets, or numbers at the start of a line
+    let items = text.split(/(?:^|\n)\s*(?:[-•*]|\d+[\.\)])\s+/).filter(Boolean);
+    
+    // Fallback: if it didn't split well, just split by newlines
+    if (items.length <= 1) {
+        items = text.split(/\n/).filter(item => item.trim() !== '');
+    }
+
+    let html = '<ol style="margin: 0; padding-left: 15px; list-style-type: decimal;">';
+    items.forEach(item => { 
+        let cleanItem = item.trim().replace(/^[-•*]\s*/, '');
+        html += `<li style="margin-bottom: 3px;">${cleanItem}</li>`; 
+    });
+    html += '</ol>';
     return html;
 }
 
@@ -787,14 +831,12 @@ function buildDocumentLayout() {
     document.getElementById('printMainTitle').textContent = `CURRICULUM MAP / LEARNING PLAN IN ${rawSubject.toUpperCase()}`;
     document.getElementById('printSYHeader').textContent = `SCHOOL YEAR ${rawSY}`;
     
-    // Ordinal Converter (1st -> First)
     const textMap = {"1st": "First", "2nd": "Second", "3rd": "Third", "4th": "Fourth"};
     const formatOrdinal = (str) => str.replace(/1st|2nd|3rd|4th/g, match => textMap[match]);
     
     document.getElementById('printQuarter').textContent = formatOrdinal(document.getElementById('lpQuarter').value || "QUARTER");
     document.getElementById('printSemester').textContent = formatOrdinal(document.getElementById('lpSemester').value || "SEMESTER");
     
-    // Move Scope/Date Range to Table Header
     const scopeWeek = document.getElementById('lpWeek').value;
     const scopeMonth = document.getElementById('lpMonth').value;
     const dateRangeEl = document.getElementById('lpDateRange');
@@ -820,6 +862,7 @@ function buildDocumentLayout() {
         const tr = document.createElement('tr');
         let rowHtml = ``;
 
+        // Content Standards only print on the first row
         if (index === 0) {
             rowHtml += `
                 <td style="font-weight: bold; text-align: center; vertical-align: middle;">${currentWeeklyOverview.topic || ''}</td>
@@ -833,8 +876,11 @@ function buildDocumentLayout() {
             rowHtml += `<td></td><td></td>`;
         }
 
+        // Apply all formatters to ensure strict list rendering
         const objText = formatObjectivesForPrint(session.objectives || 'N/A');
         const matText = formatMaterialsForPrint(currentWeeklyOverview.materials || '');
+        const prelimText = formatPreliminaryForPrint(session.preliminary || '');
+        const activitiesText = formatLearningActivitiesForPrint(session.learning_activities || '');
 
         rowHtml += `
             <td style="vertical-align: top;">
@@ -849,30 +895,31 @@ function buildDocumentLayout() {
         }
         rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: middle; font-size: 10pt; line-height: 1.6;">${timeFrame}</td>`;
 
+        // FULL LABELS RESTORED HERE
         let experiencesHTML = `<div style="font-weight: bold; margin-bottom: 4px;">${session.session_name}</div>`;
         if (!isFlex) {
             experiencesHTML += `
-                <strong>Preliminary:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.preliminary || ''}</div><br>
-                <strong>Motivation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div><br>
+                <strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div><br>
+                <strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div><br>
             `;
         }
-        experiencesHTML += `<strong>Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.learning_activities || ''}</div>`;
+        
+        experiencesHTML += `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`;
+        
         if (!isFlex) {
             experiencesHTML += `
                 <br><strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div><br>
-                <strong>Closing:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div><br>
+                <strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div><br>
                 <strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>
             `;
         }
         rowHtml += `<td style="vertical-align: top;">${experiencesHTML}</td>`;
 
-        if (index === 0) {
-            rowHtml += `<td style="white-space: pre-wrap; vertical-align: middle;">${matText}</td>`;
-        } else {
-            rowHtml += `<td></td>`;
-        }
+        // PRINT MATERIALS ON EVERY ROW (Removed the index === 0 check)
+        rowHtml += `<td style="white-space: pre-wrap; vertical-align: top;">${matText}</td>`;
 
-        rowHtml += `<td style="white-space: pre-wrap; vertical-align: middle;">${session.remarks || ''}</td>`;
+        // REMARKS
+        rowHtml += `<td style="white-space: pre-wrap; vertical-align: top;">${session.remarks || ''}</td>`;
 
         tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
