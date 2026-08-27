@@ -52,37 +52,21 @@ window.loadLibraryFolders = async function() {
     }
 };
 
-window.fetchPreviousPlan = async function(grade, subject, currentMonth, currentWeek) {
+// 🚀 LOOKS BACK USING THE NEW COURSE WEEK INSTEAD OF MONTH
+window.fetchPreviousPlan = async function(grade, subject, academicTerm, currentCourseWeek) {
     if(!window.db) return null;
-    const months = ["August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
-    let mIdx = months.indexOf(currentMonth);
-    let prevMonth = currentMonth;
-    let prevWeek = "";
+    
+    const currentWeekNum = parseInt(currentCourseWeek.replace(/\D/g, ""));
+    if (currentWeekNum <= 1) return null; 
 
-    if (currentWeek === "Week 1") {
-        if (mIdx <= 0) return null; 
-        prevMonth = months[mIdx - 1];
-    } else {
-        let wNum = parseInt(currentWeek.replace("Week ", ""));
-        prevWeek = `Week ${wNum - 1}`;
-    }
-
-    const tryFetch = async (m, w) => {
-        const id = `${grade}_${subject}_${m}_${w}`.replace(/[^a-zA-Z0-9_]/g, "");
-        const docRef = doc(window.db, "lesson_plans", id);
-        try {
-            const docSnap = await getDoc(docRef);
-            return docSnap.exists() ? docSnap.data() : null;
-        } catch(e) { return null; }
-    };
-
-    if (currentWeek === "Week 1" && mIdx > 0) {
-        let plan = await tryFetch(prevMonth, "Week 5");
-        if (!plan) plan = await tryFetch(prevMonth, "Week 4");
-        return plan;
-    } else {
-        return await tryFetch(prevMonth, prevWeek);
-    }
+    const prevWeekStr = `Week ${currentWeekNum - 1}`;
+    const qtrStr = academicTerm.includes("SECOND QUARTER") ? "Q2" : academicTerm.includes("THIRD QUARTER") ? "Q3" : academicTerm.includes("FOURTH QUARTER") ? "Q4" : "Q1";
+    const id = `${grade}_${subject}_${qtrStr}_${prevWeekStr}`.replace(/[^a-zA-Z0-9_]/g, "");
+    
+    try {
+        const docSnap = await getDoc(doc(window.db, "lesson_plans", id));
+        return docSnap.exists() ? docSnap.data() : null;
+    } catch(e) { return null; }
 };
 
 window.saveLessonPlan = async function() {
@@ -95,51 +79,28 @@ window.saveLessonPlan = async function() {
         return false; 
     }
 
-    const subject = document.getElementById('lpSubjectTitle').value || "Subject";
+    // 🚀 READS DATA FROM THE NEW 5-COLUMN UI AND GLOBAL SETTINGS
+    const subject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
+    const teacher = localStorage.getItem('lessonReview_defaultTeacher') || "Unassigned";
     const grade = window.currentTargetGrade || "Grade";
-    const month = document.getElementById('lpMonth').value;
-    const week = document.getElementById('lpWeek').value;
-    const quarter = document.getElementById('lpQuarter').value;
-    const dateRangeEl = document.getElementById('lpDateRange');
+    
+    const academicTerm = document.getElementById('lpAcademicTerm').value;
+    const courseWeek = document.getElementById('lpCourseWeek').value;
+    const dateRange = document.getElementById('lpDateRange').value;
 
-    const safeDocId = `${grade}_${subject}_${month}_${week}`.replace(/[^a-zA-Z0-9_]/g, "");
+    const qtrStr = academicTerm.includes("SECOND QUARTER") ? "Q2" : academicTerm.includes("THIRD QUARTER") ? "Q3" : academicTerm.includes("FOURTH QUARTER") ? "Q4" : "Q1";
+    const safeDocId = `${grade}_${subject}_${qtrStr}_${courseWeek}`.replace(/[^a-zA-Z0-9_]/g, "");
 
-    const loaderText = document.querySelector('#globalLoader p');
-    const originalText = loaderText ? loaderText.textContent : "Processing...";
-    if(loaderText) loaderText.textContent = "Anchoring Week Sequence...";
     window.showLoader();
 
     try {
-        const docRef = doc(window.db, "lesson_plans", safeDocId);
-        const docSnap = await getDoc(docRef);
-        let anchoredWeek = 1;
-
-        if (docSnap.exists() && docSnap.data().absoluteWeek) {
-            anchoredWeek = docSnap.data().absoluteWeek;
-        } else {
-            const qSnap = await getDocs(collection(window.db, "lesson_plans"));
-            let usedWeeks = [];
-            qSnap.forEach(d => {
-                const data = d.data();
-                if (data.subject_title === subject && data.grade_level === grade && data.quarter === quarter) {
-                    if (data.absoluteWeek) usedWeeks.push(data.absoluteWeek);
-                }
-            });
-            while (usedWeeks.includes(anchoredWeek)) {
-                anchoredWeek++;
-            }
-        }
-
         const planData = {
-            teacher_name: document.getElementById('lpTeacherName').value || "Unassigned",
+            teacher_name: teacher,
             subject_title: subject,
             school_year: document.getElementById('lpSchoolYear').value,
-            semester: document.getElementById('lpSemester').value,
-            quarter: quarter,
-            month: month,
-            week: week,
-            absoluteWeek: anchoredWeek, 
-            date_range: dateRangeEl ? dateRangeEl.value : "",
+            academic_term: academicTerm,
+            course_week: courseWeek,
+            date_range: dateRange,
             grade_level: grade,
             custom_instructions: document.getElementById('lpCustomInstructions').value.trim(),
             schedule: localStorage.getItem('lessonReview_schedule') || "",
@@ -149,16 +110,14 @@ window.saveLessonPlan = async function() {
             timestamp: new Date().toISOString()
         };
 
-        await setDoc(docRef, planData);
-        window.currentAnchoredWeek = anchoredWeek; 
-        alert(`✅ Lesson Plan saved and anchored as Week ${anchoredWeek}!`);
+        await setDoc(doc(window.db, "lesson_plans", safeDocId), planData);
+        alert(`✅ Lesson Plan saved successfully!`);
         return true; 
     } catch (e) {
         console.error("Error saving plan:", e);
         alert("Failed to save to database: " + e.message);
         return false; 
     } finally {
-        if(loaderText) loaderText.textContent = originalText;
         window.hideLoader();
     }
 };
@@ -197,13 +156,11 @@ window.openLoadPlanModal = async function() {
         querySnapshot.forEach(docSnap => {
             const data = docSnap.data();
             
-            // Normalize Legacy Data to New Format safely
             const safeSY = data.school_year || "2026-2027";
             const safeSubject = data.subject_title || "Unknown Subject";
             
             let safeTerm = data.academic_term || "";
             if (!safeTerm) {
-                // If it's an old file, stitch the old quarter/semester together
                 const sem = /2|second/i.test(data.semester || "") ? "SECOND SEMESTER" : "FIRST SEMESTER";
                 let qtr = "FIRST QUARTER";
                 if(/2|second/i.test(data.quarter || "")) qtr = "SECOND QUARTER";
@@ -214,11 +171,9 @@ window.openLoadPlanModal = async function() {
 
             let safeWeek = data.course_week || "";
             if (!safeWeek) {
-                // If it's an old file, convert the absoluteWeek to the new Course Week format
                 safeWeek = `Week ${data.absoluteWeek || 1}`;
             }
 
-            // Apply patched data back to object
             data.safeSY = safeSY;
             data.safeTerm = safeTerm;
             data.safeSubject = safeSubject;
@@ -228,17 +183,14 @@ window.openLoadPlanModal = async function() {
             const plan = { id: docSnap.id, ...data };
             allPlans.push(plan);
 
-            // Build Conflict Key (e.g., "2026-2027_FIRST SEMESTER/FIRST QUARTER_Computer Programming 11_Week 1")
             const conflictKey = `${safeSY}_${safeTerm}_${safeSubject}_${safeWeek}`;
             if (!conflictTracker[conflictKey]) conflictTracker[conflictKey] = 0;
             conflictTracker[conflictKey]++;
             plan.conflictKey = conflictKey;
         });
 
-        // Sort by timestamp (newest first)
         allPlans.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
 
-        // Group purely by Academic Term for the GDrive folder look
         const termGroups = {};
         allPlans.forEach(plan => {
             if (!termGroups[plan.safeTerm]) termGroups[plan.safeTerm] = [];
@@ -247,7 +199,6 @@ window.openLoadPlanModal = async function() {
 
         // 2. RENDER GOOGLE DRIVE STYLE UI
         Object.keys(termGroups).sort().forEach(term => {
-            // Term Folder Header
             container.insertAdjacentHTML('beforeend', `
                 <div class="mt-6 mb-2">
                     <h3 class="text-sm font-extrabold text-blue-900 bg-blue-50 px-3 py-2 rounded-t-lg border-b-2 border-blue-200 flex items-center gap-2">
@@ -256,7 +207,6 @@ window.openLoadPlanModal = async function() {
                 </div>
             `);
 
-            // Start Table
             const tableWrapper = document.createElement('div');
             tableWrapper.className = "overflow-x-auto border border-gray-200 rounded-b-lg mb-6 shadow-sm";
             
@@ -274,10 +224,7 @@ window.openLoadPlanModal = async function() {
             `;
 
             termGroups[term].forEach((data) => {
-                // Check if this plan shares a slot with another plan
                 const isConflict = conflictTracker[data.conflictKey] > 1;
-                
-                // Style warnings for overlaps
                 const rowClass = isConflict ? "bg-amber-50 hover:bg-amber-100 transition" : "hover:bg-gray-50 transition";
                 const warningIcon = isConflict ? `<span title="Duplicate/Overlap Warning" class="text-amber-600 mr-1">⚠️</span>` : ``;
 

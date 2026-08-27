@@ -36,31 +36,33 @@ window.buildDocumentLayout = function() {
         if (headerContainer) headerContainer.classList.remove('hidden');
     }
 
-    const rawSubject = document.getElementById('lpSubjectTitle').value || "SUBJECT";
+    // 🚀 INVISIBLY PULLS FROM GLOBAL SETTINGS
+    const rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "SUBJECT";
+    const rawTeacher = localStorage.getItem('lessonReview_defaultTeacher') || "TEACHER";
     const rawSY = document.getElementById('lpSchoolYear').value || "2026-2027";
 
     document.getElementById('printMainTitle').textContent = `CURRICULUM MAP / LEARNING PLAN IN ${rawSubject.toUpperCase()}`;
     document.getElementById('printSYHeader').textContent = `SCHOOL YEAR ${rawSY}`;
 
-    const textMap = {"1st": "First", "2nd": "Second", "3rd": "Third", "4th": "Fourth"};
-    const formatOrdinal = (str) => str.replace(/1st|2nd|3rd|4th/g, match => textMap[match]);
+    // 🚀 READS THE NEW COMBINED ACADEMIC TERM
+    const termStr = document.getElementById('lpAcademicTerm').value;
+    const [semStr, qtrStr] = termStr.split('/');
+    document.getElementById('printSemester').textContent = semStr;
+    document.getElementById('printQuarter').textContent = qtrStr;
 
-    document.getElementById('printQuarter').textContent = formatOrdinal(document.getElementById('lpQuarter').value || "QUARTER");
-    document.getElementById('printSemester').textContent = formatOrdinal(document.getElementById('lpSemester').value || "SEMESTER");
+    // 🚀 FORMATS THE WEEK AND DATES EXACTLY AS REQUESTED
+    const courseWeek = document.getElementById('lpCourseWeek').value;
+    const dateRange = document.getElementById('lpDateRange').value;
+    document.getElementById('printScopeHeader').textContent = `${courseWeek}: ${dateRange}`;
 
-    const scopeWeek = document.getElementById('lpWeek').value;
-    const dateRangeEl = document.getElementById('lpDateRange');
-    const dateRange = dateRangeEl ? dateRangeEl.value : "";
-    document.getElementById('printScopeHeader').textContent = `${scopeWeek} ${dateRange ? '(' + dateRange + ')' : ''}`;
-
-    document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sigTeacher') || "";
-    document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sigTeacherTitle') || "";
-    document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sigSubjectCoord') || "";
-    document.getElementById('printSig2Title').textContent = localStorage.getItem('lessonReview_sigSubjectCoordTitle') || "";
-    document.getElementById('printSig3Name').textContent = localStorage.getItem('lessonReview_sigGradeCoord') || "";
-    document.getElementById('printSig3Title').textContent = localStorage.getItem('lessonReview_sigGradeCoordTitle') || "";
-    document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sigPrincipal') || "";
-    document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sigPrincipalTitle') || "";
+    document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sig1Name') || rawTeacher;
+    document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sig1Title') || "Subject Teacher";
+    document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sig2Name') || "";
+    document.getElementById('printSig2Title').textContent = localStorage.getItem('lessonReview_sig2Title') || "";
+    document.getElementById('printSig3Name').textContent = localStorage.getItem('lessonReview_sig3Name') || "";
+    document.getElementById('printSig3Title').textContent = localStorage.getItem('lessonReview_sig3Title') || "";
+    document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sig4Name') || "";
+    document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sig4Title') || "";
 
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
@@ -148,18 +150,20 @@ window.exportToWordDoc = async function() {
     if (typeof htmlDocx === 'undefined') return alert("The Word Document generator is still loading. Please wait.");
     if (!window.buildDocumentLayout()) return;
 
-    const anchoredWeek = window.currentAnchoredWeek || 1; 
     const rawGrade = window.currentTargetGrade.replace(/\D/g, "") || "11";
-    const semNum = /2|second/i.test(document.getElementById('lpSemester')?.value || "") ? "2" : "1";
-
-    let qtrNum = "1";
-    const rawQtr = document.getElementById('lpQuarter')?.value || "";
-    if(/2|second/i.test(rawQtr)) qtrNum = "2";
-    if(/3|third/i.test(rawQtr)) qtrNum = "3";
-    if(/4|fourth/i.test(rawQtr)) qtrNum = "4";
-
-    const rawSubject = document.getElementById('lpSubjectTitle')?.value || "Subject";
+    
+    // 🚀 READS SUBJECT FROM SETTINGS FOR FILE NAME
+    const rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
     const shortSubject = rawSubject.split(/\s+/).map(w => w.match(/\d+/) ? w : w.substring(0, 4)).join('').replace(/[^a-zA-Z0-9]/g, "");
+
+    const term = document.getElementById('lpAcademicTerm').value;
+    const semNum = term.includes("SECOND SEMESTER") ? "2" : "1";
+    let qtrNum = "1";
+    if(term.includes("SECOND QUARTER")) qtrNum = "2";
+    if(term.includes("THIRD QUARTER")) qtrNum = "3";
+    if(term.includes("FOURTH QUARTER")) qtrNum = "4";
+
+    const anchoredWeek = document.getElementById('lpCourseWeek').value.replace(/\D/g, "");
 
     const filename = `${rawGrade}-Sem${semNum},Qtr${qtrNum},W${anchoredWeek}(${shortSubject}).docx`;
 
