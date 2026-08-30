@@ -12,9 +12,10 @@ window.hideLoader = function() {
 
 document.addEventListener('DOMContentLoaded', () => {
     if(window.loadSecuritySettings) window.loadSecuritySettings();
-    if(window.loadLessonReviewSettings) window.loadLessonReviewSettings();
-    if(window.initFirebase) window.initFirebase();
     if(window.initRubrics) window.initRubrics();
+
+    // 🚀 Boot Firebase FIRST. It will automatically trigger the settings fetch when connected.
+    if(window.initFirebase) window.initFirebase();
 
     const csvInput = document.getElementById('csvFileInput');
     if(csvInput) csvInput.addEventListener('change', window.handleCsvUpload);
