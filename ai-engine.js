@@ -102,7 +102,6 @@ window.executeFinalGeneration = async function(userClarification) {
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
     const schoolYear = document.getElementById('lpSchoolYear').value || "2026-2027";
     
-    // 🚀 DYNAMICALLY PULL THE SUBJECT SO IT NEVER HARDCODES
     const subject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
 
     let gradeSpecificRules = "";
@@ -128,7 +127,7 @@ window.executeFinalGeneration = async function(userClarification) {
    - Explicitly mention in the new session's remarks that it is a catch-up from last week.
 
 LAST WEEK'S CURRICULUM STATE:
-${JSON.stringify(window.cachedPreviousPlan.sessions.map(s => ({name: s.session_name, activities: s.learning_activities, remarks: s.remarks})), null, 2)}
+${JSON.stringify(window.cachedPreviousPlan.sessions.map(s => ({name: s.session_name, activities: s.learning_activities, remarks: s.remarks})))}
         `;
     }
 
@@ -146,7 +145,7 @@ ${gradeSpecificRules}
 5. SESSION DETAILS (Normal): 
    - "competencies": Provide 1 to 2 clear learning competencies.
    - "objectives": Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy, explicitly covering cognitive, psychomotor, and affective domains where applicable.
-   - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
+   - "preliminary" MUST always start with: "Opening Prayer\\nAttendance Checking\\nTECHNOTES".
    - "motivation": Briefly describe the activity AND explicitly state the specific teaching strategy used.
    - "learning_activities": Heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb AND you must explicitly integrate the teaching strategies utilized.
    - "evaluation": Suggest diverse and appropriate formative or summative assessments based on the topic. Do NOT default to a Quipper quiz.
@@ -165,6 +164,11 @@ ${gradeSpecificRules}
 
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted "learning_activities". Set all other fields to empty strings "".
+
+8. STRICT JSON ESCAPING (CRITICAL): 
+   - Your output MUST be completely valid JSON. 
+   - Do NOT use raw line breaks inside string values. You MUST use the exact escaped characters "\\n" to denote a new line.
+   - Properly escape all internal double quotes as \\".
 ${lookbackContext}
 
 Target Scope: ${window.cachedScope}
@@ -236,7 +240,12 @@ ${window.cachedCompiledText.substring(0, 25000)}
         }
 
         const aiResult = await response.json();
-        let rawJson = aiResult.candidates[0].content.parts[0].text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+        let rawJson = aiResult.candidates[0].content.parts[0].text;
+        rawJson = rawJson.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+        
+        // Final safety scrub to remove any lingering raw control characters before parsing
+        rawJson = rawJson.replace(/[\u0000-\u0009\u000B-\u001F]+/g, ""); 
+        
         const planData = JSON.parse(rawJson);
 
         window.currentWeeklyOverview = planData.weekly_overview;

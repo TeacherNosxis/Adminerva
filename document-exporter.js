@@ -1,8 +1,8 @@
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
 window.formatListForPrint = function(text, isOrdered = true) {
     if (!text) return '';
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // 🚀 NEW: Splits the text perfectly whether the AI uses real newlines or literal "\n" strings
+    const lines = String(text).split(/\\n|\n/).map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return '';
     if (lines.length === 1 && !/^([-•*]|\d+[\.\)])/.test(lines[0])) return text;
 
@@ -113,8 +113,8 @@ window.buildDocumentLayout = async function() {
         const matText = window.formatListForPrint(window.currentWeeklyOverview.materials || '', false); 
         const prelimText = window.formatListForPrint(session.preliminary || '', true);
         const activitiesText = window.formatListForPrint(session.learning_activities || '', true);
-        const cleanRemarks = (session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\n/g, '<br>');
-
+        const cleanRemarks = String(session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\\n|\n/g, '<br>');
+        
         // 1. Break the session into sequential row parts
         let parts = [];
         parts.push({ time: '', content: `<div style="font-weight: bold;">${session.session_name}</div>` });
