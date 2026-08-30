@@ -139,6 +139,7 @@ CRITICAL FORMATTING RULES:
 1. "weekly_overview": 
    - "topic": Keep short and punchy.
    - "content_standard", "performance_standard", "formation_standard", and "materials": MANDATORY FIELDS. Professionally infer them based on the text if needed.
+   - MATERIALS FORMAT: You MUST format the "materials" field as a heavily bulleted list using dashes (-). Do NOT output a single comma-separated paragraph. Ensure each item is on its own line.
    - FALLBACK KNOWLEDGE: If no Reference Text is provided, or if this is a Tech-Voc/TVL subject, you MUST utilize standard DepEd (Department of Education) and TESDA curriculum guides to formulate standards and content accurately.
 2. "sessions" array: Generate daily sessions.
 ${gradeSpecificRules}
