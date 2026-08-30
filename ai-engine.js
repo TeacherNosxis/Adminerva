@@ -101,6 +101,9 @@ window.executeFinalGeneration = async function(userClarification) {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
     const schoolYear = document.getElementById('lpSchoolYear').value || "2026-2027";
+    
+    // 🚀 DYNAMICALLY PULL THE SUBJECT SO IT NEVER HARDCODES
+    const subject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
 
     let gradeSpecificRules = "";
     if (window.currentTargetGrade === "Grade 11") {
@@ -151,15 +154,13 @@ ${gradeSpecificRules}
    - TIME FRAME MAPPING (CRITICAL LINE-BY-LINE ALIGNMENT): 
      In the time frame column, do NOT just write a generic label. You must provide a line-by-line minute breakdown that visually matches the vertical layout of the "Learning Experiences" or specific activity lines. Format it with precise vertical spacing or line breaks so each minute allocation sits horizontally level with its corresponding activity part.
 
-   - SCHEDULE MAPPING: Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
+   - SCHEDULE MAPPING (CRITICAL MULTI-SECTION SCAN): Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
      * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6".
      * RULE B: Map the 1-hour blocks sequentially to "Session 1", "Session 2", and "Session 3" for remaining days.
-     * RULE C: Format the remarks EXACTLY using new lines. Do NOT use pipes (|) or semicolons (;). Format it EXACTLY like this:
-       [Section Name]
-       [Session Name/Number]
-       [Full Date]
-       [Time Slot]
-       [Specific Suspension/Interruption Dates if applicable]
+     * RULE C: You MUST scan the ENTIRE provided Teacher Schedule. Identify EVERY section taking ${subject} for ${window.currentTargetGrade}. Do NOT stop at the first match.
+     * RULE D: List the schedule for ALL matching sections for this specific session number. If there are multiple sections, separate them with a semicolon (;).
+     * RULE E: Format the schedule strictly using pipes (|) for line breaks. Example: [Section A] | [Full Date] | [Time Slot]; [Section B] | [Full Date] | [Time Slot]
+     * RULE F: After listing all sections, append any class suspensions, interruptions, or custom instructions requested by the user.
 
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted "learning_activities". Set all other fields to empty strings "".

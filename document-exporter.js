@@ -105,7 +105,6 @@ window.buildDocumentLayout = async function() {
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
-    // 🚀 NEW NATIVE ROWSPAN LOGIC
     window.currentPlan.forEach((session, index) => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
         const isLab = session.session_name.includes("4-6");
@@ -123,13 +122,14 @@ window.buildDocumentLayout = async function() {
         if (isFlex) {
             parts.push({ time: 'Async', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
         } else {
+            // 🚀 REDISTRIBUTED LAB TIME LOGIC TO EQUAL 150 MINS
             parts.push({ time: isLab ? '10 mins' : '5 mins', content: `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>` });
-            parts.push({ time: isLab ? '15 mins' : '5 mins', content: `<strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div>` });
-            parts.push({ time: isLab ? '115 mins' : '26 mins', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
-            parts.push({ time: isLab ? '10 mins' : '10 mins', content: `<strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div>` });
+            parts.push({ time: isLab ? '10 mins' : '5 mins', content: `<strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div>` });
+            parts.push({ time: isLab ? '110 mins' : '26 mins', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
+            parts.push({ time: isLab ? '15 mins' : '10 mins', content: `<strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div>` });
             
             if (session.closing) {
-                parts.push({ time: isLab ? '' : '4 mins', content: `<strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div>` });
+                parts.push({ time: isLab ? '5 mins' : '4 mins', content: `<strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div>` });
             }
             if (session.values_integration) {
                 parts.push({ time: '', content: `<strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>` });
@@ -138,13 +138,28 @@ window.buildDocumentLayout = async function() {
 
         const rowCount = parts.length;
 
-        // 2. Loop through parts and assign native HTML rows
+        // 2. Loop through parts and assign native HTML rows with border erasure
         parts.forEach((part, pIndex) => {
             const tr = document.createElement('tr');
             let rowHtml = '';
+            
+            const isFirst = pIndex === 0;
+            const isLast = pIndex === rowCount - 1;
+
+            // 🚀 INLINE CSS TO REMOVE HORIZONTAL BORDERS BETWEEN SUB-ROWS
+            let timeStyle = "text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;";
+            let contentStyle = "vertical-align: top; font-size: 10pt; padding: 6px;";
+
+            if (!isFirst) {
+                timeStyle += " border-top: none !important;";
+                contentStyle += " border-top: none !important;";
+            }
+            if (!isLast) {
+                timeStyle += " border-bottom: none !important;";
+                contentStyle += " border-bottom: none !important;";
+            }
 
             if (pIndex === 0) {
-                // First sub-row gets the outer columns with rowspan
                 if (index === 0) {
                     rowHtml += `
                         <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">${window.currentWeeklyOverview.topic || ''}</td>
@@ -165,17 +180,14 @@ window.buildDocumentLayout = async function() {
                     </td>
                 `;
 
-                // Add Time & Content for the very first part
-                rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;">${part.time}</td>`;
-                rowHtml += `<td style="vertical-align: top; font-size: 10pt; padding: 6px;">${part.content}</td>`;
+                rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
+                rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
 
-                // Finish outer columns
                 rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${matText}</td>`;
                 rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${cleanRemarks}</td>`;
             } else {
-                // Subsequent rows strictly output Time & Activity cells
-                rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;">${part.time}</td>`;
-                rowHtml += `<td style="vertical-align: top; font-size: 10pt; padding: 6px;">${part.content}</td>`;
+                rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
+                rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
             }
 
             tr.innerHTML = rowHtml;
