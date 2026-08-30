@@ -7,13 +7,25 @@ window.allSections = [];
 
 window.initFirebase = function() {
     const configStr = localStorage.getItem('repoReview_firebase_config');
-    if (!configStr) return;
+    
+    // If no Firebase config exists, force a LocalStorage fallback immediately
+    if (!configStr) {
+        if(window.loadLessonReviewSettings) window.loadLessonReviewSettings(); 
+        return;
+    }
+    
     try {
         const app = initializeApp(JSON.parse(configStr));
         window.db = getFirestore(app);
         loadSectionsAndStudents();
+        
+        // 🚀 FIREBASE IS NOW CONNECTED. FETCH THE CLOUD DEFAULTS.
+        if(window.loadLessonReviewSettings) window.loadLessonReviewSettings();
+        
     } catch (e) {
         console.error("Firebase Init Failed:", e);
+        // Force LocalStorage fallback if cloud drops out
+        if(window.loadLessonReviewSettings) window.loadLessonReviewSettings(); 
     }
 };
 
