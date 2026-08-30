@@ -105,80 +105,82 @@ window.buildDocumentLayout = async function() {
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
+    // 🚀 NEW NATIVE ROWSPAN LOGIC
     window.currentPlan.forEach((session, index) => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
         const isLab = session.session_name.includes("4-6");
-        const tr = document.createElement('tr');
-        let rowHtml = ``;
-
-        if (index === 0) {
-            rowHtml += `
-                <td style="font-weight: bold; text-align: center; vertical-align: middle;">${window.currentWeeklyOverview.topic || ''}</td>
-                <td style="vertical-align: top;">
-                    <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ''}<br><br>
-                    <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ''}<br><br>
-                    <strong>Formation Standard:</strong><br>${window.currentWeeklyOverview.formation_standard || ''}
-                </td>
-            `;
-        } else {
-            rowHtml += `<td></td><td></td>`;
-        }
 
         const objText = window.formatListForPrint(session.objectives || 'N/A', true); 
         const matText = window.formatListForPrint(window.currentWeeklyOverview.materials || '', false); 
         const prelimText = window.formatListForPrint(session.preliminary || '', true);
         const activitiesText = window.formatListForPrint(session.learning_activities || '', true);
+        const cleanRemarks = (session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\n/g, '<br>');
 
-        rowHtml += `
-            <td style="vertical-align: top;">
-                <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
-                <strong>Objectives:</strong><br>${objText}
-            </td>
-        `;
-
-        // 🚀 NESTED TABLE LOGIC FOR PERFECT VERTICAL ALIGNMENT
-        // This merges columns 4 (Time) and 5 (Experiences) into a mini-table that perfectly forces horizontal alignment.
-        let timeActivityTable = `<table style="width: 100%; border-collapse: collapse; margin: 0; border: none;">`;
-        
-        const addTARow = (time, content) => {
-            timeActivityTable += `
-                <tr>
-                    <td style="width: 21.05%; border-right: 1px solid #000; padding: 6px 8px; text-align: center; font-weight: bold; vertical-align: top; border-bottom: none; border-top: none; border-left: none; font-size: 10pt;">${time}</td>
-                    <td style="width: 78.95%; padding: 6px 8px; vertical-align: top; border-bottom: none; border-top: none; border-right: none; border-left: none; font-size: 10pt;">${content}</td>
-                </tr>
-            `;
-        };
-
-        // Session Title Row (Empty time)
-        addTARow('', `<div style="font-weight: bold; margin-bottom: 4px;">${session.session_name}</div>`);
+        // 1. Break the session into sequential row parts
+        let parts = [];
+        parts.push({ time: '', content: `<div style="font-weight: bold;">${session.session_name}</div>` });
 
         if (isFlex) {
-            addTARow('Async', `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`);
+            parts.push({ time: 'Async', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
         } else {
-            addTARow(isLab ? '10 mins' : '5 mins', `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>`);
-            addTARow(isLab ? '15 mins' : '5 mins', `<strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div>`);
-            addTARow(isLab ? '115 mins' : '26 mins', `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`);
-            addTARow(isLab ? '10 mins' : '10 mins', `<strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div>`);
+            parts.push({ time: isLab ? '10 mins' : '5 mins', content: `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>` });
+            parts.push({ time: isLab ? '15 mins' : '5 mins', content: `<strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div>` });
+            parts.push({ time: isLab ? '115 mins' : '26 mins', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
+            parts.push({ time: isLab ? '10 mins' : '10 mins', content: `<strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div>` });
             
             if (session.closing) {
-                addTARow(isLab ? '' : '4 mins', `<strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div>`);
+                parts.push({ time: isLab ? '' : '4 mins', content: `<strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div>` });
             }
             if (session.values_integration) {
-                addTARow('', `<strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>`);
+                parts.push({ time: '', content: `<strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>` });
             }
         }
-        timeActivityTable += `</table>`;
 
-        // Inject the combined cell
-        rowHtml += `<td colspan="2" style="padding: 0; vertical-align: top;">${timeActivityTable}</td>`;
-        
-        rowHtml += `<td style="vertical-align: top;">${matText}</td>`;
+        const rowCount = parts.length;
 
-        const cleanRemarks = (session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\n/g, '<br>');
-        rowHtml += `<td style="vertical-align: top;">${cleanRemarks}</td>`;
+        // 2. Loop through parts and assign native HTML rows
+        parts.forEach((part, pIndex) => {
+            const tr = document.createElement('tr');
+            let rowHtml = '';
 
-        tr.innerHTML = rowHtml;
-        tbody.appendChild(tr);
+            if (pIndex === 0) {
+                // First sub-row gets the outer columns with rowspan
+                if (index === 0) {
+                    rowHtml += `
+                        <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">${window.currentWeeklyOverview.topic || ''}</td>
+                        <td rowspan="${rowCount}" style="vertical-align: top;">
+                            <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ''}<br><br>
+                            <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ''}<br><br>
+                            <strong>Formation Standard:</strong><br>${window.currentWeeklyOverview.formation_standard || ''}
+                        </td>
+                    `;
+                } else {
+                    rowHtml += `<td rowspan="${rowCount}"></td><td rowspan="${rowCount}"></td>`;
+                }
+
+                rowHtml += `
+                    <td rowspan="${rowCount}" style="vertical-align: top;">
+                        <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
+                        <strong>Objectives:</strong><br>${objText}
+                    </td>
+                `;
+
+                // Add Time & Content for the very first part
+                rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;">${part.time}</td>`;
+                rowHtml += `<td style="vertical-align: top; font-size: 10pt; padding: 6px;">${part.content}</td>`;
+
+                // Finish outer columns
+                rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${matText}</td>`;
+                rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${cleanRemarks}</td>`;
+            } else {
+                // Subsequent rows strictly output Time & Activity cells
+                rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;">${part.time}</td>`;
+                rowHtml += `<td style="vertical-align: top; font-size: 10pt; padding: 6px;">${part.content}</td>`;
+            }
+
+            tr.innerHTML = rowHtml;
+            tbody.appendChild(tr);
+        });
     });
 
     return true;
