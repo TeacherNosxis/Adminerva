@@ -17,14 +17,12 @@ window.formatListForPrint = function(text, isOrdered = true) {
     return html;
 };
 
-// 🚀 UPGRADED TO ASYNC SO IT CAN WAIT FOR THE CLOUD
 window.buildDocumentLayout = async function() {
     if (!window.currentPlan || window.currentPlan.length === 0 || !window.currentWeeklyOverview) {
         alert("Please generate a lesson plan first before exporting.");
         return false;
     }
 
-    // 1. Establish Fallbacks (LocalStorage)
     let headerImgUrl = localStorage.getItem('lessonReview_headerImage') || "";
     let rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "SUBJECT";
     let rawTeacher = localStorage.getItem('lessonReview_defaultTeacher') || "TEACHER";
@@ -38,17 +36,14 @@ window.buildDocumentLayout = async function() {
     let s4Name = localStorage.getItem('lessonReview_sig4Name') || "";
     let s4Title = localStorage.getItem('lessonReview_sig4Title') || "";
 
-    // 2. 🚀 CLOUD-FIRST FETCH (Overrides LocalStorage if connected)
     if (window.db) {
         try {
             const docSnap = await getDoc(doc(window.db, "global_settings", "lesson_review_config"));
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                
                 headerImgUrl = data.header_image_base64 || headerImgUrl;
                 rawSubject = data.subject_title || rawSubject;
                 rawTeacher = data.teacher_name || rawTeacher;
-                
                 s1Name = data.sig_teacher || s1Name;
                 s1Title = data.sig_teacher_title || s1Title;
                 s2Name = data.sig_subject_coord || s2Name;
@@ -58,7 +53,6 @@ window.buildDocumentLayout = async function() {
                 s4Name = data.sig_principal || s4Name;
                 s4Title = data.sig_principal_title || s4Title;
 
-                // Sync the latest cloud data back to local cache
                 localStorage.setItem('lessonReview_headerImage', headerImgUrl);
                 localStorage.setItem('lessonReview_defaultSubject', rawSubject);
                 localStorage.setItem('lessonReview_defaultTeacher', rawTeacher);
@@ -76,7 +70,6 @@ window.buildDocumentLayout = async function() {
         }
     }
 
-    // 3. Inject Header Image
     const headerImgEl = document.getElementById('printHeaderImage');
     const headerContainer = document.getElementById('printHeaderBannerContainer');
     if (headerImgUrl && headerImgEl) {
@@ -87,7 +80,6 @@ window.buildDocumentLayout = async function() {
         if (headerContainer) headerContainer.classList.remove('hidden');
     }
 
-    // 4. Inject Text & Dates
     const rawSY = document.getElementById('lpSchoolYear').value || "2026-2027";
     document.getElementById('printMainTitle').textContent = `CURRICULUM MAP / LEARNING PLAN IN ${rawSubject.toUpperCase()}`;
     document.getElementById('printSYHeader').textContent = `SCHOOL YEAR ${rawSY}`;
@@ -101,7 +93,6 @@ window.buildDocumentLayout = async function() {
     const dateRange = document.getElementById('lpDateRange').value;
     document.getElementById('printScopeHeader').textContent = `${courseWeek}: ${dateRange}`;
 
-    // 5. Inject Cloud Signatories
     document.getElementById('printSig1Name').textContent = s1Name;
     document.getElementById('printSig1Title').textContent = s1Title;
     document.getElementById('printSig2Name').textContent = s2Name;
@@ -111,12 +102,12 @@ window.buildDocumentLayout = async function() {
     document.getElementById('printSig4Name').textContent = s4Name;
     document.getElementById('printSig4Title').textContent = s4Title;
 
-    // 6. Build the Table
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
     window.currentPlan.forEach((session, index) => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
+        const isLab = session.session_name.includes("4-6");
         const tr = document.createElement('tr');
         let rowHtml = ``;
 
@@ -145,30 +136,42 @@ window.buildDocumentLayout = async function() {
             </td>
         `;
 
-        let timeFrame = isFlex ? "Async" : "5 mins<br><br>5 mins<br><br>26 mins<br><br>10 mins<br><br>4 mins";
-        if (session.session_name.includes("4-6")) {
-            timeFrame = "10 mins<br><br>15 mins<br><br>40 mins<br><br>50 mins<br><br>25 mins<br><br>10 mins";
-        }
-        rowHtml += `<td style="text-align: center; font-weight: bold; vertical-align: middle; font-size: 10pt; line-height: 1.6;">${timeFrame}</td>`;
-
-        let experiencesHTML = `<div style="font-weight: bold; margin-bottom: 4px;">${session.session_name}</div>`;
-        if (!isFlex) {
-            experiencesHTML += `
-                <strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div><br>
-                <strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div><br>
+        // 🚀 NESTED TABLE LOGIC FOR PERFECT VERTICAL ALIGNMENT
+        // This merges columns 4 (Time) and 5 (Experiences) into a mini-table that perfectly forces horizontal alignment.
+        let timeActivityTable = `<table style="width: 100%; border-collapse: collapse; margin: 0; border: none;">`;
+        
+        const addTARow = (time, content) => {
+            timeActivityTable += `
+                <tr>
+                    <td style="width: 21.05%; border-right: 1px solid #000; padding: 6px 8px; text-align: center; font-weight: bold; vertical-align: top; border-bottom: none; border-top: none; border-left: none; font-size: 10pt;">${time}</td>
+                    <td style="width: 78.95%; padding: 6px 8px; vertical-align: top; border-bottom: none; border-top: none; border-right: none; border-left: none; font-size: 10pt;">${content}</td>
+                </tr>
             `;
-        }
+        };
 
-        experiencesHTML += `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`;
+        // Session Title Row (Empty time)
+        addTARow('', `<div style="font-weight: bold; margin-bottom: 4px;">${session.session_name}</div>`);
 
-        if (!isFlex) {
-            experiencesHTML += `
-                <br><strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div><br>
-                <strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div><br>
-                <strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>
-            `;
+        if (isFlex) {
+            addTARow('Async', `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`);
+        } else {
+            addTARow(isLab ? '10 mins' : '5 mins', `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>`);
+            addTARow(isLab ? '15 mins' : '5 mins', `<strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div>`);
+            addTARow(isLab ? '115 mins' : '26 mins', `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`);
+            addTARow(isLab ? '10 mins' : '10 mins', `<strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div>`);
+            
+            if (session.closing) {
+                addTARow(isLab ? '' : '4 mins', `<strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div>`);
+            }
+            if (session.values_integration) {
+                addTARow('', `<strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>`);
+            }
         }
-        rowHtml += `<td style="vertical-align: top;">${experiencesHTML}</td>`;
+        timeActivityTable += `</table>`;
+
+        // Inject the combined cell
+        rowHtml += `<td colspan="2" style="padding: 0; vertical-align: top;">${timeActivityTable}</td>`;
+        
         rowHtml += `<td style="vertical-align: top;">${matText}</td>`;
 
         const cleanRemarks = (session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\n/g, '<br>');
@@ -181,7 +184,6 @@ window.buildDocumentLayout = async function() {
     return true;
 };
 
-// 🚀 UPGRADED TO WAIT FOR CLOUD DATA BEFORE PRINTING
 window.exportPDF = async function() {
     const isReady = await window.buildDocumentLayout();
     if (isReady) {
@@ -232,7 +234,7 @@ window.exportToWordDoc = async function() {
                 body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
                 th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
-                th { background-color: #b4c6e7; -webkit-print-color-adjust: exact; print-color-adjust: exact; text-align: center; font-weight: bold; }
+                th { background-color: #b4c6e7; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
