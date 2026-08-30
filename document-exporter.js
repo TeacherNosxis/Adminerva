@@ -1,15 +1,13 @@
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
 window.formatListForPrint = function(text, isOrdered = true) {
     if (!text) return '';
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return '';
-
-    if (lines.length === 1 && !/^([-•*]|\d+[\.\)])/.test(lines[0])) {
-        return text;
-    }
+    if (lines.length === 1 && !/^([-•*]|\d+[\.\)])/.test(lines[0])) return text;
 
     const tag = isOrdered ? 'ol' : 'ul';
     const type = isOrdered ? 'decimal' : 'disc';
-
     let html = `<${tag} style="margin: 0; padding-left: 20px; list-style-type: ${type};">`;
     lines.forEach(line => {
         let cleanLine = line.replace(/^([-•*]|\d+[\.\)])\s*/, '').trim();
@@ -19,13 +17,66 @@ window.formatListForPrint = function(text, isOrdered = true) {
     return html;
 };
 
-window.buildDocumentLayout = function() {
+// 🚀 UPGRADED TO ASYNC SO IT CAN WAIT FOR THE CLOUD
+window.buildDocumentLayout = async function() {
     if (!window.currentPlan || window.currentPlan.length === 0 || !window.currentWeeklyOverview) {
         alert("Please generate a lesson plan first before exporting.");
         return false;
     }
 
-    const headerImgUrl = localStorage.getItem('lessonReview_headerImage');
+    // 1. Establish Fallbacks (LocalStorage)
+    let headerImgUrl = localStorage.getItem('lessonReview_headerImage') || "";
+    let rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "SUBJECT";
+    let rawTeacher = localStorage.getItem('lessonReview_defaultTeacher') || "TEACHER";
+    
+    let s1Name = localStorage.getItem('lessonReview_sig1Name') || rawTeacher;
+    let s1Title = localStorage.getItem('lessonReview_sig1Title') || "Subject Teacher";
+    let s2Name = localStorage.getItem('lessonReview_sig2Name') || "";
+    let s2Title = localStorage.getItem('lessonReview_sig2Title') || "";
+    let s3Name = localStorage.getItem('lessonReview_sig3Name') || "";
+    let s3Title = localStorage.getItem('lessonReview_sig3Title') || "";
+    let s4Name = localStorage.getItem('lessonReview_sig4Name') || "";
+    let s4Title = localStorage.getItem('lessonReview_sig4Title') || "";
+
+    // 2. 🚀 CLOUD-FIRST FETCH (Overrides LocalStorage if connected)
+    if (window.db) {
+        try {
+            const docSnap = await getDoc(doc(window.db, "global_settings", "lesson_review_config"));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                
+                headerImgUrl = data.header_image_base64 || headerImgUrl;
+                rawSubject = data.subject_title || rawSubject;
+                rawTeacher = data.teacher_name || rawTeacher;
+                
+                s1Name = data.sig_teacher || s1Name;
+                s1Title = data.sig_teacher_title || s1Title;
+                s2Name = data.sig_subject_coord || s2Name;
+                s2Title = data.sig_subject_coord_title || s2Title;
+                s3Name = data.sig_grade_coord || s3Name;
+                s3Title = data.sig_grade_coord_title || s3Title;
+                s4Name = data.sig_principal || s4Name;
+                s4Title = data.sig_principal_title || s4Title;
+
+                // Sync the latest cloud data back to local cache
+                localStorage.setItem('lessonReview_headerImage', headerImgUrl);
+                localStorage.setItem('lessonReview_defaultSubject', rawSubject);
+                localStorage.setItem('lessonReview_defaultTeacher', rawTeacher);
+                localStorage.setItem('lessonReview_sig1Name', s1Name);
+                localStorage.setItem('lessonReview_sig1Title', s1Title);
+                localStorage.setItem('lessonReview_sig2Name', s2Name);
+                localStorage.setItem('lessonReview_sig2Title', s2Title);
+                localStorage.setItem('lessonReview_sig3Name', s3Name);
+                localStorage.setItem('lessonReview_sig3Title', s3Title);
+                localStorage.setItem('lessonReview_sig4Name', s4Name);
+                localStorage.setItem('lessonReview_sig4Title', s4Title);
+            }
+        } catch(e) {
+            console.warn("Firestore fetch failed, using local defaults.", e);
+        }
+    }
+
+    // 3. Inject Header Image
     const headerImgEl = document.getElementById('printHeaderImage');
     const headerContainer = document.getElementById('printHeaderBannerContainer');
     if (headerImgUrl && headerImgEl) {
@@ -36,34 +87,31 @@ window.buildDocumentLayout = function() {
         if (headerContainer) headerContainer.classList.remove('hidden');
     }
 
-    // 🚀 INVISIBLY PULLS FROM GLOBAL SETTINGS
-    const rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "SUBJECT";
-    const rawTeacher = localStorage.getItem('lessonReview_defaultTeacher') || "TEACHER";
+    // 4. Inject Text & Dates
     const rawSY = document.getElementById('lpSchoolYear').value || "2026-2027";
-
     document.getElementById('printMainTitle').textContent = `CURRICULUM MAP / LEARNING PLAN IN ${rawSubject.toUpperCase()}`;
     document.getElementById('printSYHeader').textContent = `SCHOOL YEAR ${rawSY}`;
 
-    // 🚀 READS THE NEW COMBINED ACADEMIC TERM
     const termStr = document.getElementById('lpAcademicTerm').value;
     const [semStr, qtrStr] = termStr.split('/');
     document.getElementById('printSemester').textContent = semStr;
     document.getElementById('printQuarter').textContent = qtrStr;
 
-    // 🚀 FORMATS THE WEEK AND DATES EXACTLY AS REQUESTED
     const courseWeek = document.getElementById('lpCourseWeek').value;
     const dateRange = document.getElementById('lpDateRange').value;
     document.getElementById('printScopeHeader').textContent = `${courseWeek}: ${dateRange}`;
 
-    document.getElementById('printSig1Name').textContent = localStorage.getItem('lessonReview_sig1Name') || rawTeacher;
-    document.getElementById('printSig1Title').textContent = localStorage.getItem('lessonReview_sig1Title') || "Subject Teacher";
-    document.getElementById('printSig2Name').textContent = localStorage.getItem('lessonReview_sig2Name') || "";
-    document.getElementById('printSig2Title').textContent = localStorage.getItem('lessonReview_sig2Title') || "";
-    document.getElementById('printSig3Name').textContent = localStorage.getItem('lessonReview_sig3Name') || "";
-    document.getElementById('printSig3Title').textContent = localStorage.getItem('lessonReview_sig3Title') || "";
-    document.getElementById('printSig4Name').textContent = localStorage.getItem('lessonReview_sig4Name') || "";
-    document.getElementById('printSig4Title').textContent = localStorage.getItem('lessonReview_sig4Title') || "";
+    // 5. Inject Cloud Signatories
+    document.getElementById('printSig1Name').textContent = s1Name;
+    document.getElementById('printSig1Title').textContent = s1Title;
+    document.getElementById('printSig2Name').textContent = s2Name;
+    document.getElementById('printSig2Title').textContent = s2Title;
+    document.getElementById('printSig3Name').textContent = s3Name;
+    document.getElementById('printSig3Title').textContent = s3Title;
+    document.getElementById('printSig4Name').textContent = s4Name;
+    document.getElementById('printSig4Title').textContent = s4Title;
 
+    // 6. Build the Table
     const tbody = document.getElementById('printTableBody');
     tbody.innerHTML = ''; 
 
@@ -133,26 +181,29 @@ window.buildDocumentLayout = function() {
     return true;
 };
 
-window.exportPDF = function() {
-    if (window.buildDocumentLayout()) {
+// 🚀 UPGRADED TO WAIT FOR CLOUD DATA BEFORE PRINTING
+window.exportPDF = async function() {
+    const isReady = await window.buildDocumentLayout();
+    if (isReady) {
         setTimeout(() => { window.print(); }, 300);
     }
 };
 
 window.saveAndPrint = async function() {
     const isSaved = await window.saveLessonPlan();
-    if (isSaved && window.buildDocumentLayout()) {
+    const isReady = await window.buildDocumentLayout();
+    if (isSaved && isReady) {
         setTimeout(() => { window.print(); }, 300);
     }
 };
 
 window.exportToWordDoc = async function() {
     if (typeof htmlDocx === 'undefined') return alert("The Word Document generator is still loading. Please wait.");
-    if (!window.buildDocumentLayout()) return;
+    
+    const isReady = await window.buildDocumentLayout();
+    if (!isReady) return;
 
     const rawGrade = window.currentTargetGrade.replace(/\D/g, "") || "11";
-    
-    // 🚀 READS SUBJECT FROM SETTINGS FOR FILE NAME
     const rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
     const shortSubject = rawSubject.split(/\s+/).map(w => w.match(/\d+/) ? w : w.substring(0, 4)).join('').replace(/[^a-zA-Z0-9]/g, "");
 
@@ -164,7 +215,6 @@ window.exportToWordDoc = async function() {
     if(term.includes("FOURTH QUARTER")) qtrNum = "4";
 
     const anchoredWeek = document.getElementById('lpCourseWeek').value.replace(/\D/g, "");
-
     const filename = `${rawGrade}-Sem${semNum},Qtr${qtrNum},W${anchoredWeek}(${shortSubject}).docx`;
 
     const printWrapper = document.getElementById('printDocumentWrapper');
@@ -182,7 +232,7 @@ window.exportToWordDoc = async function() {
                 body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
                 th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
-                th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+                th { background-color: #b4c6e7; -webkit-print-color-adjust: exact; print-color-adjust: exact; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
