@@ -147,48 +147,106 @@ window.openLoadPlanModal = async function() {
             return;
         }
 
-        const allPlans = [];
-        querySnapshot.forEach(docSnap => allPlans.push({ id: docSnap.id, ...docSnap.data() }));
+        const allFetchedPlans = [];
+        const uniqueSYs = new Set();
 
-        // 1. NESTED GROUPING: Term -> Subject & Grade
+        // 1. EXTRACT ALL PLANS, NORMALIZE LEGACY DATA & GET SCHOOL YEARS
+        querySnapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const sy = data.school_year || "2026-2027";
+            uniqueSYs.add(sy);
+            
+            // Legacy Data Conversion
+            let safeTerm = data.academic_term || "";
+            if (!safeTerm) {
+                const sem = /2|second/i.test(data.semester || "") ? "SECOND SEMESTER" : "FIRST SEMESTER";
+                let qtr = "FIRST QUARTER";
+                if(/2|second/i.test(data.quarter || "")) qtr = "SECOND QUARTER";
+                if(/3|third/i.test(data.quarter || "")) qtr = "THIRD QUARTER";
+                if(/4|fourth/i.test(data.quarter || "")) qtr = "FOURTH QUARTER";
+                safeTerm = `${sem}/${qtr}`;
+            }
+            
+            let safeWeek = data.course_week || "";
+            if (!safeWeek) safeWeek = `Week ${data.absoluteWeek || parseInt((data.week || "1").replace(/\D/g, "")) || 1}`;
+
+            allFetchedPlans.push({ 
+                id: docSnap.id, 
+                ...data, 
+                safeSY: sy,
+                safeTerm: safeTerm,
+                safeWeek: safeWeek,
+                safeDate: data.date_range || "No physical dates",
+                subjectGrade: `${data.subject_title || 'Subject'} — ${data.grade_level || 'Grade'}`
+            });
+        });
+
+        // 2. POPULATE THE DROPDOWN FILTER
+        const syFilter = document.getElementById('modalSyFilter');
+        if (syFilter) {
+            const mainUiSy = document.getElementById('lpSchoolYear')?.value || "2026-2027";
+            const currentSelection = syFilter.value || mainUiSy;
+            
+            syFilter.innerHTML = '';
+            Array.from(uniqueSYs).sort().reverse().forEach(sy => {
+                const selected = (sy === currentSelection) ? "selected" : "";
+                syFilter.insertAdjacentHTML('beforeend', `<option value="${sy}" ${selected}>SY: ${sy}</option>`);
+            });
+        }
+
+        const activeSY = syFilter ? syFilter.value : "2026-2027";
+
+        // 3. FILTER PLANS FOR SELECTED SCHOOL YEAR
+        const allPlans = allFetchedPlans.filter(p => p.safeSY === activeSY);
+        container.innerHTML = '';
+
+        if (allPlans.length === 0) {
+            container.innerHTML = `<div class="text-center py-12"><p class="text-gray-500 font-bold">No plans found for School Year ${activeSY}.</p></div>`;
+            return;
+        }
+
+        // 4. NESTED GROUPING: Term -> Subject & Grade
         const groupedPlans = {};
-
         allPlans.forEach(plan => {
-            const term = plan.safeTerm || plan.academic_term || "Uncategorized Term";
-            const subjectGrade = `${plan.subject_title || 'Subject'} — ${plan.grade_level || 'Grade'}`;
+            const term = plan.safeTerm;
+            const subjectGrade = plan.subjectGrade;
 
             if (!groupedPlans[term]) groupedPlans[term] = {};
             if (!groupedPlans[term][subjectGrade]) groupedPlans[term][subjectGrade] = [];
-
             groupedPlans[term][subjectGrade].push(plan);
         });
 
-        container.innerHTML = '';
-
-        // 2. RENDER DOUBLE ACCORDIONS
+        // 5. RENDER DOUBLE ACCORDIONS
         Object.keys(groupedPlans).sort().forEach((term, termIndex) => {
-            // Keep the very first Term open by default, collapse the rest
             const isTermOpen = termIndex === 0 ? "open" : "";
             let subjectAccordionsHTML = '';
 
             Object.keys(groupedPlans[term]).sort().forEach((subjectGrade) => {
                 const plans = groupedPlans[term][subjectGrade];
                 
-                // Sort plans sequentially by Week Number (1, 2, 3...)
+                // Sort sequentially by Week Number
                 plans.sort((a, b) => {
-                    const weekA = parseInt((a.safeWeek || a.course_week || "0").replace(/\D/g, ""));
-                    const weekB = parseInt((b.safeWeek || b.course_week || "0").replace(/\D/g, ""));
+                    const weekA = parseInt((a.safeWeek || "0").replace(/\D/g, ""));
+                    const weekB = parseInt((b.safeWeek || "0").replace(/\D/g, ""));
                     return weekA - weekB;
                 });
 
                 let rowsHTML = '';
                 plans.forEach(data => {
-                    const shortDate = data.safeDate || data.date_range || "No physical dates";
-                    const courseWeek = data.safeWeek || data.course_week || "Week ?";
+                    // Abbreviate Months
+                    let shortDate = data.safeDate;
+                    const monthMap = { 
+                        "January": "Jan", "February": "Feb", "March": "Mar", 
+                        "April": "Apr", "August": "Aug", "September": "Sep", 
+                        "October": "Oct", "November": "Nov", "December": "Dec" 
+                    };
+                    Object.keys(monthMap).forEach(longMonth => {
+                        shortDate = shortDate.replace(new RegExp(longMonth, "gi"), monthMap[longMonth]);
+                    });
 
                     rowsHTML += `
                         <tr class="border-b border-gray-100 hover:bg-blue-50 transition">
-                            <td class="px-4 py-3 font-bold text-blue-900 w-1/4">${courseWeek}</td>
+                            <td class="px-4 py-3 font-bold text-blue-900 w-1/4">${data.safeWeek}</td>
                             <td class="px-4 py-3 text-xs text-gray-600 font-medium">🗓️ ${shortDate}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-2">
@@ -200,7 +258,6 @@ window.openLoadPlanModal = async function() {
                     `;
                 });
 
-                // Level 2 Accordion (Subject & Grade) - Always open by default
                 subjectAccordionsHTML += `
                     <details class="group/sub border border-gray-200 rounded-md mb-3 overflow-hidden shadow-sm" open>
                         <summary class="flex justify-between items-center bg-gray-50 p-3 cursor-pointer select-none hover:bg-gray-100 transition">
@@ -216,7 +273,6 @@ window.openLoadPlanModal = async function() {
                 `;
             });
 
-            // Level 1 Accordion (Academic Term)
             container.insertAdjacentHTML('beforeend', `
                 <details class="group/main mb-4 bg-white border border-blue-200 rounded-lg shadow-sm" ${isTermOpen}>
                     <summary class="flex justify-between items-center font-extrabold text-blue-900 uppercase tracking-widest cursor-pointer select-none p-4 bg-blue-50 hover:bg-blue-100 transition rounded-t-lg border-b border-blue-100">
@@ -237,7 +293,6 @@ window.openLoadPlanModal = async function() {
         container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">Error: ${e.message}</div>`;
     }
 };
-
 window.deleteLessonPlan = async function(docId) {
     if (!confirm("Are you sure you want to delete this saved lesson plan?")) return;
     window.showLoader("Saving Lesson Plan...", "Syncing securely to Firebase storage.");
