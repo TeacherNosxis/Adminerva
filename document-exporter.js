@@ -259,13 +259,7 @@ async function processAndUploadToDrive(accessToken) {
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
 
-    // 🚀 THE ULTIMATE FIX: Convert relative % to absolute Landscape Points
-    // 100% = 864pt (12 inches wide). This forces Google to draw the wide table BEFORE rotating.
-    cleanHtml = cleanHtml.replace(/width:\s*(\d+)%/gi, (match, percentage) => {
-        const pts = Math.round(parseInt(percentage) * 8.64);
-        return `width: ${pts}pt`;
-    });
-
+    // 1. Send the pure HTML. No fake widths or wrappers needed.
     const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -304,7 +298,7 @@ async function processAndUploadToDrive(accessToken) {
         close_delim;
 
     try {
-        // STEP 1: Upload the pure HTML with hardcoded massive widths
+        // STEP 1: Upload HTML and generate the initial Google Doc
         const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
             method: 'POST',
             headers: {
@@ -316,41 +310,83 @@ async function processAndUploadToDrive(accessToken) {
 
         if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
         const result = await response.json();
+        const docId = result.id;
 
-        // STEP 2: Instantly rotate the page to fit the massive table
-        const docsResponse = await fetch(`https://docs.googleapis.com/v1/documents/${result.id}:batchUpdate`, {
+        // STEP 2: Instantly fetch the document layout to find the Tables
+        const docResponse = await fetch(`https://docs.googleapis.com/v1/documents/${docId}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const docData = await docResponse.json();
+
+        // Scan the document to record the exact starting location of all tables
+        const tables = [];
+        for (const element of docData.body.content) {
+            if (element.table) {
+                tables.push(element.startIndex);
+            }
+        }
+
+        // STEP 3: Force Landscape AND Stretch Columns Dynamically
+        const requests = [
+            {
+                updateDocumentStyle: {
+                    documentStyle: {
+                        pageSize: { width: { magnitude: 936, unit: "PT" }, height: { magnitude: 612, unit: "PT" } },
+                        marginTop: { magnitude: 36, unit: "PT" },
+                        marginBottom: { magnitude: 36, unit: "PT" },
+                        marginLeft: { magnitude: 36, unit: "PT" },
+                        marginRight: { magnitude: 36, unit: "PT" }
+                    },
+                    fields: "pageSize,marginTop,marginBottom,marginLeft,marginRight"
+                }
+            }
+        ];
+
+        // Resize Main 7-Column Table (Total: 864 Points)
+        if (tables.length > 0) {
+            const mainWidths = [69, 155, 155, 51, 296, 69, 69]; 
+            mainWidths.forEach((width, index) => {
+                requests.push({
+                    updateTableColumnProperties: {
+                        tableStartLocation: { index: tables[0] },
+                        columnIndices: [index],
+                        tableColumnProperties: { widthType: "FIXED_WIDTH", width: { magnitude: width, unit: "PT" } },
+                        fields: "width,widthType"
+                    }
+                });
+            });
+        }
+
+        // Resize Signatories 4-Column Table (Total: 864 Points)
+        if (tables.length > 1) {
+            const sigWidths = [216, 216, 216, 216]; 
+            sigWidths.forEach((width, index) => {
+                requests.push({
+                    updateTableColumnProperties: {
+                        tableStartLocation: { index: tables[1] },
+                        columnIndices: [index],
+                        tableColumnProperties: { widthType: "FIXED_WIDTH", width: { magnitude: width, unit: "PT" } },
+                        fields: "width,widthType"
+                    }
+                });
+            });
+        }
+
+        // Execute the layout modifications
+        await fetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                requests: [{
-                    updateDocumentStyle: {
-                        documentStyle: {
-                            pageSize: { 
-                                width: { magnitude: 936, unit: "PT" },  // 13 inches * 72 pt
-                                height: { magnitude: 612, unit: "PT" }  // 8.5 inches * 72 pt
-                            },
-                            marginTop: { magnitude: 36, unit: "PT" },   // 0.5 inches * 72 pt
-                            marginBottom: { magnitude: 36, unit: "PT" },
-                            marginLeft: { magnitude: 36, unit: "PT" },
-                            marginRight: { magnitude: 36, unit: "PT" }
-                        },
-                        fields: "pageSize,marginTop,marginBottom,marginLeft,marginRight"
-                    }
-                }]
-            })
+            body: JSON.stringify({ requests })
         });
-
-        if (!docsResponse.ok) {
-            const errData = await docsResponse.json().catch(() => ({}));
-            throw new Error(`Docs Update Failed: ${errData.error?.message || docsResponse.statusText}`);
-        }
 
         if (typeof window.hideLoader === 'function') window.hideLoader();
         
-        window.open(`https://docs.google.com/document/d/${result.id}/edit`, '_blank');
+        // Open the perfectly formatted Google Doc
+        window.open(`https://docs.google.com/document/d/${docId}/edit`, '_blank');
         
     } catch (e) {
         if (typeof window.hideLoader === 'function') window.hideLoader();
