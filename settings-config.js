@@ -3,6 +3,9 @@ import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/
 const safeSet = (id, val) => { if (document.getElementById(id)) document.getElementById(id).value = val || ""; };
 const safeGet = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : "";
 
+// ==========================================
+// 1. SECURITY & API SETTINGS
+// ==========================================
 window.loadSecuritySettings = function() {
     safeSet('adminGithubToken', localStorage.getItem('repoReview_github_token'));
     safeSet('adminGeminiKey', localStorage.getItem('repoReview_gemini_token'));
@@ -11,20 +14,35 @@ window.loadSecuritySettings = function() {
 };
 
 window.saveSecuritySettings = async function() {
-    const firebaseInput = safeGet('firebaseConfigInput');
-    const githubInput = safeGet('adminGithubToken');
-    const apiKeyInput = safeGet('adminGeminiKey');
-    const aiModelInput = safeGet('adminAiModel') || 'gemini-1.5-flash';
-    
-    localStorage.setItem('repoReview_firebase_config', firebaseInput);
-    localStorage.setItem('repoReview_github_token', githubInput);
-    localStorage.setItem('repoReview_gemini_token', apiKeyInput);
-    localStorage.setItem('repoReview_ai_model', aiModelInput);
-    
+    localStorage.setItem('repoReview_firebase_config', safeGet('firebaseConfigInput'));
+    localStorage.setItem('repoReview_github_token', safeGet('adminGithubToken'));
+    localStorage.setItem('repoReview_gemini_token', safeGet('adminGeminiKey'));
+    localStorage.setItem('repoReview_ai_model', safeGet('adminAiModel') || 'gemini-1.5-flash');
     alert("✅ Security Settings Saved Locally!");
 };
 
-// 🚀 CLOUD-FIRST PULL WITH LOCAL FALLBACK
+// ==========================================
+// 2. LESSON REVIEW DATALIST (HYBRID DROPDOWN)
+// ==========================================
+window.populateSettingsSubjectDropdown = function() {
+    const dataList = document.getElementById('savedSubjectsList');
+    if (!dataList) return;
+
+    // Pull the comma-separated subjects from your schedule configuration
+    const savedSub = localStorage.getItem('lessonReview_subjects') || "";
+    const subjects = savedSub.split(',').map(s => s.trim()).filter(s => s !== "");
+
+    dataList.innerHTML = '';
+    subjects.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub;
+        dataList.appendChild(option);
+    });
+};
+
+// ==========================================
+// 3. LOAD LESSON REVIEW DEFAULTS
+// ==========================================
 window.loadLessonReviewSettings = async function() {
     let cloudData = null;
 
@@ -73,11 +91,16 @@ window.loadLessonReviewSettings = async function() {
             placeholder.classList.add('hidden');
         }
     }
+
+    // 🚀 TRIGGER THE DROPDOWN POPULATION AFTER TEXT INPUTS LOAD
+    window.populateSettingsSubjectDropdown();
 };
 
-// 🚀 CLOUD-FIRST PUSH WITH GUARANTEED LOCAL SYNC
+// ==========================================
+// 4. SAVE LESSON REVIEW DEFAULTS
+// ==========================================
 window.saveLessonReviewSettings = async function() {
-    window.showLoader("Saving Configurations...");
+    if (typeof window.showLoader === 'function') window.showLoader("Saving Configurations...");
     
     const settingsData = {
         teacher_name: safeGet('setTeacherName'),
@@ -94,7 +117,7 @@ window.saveLessonReviewSettings = async function() {
         updated_at: new Date().toISOString()
     };
 
-    // 1. Force overwrite local storage immediately so it works offline
+    // Force overwrite local storage immediately so it works offline
     localStorage.setItem('lessonReview_defaultTeacher', settingsData.teacher_name);
     localStorage.setItem('lessonReview_defaultSubject', settingsData.subject_title);
     localStorage.setItem('lessonReview_headerImage', settingsData.header_image_base64);
@@ -107,7 +130,7 @@ window.saveLessonReviewSettings = async function() {
     localStorage.setItem('lessonReview_sig4Name', settingsData.sig_principal);
     localStorage.setItem('lessonReview_sig4Title', settingsData.sig_principal_title);
 
-    // 2. Attempt Firestore sync
+    // Attempt Firestore sync
     if (window.db) {
         try {
             await setDoc(doc(window.db, "global_settings", "lesson_review_config"), settingsData, { merge: true });
@@ -119,5 +142,5 @@ window.saveLessonReviewSettings = async function() {
         alert("✅ Settings saved locally (Firebase offline).");
     }
     
-    window.hideLoader();
+    if (typeof window.hideLoader === 'function') window.hideLoader();
 };

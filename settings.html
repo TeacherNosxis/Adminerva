@@ -211,7 +211,12 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Default Subject Title</label>
-                        <input type="text" id="setSubjectTitle" placeholder="e.g., Computer Programming 11" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500">
+                        <input type="text" id="setSubjectTitle" list="savedSubjectsList" placeholder="Select or type a subject..." class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500">
+                        
+                        <!-- 🚀 NEW: Datalist linked to the input -->
+                        <datalist id="savedSubjectsList">
+                            <!-- Populated dynamically via JS -->
+                        </datalist>
                     </div>
                 </div>
                 <div class="mb-8 p-4 bg-gray-50 border rounded-lg">

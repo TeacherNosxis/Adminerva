@@ -181,7 +181,7 @@ ${gradeSpecificRules}
 
    - SCHEDULE MAPPING (CRITICAL MULTI-SECTION SCAN): Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
 ${scheduleRules}
-     * RULE C: You MUST scan the ENTIRE provided Teacher Schedule. Identify EVERY section taking ${subject} for ${window.currentTargetGrade}. Do NOT stop at the first match. If no matching schedule is found, output "Schedule not found".
+     * RULE C: You MUST scan the ENTIRE provided Teacher Schedule. Identify EVERY section taking EXACTLY the subject "${subject}". The provided schedule does NOT explicitly state grade levels, so do NOT attempt to filter or guess based on "${window.currentTargetGrade}". Match strictly by the subject name. Do NOT stop at the first match. If no matching schedule is found, output "Schedule not found".
      * RULE D: List the schedule for ALL matching sections for this specific session number. If there are multiple sections, separate them with a semicolon (;).
      * RULE E: Format the schedule strictly using pipes (|) for line breaks. Example: [Section A] | [Full Date] | [Time Slot]
      * RULE F: After listing all sections, append any class suspensions, interruptions, or custom instructions requested by the user.
