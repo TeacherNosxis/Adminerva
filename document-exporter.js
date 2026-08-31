@@ -282,10 +282,16 @@ async function processAndUploadToDrive(accessToken) {
         </html>
     `;
 
-    // Generate binary DOCX blob
+    // 1. Generate binary DOCX blob
     const docxBlob = htmlDocx.asBlob(htmlContent, { orientation: 'landscape', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
 
-    // 🚀 ASSEMBLE MULTIPART/RELATED PAYLOAD MANUALLY FOR GOOGLE DRIVE API
+    // 2. 🚀 NEW: Convert binary Blob to Base64 so it travels safely over the network
+    const base64Data = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(docxBlob);
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    });
+
     const metadata = {
         name: filename,
         mimeType: 'application/vnd.google-apps.document' 
@@ -295,21 +301,23 @@ async function processAndUploadToDrive(accessToken) {
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
 
-    const multipartBody = new Blob([
-        delimiter,
-        'Content-Type: application/json\r\n\r\n',
-        JSON.stringify(metadata),
-        delimiter,
-        'Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n',
-        docxBlob,
-        close_delim
-    ], { type: `multipart/related; boundary=${boundary}` });
+    // 3. 🚀 NEW: Assemble as a pure string and declare the Base64 encoding
+    const multipartBody = 
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n' +
+        'Content-Transfer-Encoding: base64\r\n\r\n' +
+        base64Data +
+        close_delim;
 
     try {
         const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${accessToken}`
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': `multipart/related; boundary=${boundary}` // Explicitly pass boundary
             },
             body: multipartBody
         });
