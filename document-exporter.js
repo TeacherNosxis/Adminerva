@@ -261,7 +261,7 @@ async function processAndUploadToDrive(accessToken) {
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
 
-    // 1. Send the pure HTML directly. No blobs, no base64, no html-docx-js.
+    // 1. Send the pure HTML directly
     const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -281,7 +281,6 @@ async function processAndUploadToDrive(accessToken) {
         </html>
     `;
 
-    // 2. Tell Google to natively convert the HTML into a Google Doc
     const metadata = {
         name: filename,
         mimeType: 'application/vnd.google-apps.document' 
@@ -291,7 +290,6 @@ async function processAndUploadToDrive(accessToken) {
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
 
-    // 3. Assemble the raw text payload
     const multipartBody = 
         delimiter +
         'Content-Type: application/json\r\n\r\n' +
@@ -302,6 +300,7 @@ async function processAndUploadToDrive(accessToken) {
         close_delim;
 
     try {
+        // STEP 1: Upload HTML and convert to Google Doc
         const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
             method: 'POST',
             headers: {
@@ -312,11 +311,37 @@ async function processAndUploadToDrive(accessToken) {
         });
 
         if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
-        
         const result = await response.json();
+
+        // STEP 2: Instantly ping Google Docs API to force Landscape Folio (13x8.5) and 0.5" Margins
+        await fetch(`https://docs.googleapis.com/v1/documents/${result.id}:batchUpdate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                requests: [{
+                    updateDocumentStyle: {
+                        documentStyle: {
+                            pageSize: { 
+                                width: { magnitude: 936, unit: "PT" },  // 13 inches * 72 pt
+                                height: { magnitude: 612, unit: "PT" }  // 8.5 inches * 72 pt
+                            },
+                            marginTop: { magnitude: 36, unit: "PT" },   // 0.5 inches * 72 pt
+                            marginBottom: { magnitude: 36, unit: "PT" },
+                            marginLeft: { magnitude: 36, unit: "PT" },
+                            marginRight: { magnitude: 36, unit: "PT" }
+                        },
+                        fields: "pageSize,marginTop,marginBottom,marginLeft,marginRight"
+                    }
+                }]
+            })
+        });
+
         if (typeof window.hideLoader === 'function') window.hideLoader();
         
-        // 4. Open the populated Google Doc
+        // Open the perfectly formatted Google Doc
         window.open(`https://docs.google.com/document/d/${result.id}/edit`, '_blank');
         
     } catch (e) {
