@@ -30,9 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" 
             : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
 
+        // 🚀 RESTORED GRADEBOOK AND ADMIN HUB
         centerLinks = `
             <a href="index.html" class="${getStyle('dashboard')}">Analytics Dashboard</a>
             <a href="grading.html" class="${getStyle('grader')}">AutoGrader</a>
+            <a href="gradebook.html" class="${getStyle('gradebook')}">Gradebook</a>
+            <a href="admin.html" class="${getStyle('admin')}">Admin Hub</a>
         `;
         rightSide = `
             <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 px-4 py-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center gap-2 font-bold text-sm">
@@ -55,10 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             <div class="relative group cursor-pointer py-1">
                 <div class="flex items-center gap-3 text-xl font-bold transition">
-                    <!-- 🚀 FULL HEIGHT LOGO WITH BLEND TRICK -->
-                    <img src="New Adminerva logo.jpg" alt="Adminerva Logo" class="h-16 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                    <!-- 🚀 FIXED .PNG EXTENSION -->
+                    <img src="New Adminerva logo.png" alt="Adminerva Logo" class="h-16 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
                     
-                    <!-- 🚀 GRADIENT TEXT AESTHETIC -->
                     <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
                     <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity">▼</span>
                 </div>
