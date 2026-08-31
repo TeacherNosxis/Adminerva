@@ -266,21 +266,27 @@
     </div>
 
     <!-- LOAD SAVED PLANS MODAL -->
-    <div id="loadPlanModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-center justify-center p-4">
-        <!-- 🚀 CHANGED max-w-2xl to max-w-4xl -->
+<div id="loadPlanModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[80vh]">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-3">
             <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
                 📂 Saved Lesson Plans
             </h3>
             <div class="flex items-center gap-4">
-                <!-- 🚀 NEW: Dynamic School Year Filter -->
                 <select id="modalSyFilter" onchange="openLoadPlanModal()" class="p-1.5 border border-gray-300 rounded text-sm font-bold text-blue-900 bg-blue-50 focus:ring-blue-500 shadow-sm cursor-pointer">
                     <!-- Populated dynamically -->
                 </select>
                 <button onclick="closeLoadPlanModal()" class="text-gray-400 hover:text-red-500 font-bold text-xl px-2">✖</button>
             </div>
         </div>
+        <div id="savedPlansListContainer" class="overflow-y-auto space-y-3 flex-1 pr-2">
+            <p class="text-gray-400 italic text-center py-8">Loading saved plans from Firebase...</p>
+        </div>
+        <div class="flex justify-end pt-4 border-t mt-4">
+            <button onclick="closeLoadPlanModal()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Close</button>
+        </div>
     </div>
+</div>
 
     <!-- PRINT-ONLY CURRICULUM MAP CONTAINER -->
 <div id="printDocumentWrapper" style="font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">

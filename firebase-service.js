@@ -150,13 +150,11 @@ window.openLoadPlanModal = async function() {
         const allFetchedPlans = [];
         const uniqueSYs = new Set();
 
-        // 1. EXTRACT ALL PLANS, NORMALIZE LEGACY DATA & GET SCHOOL YEARS
         querySnapshot.forEach(docSnap => {
             const data = docSnap.data();
             const sy = data.school_year || "2026-2027";
             uniqueSYs.add(sy);
             
-            // Legacy Data Conversion
             let safeTerm = data.academic_term || "";
             if (!safeTerm) {
                 const sem = /2|second/i.test(data.semester || "") ? "SECOND SEMESTER" : "FIRST SEMESTER";
@@ -168,7 +166,7 @@ window.openLoadPlanModal = async function() {
             }
             
             let safeWeek = data.course_week || "";
-            if (!safeWeek) safeWeek = `Week ${data.absoluteWeek || parseInt((data.week || "1").replace(/\D/g, "")) || 1}`;
+            if (!safeWeek) safeWeek = `Week ${data.absoluteWeek || 1}`;
 
             allFetchedPlans.push({ 
                 id: docSnap.id, 
@@ -181,7 +179,6 @@ window.openLoadPlanModal = async function() {
             });
         });
 
-        // 2. POPULATE THE DROPDOWN FILTER
         const syFilter = document.getElementById('modalSyFilter');
         if (syFilter) {
             const mainUiSy = document.getElementById('lpSchoolYear')?.value || "2026-2027";
@@ -195,8 +192,6 @@ window.openLoadPlanModal = async function() {
         }
 
         const activeSY = syFilter ? syFilter.value : "2026-2027";
-
-        // 3. FILTER PLANS FOR SELECTED SCHOOL YEAR
         const allPlans = allFetchedPlans.filter(p => p.safeSY === activeSY);
         container.innerHTML = '';
 
@@ -205,7 +200,6 @@ window.openLoadPlanModal = async function() {
             return;
         }
 
-        // 4. NESTED GROUPING: Term -> Subject & Grade
         const groupedPlans = {};
         allPlans.forEach(plan => {
             const term = plan.safeTerm;
@@ -216,7 +210,6 @@ window.openLoadPlanModal = async function() {
             groupedPlans[term][subjectGrade].push(plan);
         });
 
-        // 5. RENDER DOUBLE ACCORDIONS
         Object.keys(groupedPlans).sort().forEach((term, termIndex) => {
             const isTermOpen = termIndex === 0 ? "open" : "";
             let subjectAccordionsHTML = '';
@@ -224,7 +217,6 @@ window.openLoadPlanModal = async function() {
             Object.keys(groupedPlans[term]).sort().forEach((subjectGrade) => {
                 const plans = groupedPlans[term][subjectGrade];
                 
-                // Sort sequentially by Week Number
                 plans.sort((a, b) => {
                     const weekA = parseInt((a.safeWeek || "0").replace(/\D/g, ""));
                     const weekB = parseInt((b.safeWeek || "0").replace(/\D/g, ""));
@@ -233,7 +225,6 @@ window.openLoadPlanModal = async function() {
 
                 let rowsHTML = '';
                 plans.forEach(data => {
-                    // Abbreviate Months
                     let shortDate = data.safeDate;
                     const monthMap = { 
                         "January": "Jan", "February": "Feb", "March": "Mar", 
