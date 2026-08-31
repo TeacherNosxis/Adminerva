@@ -258,101 +258,83 @@ async function processAndUploadToDrive(accessToken) {
     const printWrapper = document.getElementById('printDocumentWrapper');
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
-    
-    // 🚀 FORCE THE TABLE COLUMNS TO CALCULATE AT 12 INCHES WIDE
-    cleanHtml = cleanHtml.replace(/width:\s*100%/gi, 'width: 12in');
 
-    // 1. Send the pure HTML directly inside a 12-inch wrapper
+    // 1. Wrap in the Word-compatible HTML shell
     const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <style>
+                @page WordSection1 { size: 13.0in 8.5in; mso-page-orientation: landscape; margin: 0.5in; }
+                div.WordSection1 { page: WordSection1; }
                 body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
-                table { border-collapse: collapse; margin-top: 15px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
                 th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
                 th { background-color: #b4c6e7; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
         <body>
-            <div style="width: 12in;">
-                ${cleanHtml}
-            </div>
+            <div class="WordSection1">${cleanHtml}</div>
         </body> 
         </html>
     `;
 
-    const metadata = {
-        name: filename,
-        mimeType: 'application/vnd.google-apps.document' 
-    };
-
-    const boundary = '-------314159265358979323846';
-    const delimiter = "\r\n--" + boundary + "\r\n";
-    const close_delim = "\r\n--" + boundary + "--";
-
-    const multipartBody = 
-        delimiter +
-        'Content-Type: application/json\r\n\r\n' +
-        JSON.stringify(metadata) +
-        delimiter +
-        'Content-Type: text/html\r\n\r\n' +
-        htmlContent +
-        close_delim;
-
     try {
-        // STEP 1: Upload HTML and convert to Google Doc
-        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': `multipart/related; boundary=${boundary}`
-            },
-            body: multipartBody
+        // 2. Generate the perfectly formatted Landscape DOCX Blob
+        const blob = htmlDocx.asBlob(htmlContent, { 
+            orientation: 'landscape', 
+            margins: { top: 720, right: 720, bottom: 720, left: 720 } 
         });
 
-        if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
-        const result = await response.json();
+        // 3. Convert Blob to Base64 to safely embed in multipart payload
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = async function() {
+            const base64Data = reader.result.split(',')[1];
+            
+            const metadata = {
+                name: filename,
+                mimeType: 'application/vnd.google-apps.document' 
+            };
 
-        // STEP 2: Instantly ping Google Docs API to force Landscape Folio (13x8.5) and 0.5" Margins
-        const docsResponse = await fetch(`https://docs.googleapis.com/v1/documents/${result.id}:batchUpdate`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                requests: [{
-                    updateDocumentStyle: {
-                        documentStyle: {
-                            pageSize: { 
-                                width: { magnitude: 936, unit: "PT" },  // 13 inches * 72 pt
-                                height: { magnitude: 612, unit: "PT" }  // 8.5 inches * 72 pt
-                            },
-                            marginTop: { magnitude: 36, unit: "PT" },   // 0.5 inches * 72 pt
-                            marginBottom: { magnitude: 36, unit: "PT" },
-                            marginLeft: { magnitude: 36, unit: "PT" },
-                            marginRight: { magnitude: 36, unit: "PT" }
-                        },
-                        fields: "pageSize,marginTop,marginBottom,marginLeft,marginRight"
-                    }
-                }]
-            })
-        });
+            const boundary = '-------314159265358979323846';
+            const delimiter = "\r\n--" + boundary + "\r\n";
+            const close_delim = "\r\n--" + boundary + "--";
 
-        // 🚀 CATCH SILENT DOCS API REJECTIONS
-        if (!docsResponse.ok) {
-            const errData = await docsResponse.json().catch(() => ({}));
-            throw new Error(`Docs Update Failed: ${errData.error?.message || docsResponse.statusText}`);
-        }
+            // 4. Construct payload with the DOCX Base64 binary
+            const multipartBody = 
+                delimiter +
+                'Content-Type: application/json\r\n\r\n' +
+                JSON.stringify(metadata) +
+                delimiter +
+                'Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n' +
+                'Content-Transfer-Encoding: base64\r\n\r\n' +
+                base64Data +
+                close_delim;
 
-        if (typeof window.hideLoader === 'function') window.hideLoader();
-        
-        // Open the perfectly formatted Google Doc
-        window.open(`https://docs.google.com/document/d/${result.id}/edit`, '_blank');
-        
+            // 5. Upload to Google Drive (Bypassing the HTML-to-Portrait bug)
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': `multipart/related; boundary=${boundary}`
+                },
+                body: multipartBody
+            });
+
+            if (!response.ok) {
+                if (typeof window.hideLoader === 'function') window.hideLoader();
+                return alert(`Upload failed: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            if (typeof window.hideLoader === 'function') window.hideLoader();
+            
+            // Open the flawlessly formatted Google Doc
+            window.open(`https://docs.google.com/document/d/${result.id}/edit`, '_blank');
+        };
     } catch (e) {
         if (typeof window.hideLoader === 'function') window.hideLoader();
         alert("Failed to export to Google Docs: " + e.message);
