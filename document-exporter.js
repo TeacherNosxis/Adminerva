@@ -225,7 +225,7 @@ window.exportToGoogleDocs = function() {
         scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents',
         callback: async (tokenResponse) => {
             if (tokenResponse.error !== undefined) return alert("Google Authentication failed.");
-            if (typeof window.showLoader === 'function') window.showLoader();
+            if (typeof window.showLoader === 'function') window.showLoader("Exporting to Google Docs...", "Formatting layout and resizing landscape tables.");
             
             const isReady = await window.buildDocumentLayout();
             if (!isReady) {

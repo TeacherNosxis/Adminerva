@@ -70,11 +70,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 // 3. UI & CALENDAR HELPERS
 // ==========================================
-window.showLoader = function() { 
+window.showLoader = function(mainText = "AI Architecting Syllabus...", subText = "Analyzing scope and structuring session activities.") { 
     const loader = document.getElementById('globalLoader');
-    const isAlreadyRunning = loader.classList.contains('flex');
+    
+    // 🚀 DYNAMIC TEXT INJECTION
+    const mainTextEl = document.getElementById('loaderMainText');
+    const subTextEl = document.getElementById('loaderSubText');
+    if (mainTextEl) mainTextEl.textContent = mainText;
+    if (subTextEl) subTextEl.textContent = subText;
 
+    const isAlreadyRunning = loader.classList.contains('flex');
     loader.classList.replace('hidden', 'flex'); 
+    
     if (isAlreadyRunning) return; 
 
     clearInterval(window.timerInterval);

@@ -91,7 +91,7 @@ window.saveLessonPlan = async function() {
     const qtrStr = academicTerm.includes("SECOND QUARTER") ? "Q2" : academicTerm.includes("THIRD QUARTER") ? "Q3" : academicTerm.includes("FOURTH QUARTER") ? "Q4" : "Q1";
     const safeDocId = `${grade}_${subject}_${qtrStr}_${courseWeek}`.replace(/[^a-zA-Z0-9_]/g, "");
 
-    window.showLoader();
+    window.showLoader("Fetching Database...", "Retrieving your saved plans from the cloud.");
 
     try {
         const planData = {
@@ -277,7 +277,7 @@ window.openLoadPlanModal = async function() {
 
 window.deleteLessonPlan = async function(docId) {
     if (!confirm("Are you sure you want to delete this saved lesson plan?")) return;
-    window.showLoader();
+    window.showLoader("Saving Lesson Plan...", "Syncing securely to Firebase storage.");
     try {
         await deleteDoc(doc(window.db, "lesson_plans", docId));
         window.openLoadPlanModal(); 
