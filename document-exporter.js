@@ -1,4 +1,6 @@
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+const GOOGLE_CLIENT_ID = '396238862950-ctpihosaaetvf7agaftbucupbkot4n7r.apps.googleusercontent.com';
+
 window.formatListForPrint = function(text, isOrdered = true) {
     if (!text) return '';
     // 🚀 NEW: Splits the text perfectly whether the AI uses real newlines or literal "\n" strings
@@ -114,7 +116,7 @@ window.buildDocumentLayout = async function() {
         const prelimText = window.formatListForPrint(session.preliminary || '', true);
         const activitiesText = window.formatListForPrint(session.learning_activities || '', true);
         const cleanRemarks = String(session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\\n|\n/g, '<br>');
-        
+
         // 1. Break the session into sequential row parts
         let parts = [];
         parts.push({ time: '', content: `<div style="font-weight: bold;">${session.session_name}</div>` });
@@ -213,12 +215,29 @@ window.saveAndPrint = async function() {
     }
 };
 
-window.exportToWordDoc = async function() {
-    if (typeof htmlDocx === 'undefined') return alert("The Word Document generator is still loading. Please wait.");
+window.exportToGoogleDocs = async function() {
+    if (typeof htmlDocx === 'undefined') return alert("The Document generator is still loading. Please wait.");
     
     const isReady = await window.buildDocumentLayout();
     if (!isReady) return;
 
+    // 1. Trigger Google Login
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/drive.file',
+        callback: async (tokenResponse) => {
+            if (tokenResponse.error !== undefined) return alert("Google Authentication failed.");
+            
+            if (typeof window.showLoader === 'function') window.showLoader();
+            await processAndUploadToDrive(tokenResponse.access_token);
+        },
+    });
+    
+    tokenClient.requestAccessToken({prompt: 'consent'});
+};
+
+async function processAndUploadToDrive(accessToken) {
+    // 2. Generate EXACT formatting and filename
     const rawGrade = window.currentTargetGrade.replace(/\D/g, "") || "11";
     const rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
     const shortSubject = rawSubject.split(/\s+/).map(w => w.match(/\d+/) ? w : w.substring(0, 4)).join('').replace(/[^a-zA-Z0-9]/g, "");
@@ -231,7 +250,9 @@ window.exportToWordDoc = async function() {
     if(term.includes("FOURTH QUARTER")) qtrNum = "4";
 
     const anchoredWeek = document.getElementById('lpCourseWeek').value.replace(/\D/g, "");
-    const filename = `${rawGrade}-Sem${semNum},Qtr${qtrNum},W${anchoredWeek}(${shortSubject}).docx`;
+    
+    // Removed the .docx extension so it looks clean in Google Drive
+    const filename = `${rawGrade}-Sem${semNum},Qtr${qtrNum},W${anchoredWeek}(${shortSubject})`;
 
     const printWrapper = document.getElementById('printDocumentWrapper');
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
@@ -258,13 +279,41 @@ window.exportToWordDoc = async function() {
         </html>
     `;
 
+    // 3. Generate the formatted file invisibly in the background
     const blob = htmlDocx.asBlob(htmlContent, { orientation: 'landscape', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-};
+
+    // 4. Package the file for Google Drive API
+    const formData = new FormData();
+    
+    // Metadata tells Google to convert the incoming file natively into a Google Doc
+    formData.append('metadata', new Blob([JSON.stringify({
+        name: filename,
+        mimeType: 'application/vnd.google-apps.document' 
+    })], { type: 'application/json' }));
+    
+    formData.append('file', blob);
+
+    // 5. Beam to the cloud
+    try {
+        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+                // Note: Fetch auto-generates the correct multipart boundary headers for FormData
+            },
+            body: formData
+        });
+
+        if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
+        
+        const result = await response.json();
+        if (typeof window.hideLoader === 'function') window.hideLoader();
+        
+        // 6. Open the finished Google Doc in a new tab
+        window.open(`https://docs.google.com/document/d/${result.id}/edit`, '_blank');
+        
+    } catch (e) {
+        if (typeof window.hideLoader === 'function') window.hideLoader();
+        alert("Failed to export to Google Docs: " + e.message);
+    }
+}

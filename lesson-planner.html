@@ -223,8 +223,11 @@
             </div>
             
             <div class="p-4 border-t bg-white flex justify-end gap-3">
-                <button onclick="exportToWordDoc()" class="bg-green-600 text-white font-bold px-4 py-2 rounded text-xs hover:bg-green-700 transition">
-    📄 Export to Word (.doc)
+                <button onclick="window.exportToGoogleDocs()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 print:hidden">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+    </svg>
+    Export to Google Docs
 </button>
                 <button onclick="saveLessonPlan()" class="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded shadow-sm hover:bg-gray-300 transition flex items-center gap-2">
                     <span>💾</span> Save Draft
