@@ -261,14 +261,13 @@ async function processAndUploadToDrive(accessToken) {
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
 
+    // 1. Send the pure HTML directly. No blobs, no base64, no html-docx-js.
     const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <style>
-                @page WordSection1 { size: 13.0in 8.5in; mso-page-orientation: landscape; margin: 0.5in; }
-                div.WordSection1 { page: WordSection1; }
                 body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
                 th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
@@ -277,21 +276,12 @@ async function processAndUploadToDrive(accessToken) {
             </style>
         </head>
         <body>
-            <div class="WordSection1">${cleanHtml}</div>
+            ${cleanHtml}
         </body> 
         </html>
     `;
 
-    // 1. Generate binary DOCX blob
-    const docxBlob = htmlDocx.asBlob(htmlContent, { orientation: 'landscape', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
-
-    // 2. 🚀 NEW: Convert binary Blob to Base64 so it travels safely over the network
-    const base64Data = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(docxBlob);
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-    });
-
+    // 2. Tell Google to natively convert the HTML into a Google Doc
     const metadata = {
         name: filename,
         mimeType: 'application/vnd.google-apps.document' 
@@ -301,15 +291,14 @@ async function processAndUploadToDrive(accessToken) {
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
 
-    // 3. 🚀 NEW: Assemble as a pure string and declare the Base64 encoding
+    // 3. Assemble the raw text payload
     const multipartBody = 
         delimiter +
         'Content-Type: application/json\r\n\r\n' +
         JSON.stringify(metadata) +
         delimiter +
-        'Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n' +
-        'Content-Transfer-Encoding: base64\r\n\r\n' +
-        base64Data +
+        'Content-Type: text/html\r\n\r\n' +
+        htmlContent +
         close_delim;
 
     try {
@@ -317,7 +306,7 @@ async function processAndUploadToDrive(accessToken) {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': `multipart/related; boundary=${boundary}` // Explicitly pass boundary
+                'Content-Type': `multipart/related; boundary=${boundary}`
             },
             body: multipartBody
         });
@@ -327,6 +316,7 @@ async function processAndUploadToDrive(accessToken) {
         const result = await response.json();
         if (typeof window.hideLoader === 'function') window.hideLoader();
         
+        // 4. Open the populated Google Doc
         window.open(`https://docs.google.com/document/d/${result.id}/edit`, '_blank');
         
     } catch (e) {
