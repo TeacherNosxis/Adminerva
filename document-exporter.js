@@ -216,19 +216,17 @@ window.saveAndPrint = async function() {
 };
 
 window.exportToGoogleDocs = function() { 
-    // Notice this function is NO LONGER async to prevent popup blocking
     if (typeof htmlDocx === 'undefined') return alert("The Document generator is still loading. Please wait.");
     if (typeof google === 'undefined') return alert("Google scripts failed to load. Please refresh the page.");
 
-    // 1. TRIGGER GOOGLE LOGIN IMMEDIATELY ON CLICK
     const tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/drive.file',
+        // 🚀 REQUEST BOTH DRIVE AND DOCS SCOPES
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents',
         callback: async (tokenResponse) => {
             if (tokenResponse.error !== undefined) return alert("Google Authentication failed.");
             if (typeof window.showLoader === 'function') window.showLoader();
             
-            // 2. BUILD THE LAYOUT AFTER SUCCESSFUL LOGIN
             const isReady = await window.buildDocumentLayout();
             if (!isReady) {
                 if (typeof window.hideLoader === 'function') window.hideLoader();
@@ -314,7 +312,7 @@ async function processAndUploadToDrive(accessToken) {
         const result = await response.json();
 
         // STEP 2: Instantly ping Google Docs API to force Landscape Folio (13x8.5) and 0.5" Margins
-        await fetch(`https://docs.googleapis.com/v1/documents/${result.id}:batchUpdate`, {
+        const docsResponse = await fetch(`https://docs.googleapis.com/v1/documents/${result.id}:batchUpdate`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -338,6 +336,12 @@ async function processAndUploadToDrive(accessToken) {
                 }]
             })
         });
+
+        // 🚀 CATCH SILENT DOCS API REJECTIONS
+        if (!docsResponse.ok) {
+            const errData = await docsResponse.json().catch(() => ({}));
+            throw new Error(`Docs Update Failed: ${errData.error?.message || docsResponse.statusText}`);
+        }
 
         if (typeof window.hideLoader === 'function') window.hideLoader();
         
