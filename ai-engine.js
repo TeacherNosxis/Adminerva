@@ -119,16 +119,18 @@ window.executeFinalGeneration = async function(userClarification) {
 
     let lookbackContext = "";
     if (window.cachedPreviousPlan && window.cachedPreviousPlan.sessions) {
-        // 🚀 SAFELY CONVERT TO PLAIN TEXT SO IT DOES NOT BREAK THE AI'S JSON OUTPUT
+        // Renamed label to "Original Planned Activities" for clarity
         const safeTextState = window.cachedPreviousPlan.sessions.map(s => 
-            `[Session: ${s.session_name}]\nRemarks & Suspensions: ${s.remarks || 'None'}\nActivities Finished: ${s.learning_activities || 'None'}`
+            `[Session: ${s.session_name}]\nRemarks: ${s.remarks || 'None'}\nOriginal Planned Activities: ${s.learning_activities || 'None'}`
         ).join('\n\n');
 
         lookbackContext = `
-7. CATCH-UP & SUSPENSION RULE (CRITICAL):
+7. CATCH-UP & CURRICULUM SHIFT RULE (CRITICAL CONTINUITY):
    - Review "Last Week's Curriculum State" below. This specifically belongs to ${window.currentTargetGrade} - ${subject}.
-   - If any session was marked as suspended, interrupted, unfinished, or missed in the Remarks, you MUST make the early sessions of THIS week a catch-up/continuation for that missing content BEFORE introducing new topics.
-   - Explicitly mention in the new session's remarks that it is a catch-up from last week.
+   - If any session's 'Remarks' indicate it was suspended, interrupted, or handled passively by a substitute, the students did NOT learn that material.
+   - You MUST extract the specific topics and 'Original Planned Activities' from those missed sessions and literally regenerate them as the primary "learning_activities" for the early sessions of THIS week.
+   - DO NOT just write generic phrases like "Catch-up session" or "Review last week". You must output the actual academic content, competencies, and -ing verbs that were bumped.
+   - Shift the entire week's schedule forward. Only introduce new topics from the Reference Text after all bumped content is completely covered.
 
 LAST WEEK'S CURRICULUM STATE:
 ${safeTextState}
