@@ -91,7 +91,7 @@ window.saveLessonPlan = async function() {
     const qtrStr = academicTerm.includes("SECOND QUARTER") ? "Q2" : academicTerm.includes("THIRD QUARTER") ? "Q3" : academicTerm.includes("FOURTH QUARTER") ? "Q4" : "Q1";
     const safeDocId = `${grade}_${subject}_${qtrStr}_${courseWeek}`.replace(/[^a-zA-Z0-9_]/g, "");
 
-    window.showLoader("Fetching Database...", "Retrieving your saved plans from the cloud.");
+    window.showLoader("Saving Lesson Plan...", "Syncing securely to Firebase storage.");
 
     try {
         const planData = {
@@ -130,144 +130,107 @@ window.openLoadPlanModal = async function() {
     const container = document.getElementById('savedPlansListContainer');
     container.innerHTML = `
         <div class="flex flex-col items-center justify-center py-12">
-            <svg class="animate-spin h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            <p class="text-gray-500 font-medium animate-pulse">Fetching curriculum cloud data...</p>
+            <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+            <p class="text-gray-500 font-medium">Fetching organized curriculum...</p>
         </div>
     `;
 
     if (!window.db) {
-        container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-center font-bold border border-red-200">Firebase is not connected!</div>`;
+        container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-center font-bold">Firebase is not connected!</div>`;
         return;
     }
 
     try {
         const querySnapshot = await getDocs(collection(window.db, "lesson_plans"));
-        container.innerHTML = '';
-        
         if (querySnapshot.empty) {
             container.innerHTML = `<div class="text-center py-12"><p class="text-gray-500 font-bold">No saved plans found.</p></div>`;
             return;
         }
 
         const allPlans = [];
-        const conflictTracker = {};
+        querySnapshot.forEach(docSnap => allPlans.push({ id: docSnap.id, ...docSnap.data() }));
 
-        // 1. NORMALIZE & SCAN FOR OVERLAPS
-        querySnapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            
-            const safeSY = data.school_year || "2026-2027";
-            const safeSubject = data.subject_title || "Unknown Subject";
-            
-            let safeTerm = data.academic_term || "";
-            if (!safeTerm) {
-                const sem = /2|second/i.test(data.semester || "") ? "SECOND SEMESTER" : "FIRST SEMESTER";
-                let qtr = "FIRST QUARTER";
-                if(/2|second/i.test(data.quarter || "")) qtr = "SECOND QUARTER";
-                if(/3|third/i.test(data.quarter || "")) qtr = "THIRD QUARTER";
-                if(/4|fourth/i.test(data.quarter || "")) qtr = "FOURTH QUARTER";
-                safeTerm = `${sem}/${qtr}`;
-            }
+        // 1. NESTED GROUPING: Term -> Subject & Grade
+        const groupedPlans = {};
 
-            let safeWeek = data.course_week || "";
-            if (!safeWeek) {
-                safeWeek = `Week ${data.absoluteWeek || 1}`;
-            }
-
-            data.safeSY = safeSY;
-            data.safeTerm = safeTerm;
-            data.safeSubject = safeSubject;
-            data.safeWeek = safeWeek;
-            data.safeDate = data.date_range || "No physical dates";
-
-            const plan = { id: docSnap.id, ...data };
-            allPlans.push(plan);
-
-            const conflictKey = `${safeSY}_${safeTerm}_${safeSubject}_${safeWeek}`;
-            if (!conflictTracker[conflictKey]) conflictTracker[conflictKey] = 0;
-            conflictTracker[conflictKey]++;
-            plan.conflictKey = conflictKey;
-        });
-
-        allPlans.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
-
-        const termGroups = {};
         allPlans.forEach(plan => {
-            if (!termGroups[plan.safeTerm]) termGroups[plan.safeTerm] = [];
-            termGroups[plan.safeTerm].push(plan);
+            const term = plan.safeTerm || plan.academic_term || "Uncategorized Term";
+            const subjectGrade = `${plan.subject_title || 'Subject'} — ${plan.grade_level || 'Grade'}`;
+
+            if (!groupedPlans[term]) groupedPlans[term] = {};
+            if (!groupedPlans[term][subjectGrade]) groupedPlans[term][subjectGrade] = [];
+
+            groupedPlans[term][subjectGrade].push(plan);
         });
 
-        // 2. RENDER GOOGLE DRIVE STYLE UI
-        Object.keys(termGroups).sort().forEach(term => {
-            container.insertAdjacentHTML('beforeend', `
-                <div class="mt-6 mb-2">
-                    <h3 class="text-sm font-extrabold text-blue-900 bg-blue-50 px-3 py-2 rounded-t-lg border-b-2 border-blue-200 flex items-center gap-2">
-                        📁 ${term}
-                    </h3>
-                </div>
-            `);
+        container.innerHTML = '';
 
-            const tableWrapper = document.createElement('div');
-            tableWrapper.className = "overflow-x-auto border border-gray-200 rounded-b-lg mb-6 shadow-sm";
-            
-            let tableHTML = `
-                <table class="w-full text-left text-sm whitespace-nowrap">
-                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                        <tr>
-                            <th class="px-4 py-3 font-bold">Course Week</th>
-                            <th class="px-4 py-3 font-bold">Subject</th>
-                            <th class="px-4 py-3 font-bold">Physical Dates</th>
-                            <th class="px-4 py-3 font-bold text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 bg-white">
-            `;
+        // 2. RENDER DOUBLE ACCORDIONS
+        Object.keys(groupedPlans).sort().forEach((term, termIndex) => {
+            // Keep the very first Term open by default, collapse the rest
+            const isTermOpen = termIndex === 0 ? "open" : "";
+            let subjectAccordionsHTML = '';
 
-            termGroups[term].forEach((data) => {
-                const isConflict = conflictTracker[data.conflictKey] > 1;
-                const rowClass = isConflict ? "bg-amber-50 hover:bg-amber-100 transition" : "hover:bg-gray-50 transition";
-                const warningIcon = isConflict ? `<span title="Duplicate/Overlap Warning" class="text-amber-600 mr-1">⚠️</span>` : ``;
-
-                // 🚀 NEW: AUTO-ABBREVIATE MONTH NAMES
-                let shortDate = data.safeDate || "No physical dates";
-                const monthMap = { 
-                    "January": "Jan", "February": "Feb", "March": "Mar", 
-                    "April": "Apr", "August": "Aug", "September": "Sep", 
-                    "October": "Oct", "November": "Nov", "December": "Dec" 
-                };
-                Object.keys(monthMap).forEach(longMonth => {
-                    shortDate = shortDate.replace(new RegExp(longMonth, "gi"), monthMap[longMonth]);
+            Object.keys(groupedPlans[term]).sort().forEach((subjectGrade) => {
+                const plans = groupedPlans[term][subjectGrade];
+                
+                // Sort plans sequentially by Week Number (1, 2, 3...)
+                plans.sort((a, b) => {
+                    const weekA = parseInt((a.safeWeek || a.course_week || "0").replace(/\D/g, ""));
+                    const weekB = parseInt((b.safeWeek || b.course_week || "0").replace(/\D/g, ""));
+                    return weekA - weekB;
                 });
 
-                tableHTML += `
-                    <tr class="${rowClass}">
-                        <td class="px-4 py-3 font-bold ${isConflict ? 'text-amber-800' : 'text-blue-900'}">
-                            ${warningIcon} ${data.safeWeek}
-                            <div class="text-[9px] text-gray-400 font-normal mt-0.5">${data.safeSY}</div>
-                        </td>
-                        <td class="px-4 py-3 font-bold text-gray-700 truncate max-w-[280px]" title="${data.safeSubject}">
-                            ${data.safeSubject}
-                        </td>
-                        <td class="px-4 py-3 text-xs text-gray-600 font-medium whitespace-nowrap">
-                            🗓️ ${shortDate}
-                        </td>
-                        <td class="px-4 py-3 text-center">
-                            <div class="flex justify-center gap-2">
-                                <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-1.5 bg-blue-600 text-white font-bold text-[10px] rounded hover:bg-blue-700 shadow-sm transition">
-                                    Load
-                                </button>
-                                <button onclick="deleteLessonPlan('${data.id}')" class="px-2 py-1.5 bg-red-50 text-red-600 font-bold text-[10px] rounded hover:bg-red-100 transition" title="Delete">
-                                    ✖
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+                let rowsHTML = '';
+                plans.forEach(data => {
+                    const shortDate = data.safeDate || data.date_range || "No physical dates";
+                    const courseWeek = data.safeWeek || data.course_week || "Week ?";
+
+                    rowsHTML += `
+                        <tr class="border-b border-gray-100 hover:bg-blue-50 transition">
+                            <td class="px-4 py-3 font-bold text-blue-900 w-1/4">${courseWeek}</td>
+                            <td class="px-4 py-3 text-xs text-gray-600 font-medium">🗓️ ${shortDate}</td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex justify-end gap-2">
+                                    <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-1.5 bg-blue-600 text-white font-bold text-[10px] rounded hover:bg-blue-700 shadow-sm transition">Load</button>
+                                    <button onclick="deleteLessonPlan('${data.id}')" class="px-2 py-1.5 bg-red-50 text-red-600 font-bold text-[10px] rounded hover:bg-red-100 transition" title="Delete">✖</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                // Level 2 Accordion (Subject & Grade) - Always open by default
+                subjectAccordionsHTML += `
+                    <details class="group/sub border border-gray-200 rounded-md mb-3 overflow-hidden shadow-sm" open>
+                        <summary class="flex justify-between items-center bg-gray-50 p-3 cursor-pointer select-none hover:bg-gray-100 transition">
+                            <span class="font-bold text-sm text-gray-800">📘 ${subjectGrade}</span>
+                            <span class="text-gray-400 group-open/sub:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div class="bg-white">
+                            <table class="w-full text-left">
+                                <tbody>${rowsHTML}</tbody>
+                            </table>
+                        </div>
+                    </details>
                 `;
             });
 
-            tableHTML += `</tbody></table>`;
-            tableWrapper.innerHTML = tableHTML;
-            container.appendChild(tableWrapper);
+            // Level 1 Accordion (Academic Term)
+            container.insertAdjacentHTML('beforeend', `
+                <details class="group/main mb-4 bg-white border border-blue-200 rounded-lg shadow-sm" ${isTermOpen}>
+                    <summary class="flex justify-between items-center font-extrabold text-blue-900 uppercase tracking-widest cursor-pointer select-none p-4 bg-blue-50 hover:bg-blue-100 transition rounded-t-lg border-b border-blue-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">📁</span>
+                            <span>${term}</span>
+                        </div>
+                        <span class="text-blue-500 group-open/main:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div class="p-4 bg-white rounded-b-lg">
+                        ${subjectAccordionsHTML}
+                    </div>
+                </details>
+            `);
         });
 
     } catch (e) {
