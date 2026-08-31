@@ -236,8 +236,8 @@ window.exportToGoogleDocs = function() {
             await processAndUploadToDrive(tokenResponse.access_token);
         },
     });
-    
-    tokenClient.requestAccessToken({prompt: 'consent'});
+    // Allow Google to silently reuse the existing session without forcing the consent screen
+    tokenClient.requestAccessToken();
 };
 
 async function processAndUploadToDrive(accessToken) {

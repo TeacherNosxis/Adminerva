@@ -228,17 +228,28 @@ window.openLoadPlanModal = async function() {
                 const rowClass = isConflict ? "bg-amber-50 hover:bg-amber-100 transition" : "hover:bg-gray-50 transition";
                 const warningIcon = isConflict ? `<span title="Duplicate/Overlap Warning" class="text-amber-600 mr-1">⚠️</span>` : ``;
 
+                // 🚀 NEW: AUTO-ABBREVIATE MONTH NAMES
+                let shortDate = data.safeDate || "No physical dates";
+                const monthMap = { 
+                    "January": "Jan", "February": "Feb", "March": "Mar", 
+                    "April": "Apr", "August": "Aug", "September": "Sep", 
+                    "October": "Oct", "November": "Nov", "December": "Dec" 
+                };
+                Object.keys(monthMap).forEach(longMonth => {
+                    shortDate = shortDate.replace(new RegExp(longMonth, "gi"), monthMap[longMonth]);
+                });
+
                 tableHTML += `
                     <tr class="${rowClass}">
                         <td class="px-4 py-3 font-bold ${isConflict ? 'text-amber-800' : 'text-blue-900'}">
                             ${warningIcon} ${data.safeWeek}
                             <div class="text-[9px] text-gray-400 font-normal mt-0.5">${data.safeSY}</div>
                         </td>
-                        <td class="px-4 py-3 font-bold text-gray-700 truncate max-w-[200px]" title="${data.safeSubject}">
+                        <td class="px-4 py-3 font-bold text-gray-700 truncate max-w-[280px]" title="${data.safeSubject}">
                             ${data.safeSubject}
                         </td>
-                        <td class="px-4 py-3 text-xs text-gray-600 font-medium">
-                            🗓️ ${data.safeDate}
+                        <td class="px-4 py-3 text-xs text-gray-600 font-medium whitespace-nowrap">
+                            🗓️ ${shortDate}
                         </td>
                         <td class="px-4 py-3 text-center">
                             <div class="flex justify-center gap-2">

@@ -101,20 +101,39 @@ window.executeFinalGeneration = async function(userClarification) {
     const gemKey = localStorage.getItem('repoReview_gemini_token');
     const model = localStorage.getItem('repoReview_ai_model') || 'gemini-1.5-flash'; 
     const schoolYear = document.getElementById('lpSchoolYear').value || "2026-2027";
-    
     const subject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
 
+    // 🚀 NEW: Dynamically separate BOTH Session Rules and Schedule Rules
     let gradeSpecificRules = "";
-    if (window.currentTargetGrade === "Grade 11") {
-        gradeSpecificRules = `
+    let scheduleRules = "";
+
+    switch (window.currentTargetGrade) {
+        case "Grade 11":
+            gradeSpecificRules = `
 3. SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
 4. SESSION 4-6 RULE (3-Hour Laboratory Period / 150 mins total): 
    - Design these sessions as a hands-on laboratory or performance task based on custom instructions.
-   - You MUST format the "learning_activities" with dynamic minute allocations in parentheses for each phase (e.g., Prelims [X mins], Motivation [X mins], Session 4/Coding [X mins], Session 5/Testing [X mins], Session 6/Debugging [X mins], Evaluation [X mins], Closing [X mins]), ensuring the total equals exactly 150 minutes.
-   - You must use -ing verbs at the start of each bullet in the "learning_activities" section for these sessions.
-`;} else {
-        gradeSpecificRules = `
+   - You MUST format the "learning_activities" with dynamic minute allocations in parentheses for each phase, ensuring the total equals exactly 150 minutes.
+   - You must use -ing verbs at the start of each bullet in the "learning_activities" section.`;
+            scheduleRules = `
+     * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6".
+     * RULE B: Map the 1-hour blocks sequentially to "Session 1", "Session 2", and "Session 3" for remaining days.`;
+            break;
+            
+        case "Grade 12":
+            gradeSpecificRules = `
 3. SESSIONS: Compress topics into exactly 4 sessions named: "Session 1", "Session 2", "Session 3", and "Session Flex".`;
+            scheduleRules = `
+     * RULE A: Map the schedule blocks sequentially to "Session 1", "Session 2", and "Session 3".`;
+            break;
+            
+        default:
+            // 🚀 THE BULLETPROOF FALLBACK FOR 3-SESSION GRADES
+            gradeSpecificRules = `
+3. SESSIONS: Compress topics into exactly 3 sessions named: "Session 1", "Session 2", and "Session Flex".`;
+            scheduleRules = `
+     * RULE A: Map the schedule blocks sequentially to "Session 1" and "Session 2".`;
+            break;
     }
 
     let lookbackContext = "";
@@ -161,11 +180,10 @@ ${gradeSpecificRules}
      In the time frame column, do NOT just write a generic label. You must provide a line-by-line minute breakdown that visually matches the vertical layout of the "Learning Experiences" or specific activity lines. Format it with precise vertical spacing or line breaks so each minute allocation sits horizontally level with its corresponding activity part.
 
    - SCHEDULE MAPPING (CRITICAL MULTI-SECTION SCAN): Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
-     * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6".
-     * RULE B: Map the 1-hour blocks sequentially to "Session 1", "Session 2", and "Session 3" for remaining days.
-     * RULE C: You MUST scan the ENTIRE provided Teacher Schedule. Identify EVERY section taking ${subject} for ${window.currentTargetGrade}. Do NOT stop at the first match.
+${scheduleRules}
+     * RULE C: You MUST scan the ENTIRE provided Teacher Schedule. Identify EVERY section taking ${subject} for ${window.currentTargetGrade}. Do NOT stop at the first match. If no matching schedule is found, output "Schedule not found".
      * RULE D: List the schedule for ALL matching sections for this specific session number. If there are multiple sections, separate them with a semicolon (;).
-     * RULE E: Format the schedule strictly using pipes (|) for line breaks. Example: [Section A] | [Full Date] | [Time Slot]; [Section B] | [Full Date] | [Time Slot]
+     * RULE E: Format the schedule strictly using pipes (|) for line breaks. Example: [Section A] | [Full Date] | [Time Slot]
      * RULE F: After listing all sections, append any class suspensions, interruptions, or custom instructions requested by the user.
 
 6. SESSION FLEX RULE: 
