@@ -118,16 +118,20 @@ window.executeFinalGeneration = async function(userClarification) {
     }
 
     let lookbackContext = "";
-    if (window.cachedPreviousPlan) {
+    if (window.cachedPreviousPlan && window.cachedPreviousPlan.sessions) {
+        // 🚀 SAFELY CONVERT TO PLAIN TEXT SO IT DOES NOT BREAK THE AI'S JSON OUTPUT
+        const safeTextState = window.cachedPreviousPlan.sessions.map(s => 
+            `[Session: ${s.session_name}]\nRemarks & Suspensions: ${s.remarks || 'None'}\nActivities Finished: ${s.learning_activities || 'None'}`
+        ).join('\n\n');
+
         lookbackContext = `
 7. CATCH-UP & SUSPENSION RULE (CRITICAL):
-   - Review "Last Week's Curriculum State" provided below.
-   - Look specifically at the "remarks" field for each session.
-   - If any session from last week was marked as suspended, interrupted, unfinished, or missed, you MUST make the early sessions of THIS week a catch-up/continuation for that missing content BEFORE introducing new topics.
+   - Review "Last Week's Curriculum State" below. This specifically belongs to ${window.currentTargetGrade} - ${subject}.
+   - If any session was marked as suspended, interrupted, unfinished, or missed in the Remarks, you MUST make the early sessions of THIS week a catch-up/continuation for that missing content BEFORE introducing new topics.
    - Explicitly mention in the new session's remarks that it is a catch-up from last week.
 
 LAST WEEK'S CURRICULUM STATE:
-${JSON.stringify(window.cachedPreviousPlan.sessions.map(s => ({name: s.session_name, activities: s.learning_activities, remarks: s.remarks})))}
+${safeTextState}
         `;
     }
 
