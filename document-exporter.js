@@ -258,8 +258,11 @@ async function processAndUploadToDrive(accessToken) {
     const printWrapper = document.getElementById('printDocumentWrapper');
     let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
+    
+    // 🚀 FORCE THE TABLE COLUMNS TO CALCULATE AT 12 INCHES WIDE
+    cleanHtml = cleanHtml.replace(/width:\s*100%/gi, 'width: 12in');
 
-    // 1. Send the pure HTML with HARDCODED Landscape Widths
+    // 1. Send the pure HTML directly inside a 12-inch wrapper
     const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -267,17 +270,16 @@ async function processAndUploadToDrive(accessToken) {
             <meta charset="utf-8">
             <style>
                 body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
-                
-                /* 🚀 OVERRIDE INLINE 100% WIDTH WITH ABSOLUTE LANDSCAPE DIMENSIONS */
-                table { width: 12in !important; max-width: 12in !important; border-collapse: collapse; margin-top: 15px; }
-                
+                table { border-collapse: collapse; margin-top: 15px; }
                 th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
                 th { background-color: #b4c6e7; text-align: center; font-weight: bold; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
         <body>
-            ${cleanHtml}
+            <div style="width: 12in;">
+                ${cleanHtml}
+            </div>
         </body> 
         </html>
     `;
