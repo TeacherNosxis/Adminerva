@@ -10,47 +10,49 @@
 </head>
 <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
 
-    <!-- GLOBAL NAVIGATION (LessonReview Theme) -->
-    <nav class="bg-gray-900 text-white shadow-md relative z-50">
-        <div class="max-w-screen-2xl mx-auto px-6 py-4 flex justify-between items-center">
+    <!-- GLOBAL NAVIGATION (Adminerva Theme) -->
+<nav class="bg-gray-900 text-white shadow-md relative z-50 border-b border-cyan-900">
+    <div class="max-w-screen-2xl mx-auto px-6 py-4 flex justify-between items-center">
+        
+        <!-- LEFT: The App Switcher Dropdown with Adminerva Logo -->
+        <div class="relative group cursor-pointer py-2">
+            <div class="flex items-center gap-3 text-xl font-bold text-cyan-400 hover:text-cyan-300 transition">
+                <!-- 🚀 NEW: Adminerva Logo -->
+                <img src="New Adminerva logo.jpg" alt="Adminerva Logo" class="h-9 w-9 rounded-full border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)] object-cover">
+                <span id="currentAppName" class="tracking-wide">ADMINERVA</span>
+                <span class="text-[10px] text-gray-400 ml-1">▼</span>
+            </div>
             
-            <!-- LEFT: The App Switcher Dropdown -->
-            <div class="relative group cursor-pointer py-2">
-                <div class="flex items-center gap-2 text-xl font-bold text-blue-400 hover:text-blue-300 transition">
-                    <span>📘</span> 
-                    <span id="currentAppName">LessonReview</span>
-                    <span class="text-[10px] text-gray-400">▼</span>
-                </div>
-                
-                <div class="absolute left-0 top-full pt-2 w-56 hidden group-hover:block z-[100]">
-                    <div class="bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden">
-                        <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Switch Workspace</div>
-                        <a href="index.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-purple-50 hover:text-purple-700 border-b border-gray-100 transition">
-                            ⚡ RepoReview System
-                        </a>
-                        <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition">
-                            📘 LessonReview
-                        </a>
-                    </div>
+            <!-- Dropdown Menu -->
+            <div class="absolute left-0 top-full pt-2 w-64 hidden group-hover:block z-[100]">
+                <div class="bg-white rounded-md shadow-2xl border border-gray-200 overflow-hidden">
+                    <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Adminerva Modules</div>
+                    <a href="index.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-cyan-50 hover:text-cyan-700 border-b border-gray-100 transition flex items-center gap-2">
+                        <span>💻</span> RepoReview System
+                    </a>
+                    <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-800 hover:bg-cyan-50 hover:text-cyan-700 transition flex items-center gap-2">
+                        <span>📘</span> Lesson Planner
+                    </a>
                 </div>
             </div>
-
-            <!-- CENTER: LessonReview Links -->
-            <div class="flex gap-6 text-sm font-semibold">
-                <a href="lesson-planner.html" class="text-gray-400 hover:text-white transition">AI Planner</a>
-                <a href="schedule.html" class="text-white border-b-2 border-blue-500 pb-1">Teacher's Schedule</a>
-                <a href="library.html" class="text-gray-400 hover:text-white transition">Reference Library</a>
-            </div>
-
-            <!-- RIGHT: Global Settings -->
-            <div>
-                <a href="settings.html" class="bg-gray-800 border border-gray-700 hover:bg-gray-700 px-3 py-1.5 rounded text-gray-300 hover:text-white transition flex items-center gap-2 font-semibold text-sm shadow-inner">
-                    <span>⚙️</span> Global Settings
-                </a>
-            </div>
-
         </div>
-    </nav>
+
+        <!-- CENTER: Module Links (Change these based on the active page) -->
+        <div class="flex gap-6 text-sm font-semibold">
+            <a href="lesson-planner.html" class="text-gray-400 hover:text-cyan-300 transition">AI Planner</a>
+            <a href="schedule.html" class="text-white border-b-2 border-cyan-500 pb-1 shadow-[0_2px_0_rgba(6,182,212,0.8)]">Teacher's Schedule</a>
+            <a href="library.html" class="text-gray-400 hover:text-cyan-300 transition">Reference Library</a>
+        </div>
+
+        <!-- RIGHT: Global Settings -->
+        <div>
+            <a href="settings.html" class="bg-gray-800 border border-gray-700 hover:border-cyan-600 px-4 py-2 rounded text-gray-300 hover:text-white hover:shadow-[0_0_10px_rgba(6,182,212,0.2)] transition flex items-center gap-2 font-semibold text-sm">
+                <span>⚙️</span> Global Settings
+            </a>
+        </div>
+
+    </div>
+</nav>
 
     <!-- Main Workspace -->
     <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col">
