@@ -215,20 +215,26 @@ window.saveAndPrint = async function() {
     }
 };
 
-window.exportToGoogleDocs = async function() {
+window.exportToGoogleDocs = function() { 
+    // Notice this function is NO LONGER async to prevent popup blocking
     if (typeof htmlDocx === 'undefined') return alert("The Document generator is still loading. Please wait.");
-    
-    const isReady = await window.buildDocumentLayout();
-    if (!isReady) return;
+    if (typeof google === 'undefined') return alert("Google scripts failed to load. Please refresh the page.");
 
-    // 1. Trigger Google Login
+    // 1. TRIGGER GOOGLE LOGIN IMMEDIATELY ON CLICK
     const tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: 'https://www.googleapis.com/auth/drive.file',
         callback: async (tokenResponse) => {
             if (tokenResponse.error !== undefined) return alert("Google Authentication failed.");
-            
             if (typeof window.showLoader === 'function') window.showLoader();
+            
+            // 2. BUILD THE LAYOUT AFTER SUCCESSFUL LOGIN
+            const isReady = await window.buildDocumentLayout();
+            if (!isReady) {
+                if (typeof window.hideLoader === 'function') window.hideLoader();
+                return;
+            }
+
             await processAndUploadToDrive(tokenResponse.access_token);
         },
     });
@@ -237,7 +243,6 @@ window.exportToGoogleDocs = async function() {
 };
 
 async function processAndUploadToDrive(accessToken) {
-    // 2. Generate EXACT formatting and filename
     const rawGrade = window.currentTargetGrade.replace(/\D/g, "") || "11";
     const rawSubject = localStorage.getItem('lessonReview_defaultSubject') || "Subject";
     const shortSubject = rawSubject.split(/\s+/).map(w => w.match(/\d+/) ? w : w.substring(0, 4)).join('').replace(/[^a-zA-Z0-9]/g, "");
@@ -250,8 +255,6 @@ async function processAndUploadToDrive(accessToken) {
     if(term.includes("FOURTH QUARTER")) qtrNum = "4";
 
     const anchoredWeek = document.getElementById('lpCourseWeek').value.replace(/\D/g, "");
-    
-    // Removed the .docx extension so it looks clean in Google Drive
     const filename = `${rawGrade}-Sem${semNum},Qtr${qtrNum},W${anchoredWeek}(${shortSubject})`;
 
     const printWrapper = document.getElementById('printDocumentWrapper');
@@ -279,29 +282,36 @@ async function processAndUploadToDrive(accessToken) {
         </html>
     `;
 
-    // 3. Generate the formatted file invisibly in the background
-    const blob = htmlDocx.asBlob(htmlContent, { orientation: 'landscape', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
+    // Generate binary DOCX blob
+    const docxBlob = htmlDocx.asBlob(htmlContent, { orientation: 'landscape', margins: { top: 720, right: 720, bottom: 720, left: 720 } });
 
-    // 4. Package the file for Google Drive API
-    const formData = new FormData();
-    
-    // Metadata tells Google to convert the incoming file natively into a Google Doc
-    formData.append('metadata', new Blob([JSON.stringify({
+    // 🚀 ASSEMBLE MULTIPART/RELATED PAYLOAD MANUALLY FOR GOOGLE DRIVE API
+    const metadata = {
         name: filename,
         mimeType: 'application/vnd.google-apps.document' 
-    })], { type: 'application/json' }));
-    
-    formData.append('file', blob);
+    };
 
-    // 5. Beam to the cloud
+    const boundary = '-------314159265358979323846';
+    const delimiter = "\r\n--" + boundary + "\r\n";
+    const close_delim = "\r\n--" + boundary + "--";
+
+    const multipartBody = new Blob([
+        delimiter,
+        'Content-Type: application/json\r\n\r\n',
+        JSON.stringify(metadata),
+        delimiter,
+        'Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n',
+        docxBlob,
+        close_delim
+    ], { type: `multipart/related; boundary=${boundary}` });
+
     try {
         const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`
-                // Note: Fetch auto-generates the correct multipart boundary headers for FormData
             },
-            body: formData
+            body: multipartBody
         });
 
         if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
@@ -309,7 +319,6 @@ async function processAndUploadToDrive(accessToken) {
         const result = await response.json();
         if (typeof window.hideLoader === 'function') window.hideLoader();
         
-        // 6. Open the finished Google Doc in a new tab
         window.open(`https://docs.google.com/document/d/${result.id}/edit`, '_blank');
         
     } catch (e) {
