@@ -258,13 +258,14 @@ async function processAndUploadToDrive(accessToken) {
     const printWrapper = document.getElementById('printDocumentWrapper');
     let cleanHtml = printWrapper.innerHTML;
     
-    // 1. Image Sizing
+    // 1. Force Image Sizing
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
     
-    // 🚀 CRITICAL FIX: Convert <th> to <td> so Google Docs DOES NOT pin the row to repeat
-    cleanHtml = cleanHtml.replace(/<th/gi, '<td').replace(/<\/th>/gi, '</td>');
+    // 🚀 CRITICAL FIX: Convert <th> to <td> so Google Docs DOES NOT repeat the row
+    // We inject inline bolding so it still looks like a header!
+    cleanHtml = cleanHtml.replace(/<th/gi, '<td style="font-weight: bold;"').replace(/<\/th>/gi, '</td>');
 
-    // 2. Send the pure HTML with CSS overriding the first row to look like a header
+    // 3. Send the pure HTML (No aggressive global CSS)
     const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -274,8 +275,6 @@ async function processAndUploadToDrive(accessToken) {
                 body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
                 table { border-collapse: collapse; margin-top: 15px; width: 100%; }
                 td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
-                /* Forces the top row to remain bold, centered, and blue without triggering the repeat bug */
-                tr:first-child td { background-color: #b4c6e7 !important; text-align: center !important; font-weight: bold !important; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
@@ -304,7 +303,6 @@ async function processAndUploadToDrive(accessToken) {
         close_delim;
 
     try {
-        // STEP 1: Upload HTML and generate the initial Google Doc
         const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
             method: 'POST',
             headers: {
@@ -315,17 +313,16 @@ async function processAndUploadToDrive(accessToken) {
         });
 
         if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
+        
         const result = await response.json();
         const docId = result.id;
 
-        // STEP 2: Instantly fetch the document layout to find the Tables
         const docResponse = await fetch(`https://docs.googleapis.com/v1/documents/${docId}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         const docData = await docResponse.json();
 
-        // Scan the document to record the exact starting location of all tables
         const tables = [];
         for (const element of docData.body.content) {
             if (element.table) {
@@ -333,7 +330,6 @@ async function processAndUploadToDrive(accessToken) {
             }
         }
 
-        // STEP 3: Force Landscape AND Stretch Columns Dynamically
         const requests = [
             {
                 updateDocumentStyle: {
@@ -351,7 +347,6 @@ async function processAndUploadToDrive(accessToken) {
 
         // Resize Main 7-Column Table
         if (tables.length > 0) {
-            // Updated column width distribution to reflect 30% experiences and 12% materials
             const mainWidths = [69, 155, 155, 51, 260, 104, 69]; 
             mainWidths.forEach((width, index) => {
                 requests.push({
@@ -380,7 +375,6 @@ async function processAndUploadToDrive(accessToken) {
             });
         }
 
-        // Execute the layout modifications
         await fetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
             method: 'POST',
             headers: {
@@ -391,8 +385,6 @@ async function processAndUploadToDrive(accessToken) {
         });
 
         if (typeof window.hideLoader === 'function') window.hideLoader();
-        
-        // Open the perfectly formatted Google Doc
         window.open(`https://docs.google.com/document/d/${docId}/edit`, '_blank');
         
     } catch (e) {
