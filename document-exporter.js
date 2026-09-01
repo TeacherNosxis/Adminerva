@@ -257,9 +257,14 @@ async function processAndUploadToDrive(accessToken) {
 
     const printWrapper = document.getElementById('printDocumentWrapper');
     let cleanHtml = printWrapper.innerHTML;
+    
+    // 1. Image Sizing
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
+    
+    // 🚀 CRITICAL FIX: Convert <th> to <td> so Google Docs DOES NOT pin the row to repeat
+    cleanHtml = cleanHtml.replace(/<th/gi, '<td').replace(/<\/th>/gi, '</td>');
 
-    // 1. Send the pure HTML. No fake widths or wrappers needed.
+    // 2. Send the pure HTML with CSS overriding the first row to look like a header
     const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -267,9 +272,10 @@ async function processAndUploadToDrive(accessToken) {
             <meta charset="utf-8">
             <style>
                 body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
-                table { border-collapse: collapse; margin-top: 15px; }
-                th, td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
-                th { background-color: #b4c6e7; text-align: center; font-weight: bold; }
+                table { border-collapse: collapse; margin-top: 15px; width: 100%; }
+                td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
+                /* Forces the top row to remain bold, centered, and blue without triggering the repeat bug */
+                tr:first-child td { background-color: #b4c6e7 !important; text-align: center !important; font-weight: bold !important; }
                 img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
@@ -343,9 +349,10 @@ async function processAndUploadToDrive(accessToken) {
             }
         ];
 
-        // Resize Main 7-Column Table (Total: 864 Points)
+        // Resize Main 7-Column Table
         if (tables.length > 0) {
-            const mainWidths = [69, 155, 155, 51, 296, 69, 69]; 
+            // Updated column width distribution to reflect 30% experiences and 12% materials
+            const mainWidths = [69, 155, 155, 51, 260, 104, 69]; 
             mainWidths.forEach((width, index) => {
                 requests.push({
                     updateTableColumnProperties: {
@@ -358,7 +365,7 @@ async function processAndUploadToDrive(accessToken) {
             });
         }
 
-        // Resize Signatories 4-Column Table (Total: 864 Points)
+        // Resize Signatories 4-Column Table
         if (tables.length > 1) {
             const sigWidths = [216, 216, 216, 216]; 
             sigWidths.forEach((width, index) => {
