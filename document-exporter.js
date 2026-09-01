@@ -261,11 +261,13 @@ async function processAndUploadToDrive(accessToken) {
     // 1. Force Image Sizing
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
     
-    // 🚀 CRITICAL FIX: Convert <th> to <td> so Google Docs DOES NOT repeat the row
-    // We inject inline bolding so it still looks like a header!
-    cleanHtml = cleanHtml.replace(/<th/gi, '<td style="font-weight: bold;"').replace(/<\/th>/gi, '</td>');
+    // 2. CLEAN TAG SWAP: Convert <th> to <td> without breaking the existing inline styles
+    cleanHtml = cleanHtml.replace(/<th\b/gi, '<td').replace(/<\/th>/gi, '</td>');
 
-    // 3. Send the pure HTML (No aggressive global CSS)
+    // 3. SMART INJECTION: Find the blue background cells and inject the bold font directly into them
+    cleanHtml = cleanHtml.replace(/#b4c6e7;/gi, '#b4c6e7; font-weight: bold;');
+
+    // 4. Send the pure HTML (No aggressive global CSS)
     const htmlContent = `
         <!DOCTYPE html>
         <html>
