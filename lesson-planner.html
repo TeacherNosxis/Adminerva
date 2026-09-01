@@ -304,32 +304,21 @@
     </div>
 
     <table class="print-table" style="width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
-        <!-- 🚀 CHANGED: Using tbody instead of thead to stop repeating headers -->
-        <tbody style="background-color: #b4c6e7; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+        <!-- Wrapper color removed to stop bleeding into the content -->
+        <tbody style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
             <tr>
-                <!-- Squeezed from 12% to 8% -->
-                <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center;">Content</th>
-                
-                <!-- Expanded from 15% to 18% -->
-                <th style="width: 18%; border: 1px solid #000; padding: 6px; text-align: center;">Learning Standards</th>
-                
-                <!-- Expanded from 15% to 18% -->
-                <th style="width: 18%; border: 1px solid #000; padding: 6px; text-align: center;">Learning Competencies</th>
-                
-                <!-- Squeezed from 8% to 6% -->
-                <th style="width: 6%; border: 1px solid #000; padding: 6px; text-align: center;">Time Frame</th>
-                
-                <!-- Expanded from 30% to 34% -->
-                <th style="width: 34%; border: 1px solid #000; padding: 6px; text-align: center;">
+                <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Content</th>
+                <th style="width: 18%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Learning Standards</th>
+                <th style="width: 18%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Learning Competencies</th>
+                <th style="width: 6%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Time Frame</th>
+                <!-- Shrunk to 30% -->
+                <th style="width: 30%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">
                     Learning Experiences & Activities<br>
                     <span id="printScopeHeader" style="font-weight: normal; font-size: 10pt;"></span>
                 </th>
-                
-                <!-- Squeezed from 10% to 8% -->
-                <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center;">Learning Materials &<br>Technology Integration</th>
-                
-                <!-- Squeezed from 10% to 8% -->
-                <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center;">Remarks and Interventions</th>
+                <!-- Expanded to 12% -->
+                <th style="width: 12%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Learning Materials &<br>Technology Integration</th>
+                <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Remarks and Interventions</th>
             </tr>
         </tbody>
         <tbody id="printTableBody">
