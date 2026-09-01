@@ -44,8 +44,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (scrollBtn && scrollIcon) {
         let isPointingUp = false;
 
-        window.addEventListener('scroll', () => {
-            const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+        // 1. Extract the math into a reusable function
+        const updateScrollState = () => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            
+            // Prevent division by zero errors if the page hasn't expanded yet
+            if (maxScroll <= 0) {
+                if (isPointingUp) {
+                    isPointingUp = false;
+                    scrollIcon.classList.remove('rotate-180');
+                    scrollBtn.title = "Scroll to Export Buttons";
+                }
+                return; 
+            }
+
+            const scrollPercent = (window.scrollY / maxScroll) * 100;
             
             if (scrollPercent >= 50 && !isPointingUp) {
                 isPointingUp = true;
@@ -56,8 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 scrollIcon.classList.remove('rotate-180');
                 scrollBtn.title = "Scroll to Export Buttons";
             }
-        });
+        };
 
+        // 2. Trigger on physical scroll
+        window.addEventListener('scroll', updateScrollState);
+
+        // 3. 🚀 CRITICAL FIX: Trigger instantly whenever the page height changes (e.g., loading a plan)
+        const resizeObserver = new ResizeObserver(() => updateScrollState());
+        resizeObserver.observe(document.body);
+
+        // 4. Click action
         scrollBtn.addEventListener('click', () => {
             window.scrollTo({ 
                 top: isPointingUp ? 0 : document.body.scrollHeight, 
@@ -66,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
 // ==========================================
 // 3. UI & CALENDAR HELPERS
 // ==========================================
