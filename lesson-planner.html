@@ -304,7 +304,8 @@
     </div>
 
     <table class="print-table" style="width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
-        <thead style="background-color: #b4c6e7; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+        <!-- 🚀 CHANGED: Using tbody instead of thead to stop repeating headers -->
+        <tbody style="background-color: #b4c6e7; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
             <tr>
                 <!-- Squeezed from 12% to 8% -->
                 <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center;">Content</th>
@@ -330,7 +331,7 @@
                 <!-- Squeezed from 10% to 8% -->
                 <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center;">Remarks and Interventions</th>
             </tr>
-        </thead>
+        </tbody>
         <tbody id="printTableBody">
             <!-- Dynamically populated via exportPDF() -->
         </tbody>

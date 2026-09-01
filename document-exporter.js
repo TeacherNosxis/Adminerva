@@ -256,7 +256,7 @@ async function processAndUploadToDrive(accessToken) {
     const filename = `${rawGrade}-Sem${semNum},Qtr${qtrNum},W${anchoredWeek}(${shortSubject})`;
 
     const printWrapper = document.getElementById('printDocumentWrapper');
-    let cleanHtml = printWrapper.innerHTML.replace(/<thead.*?>/gi, '').replace(/<\/thead>/gi, '');
+    let cleanHtml = printWrapper.innerHTML;
     cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
 
     // 1. Send the pure HTML. No fake widths or wrappers needed.
