@@ -110,7 +110,8 @@ window.buildDocumentLayout = async function() {
     window.currentPlan.forEach((session, index) => {
         const isFlex = session.session_name.toLowerCase().includes('flex');
         const isLab = session.session_name.includes("4-6");
-
+        const compText = isFlex ? '' : (session.competencies || ''); 
+        const objText = isFlex ? '' : window.formatListForPrint(session.objectives || 'N/A', true);
         const objText = window.formatListForPrint(session.objectives || 'N/A', true); 
         const matText = window.formatListForPrint(window.currentWeeklyOverview.materials || '', false); 
         const prelimText = window.formatListForPrint(session.preliminary || '', true);
@@ -122,7 +123,7 @@ window.buildDocumentLayout = async function() {
         parts.push({ time: '', content: `<div style="font-weight: bold;">${session.session_name}</div>` });
 
         if (isFlex) {
-            parts.push({ time: 'Async', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
+            parts.push({ time: '', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
         } else {
             // 🚀 REDISTRIBUTED LAB TIME LOGIC TO EQUAL 150 MINS
             parts.push({ time: isLab ? '10 mins' : '5 mins', content: `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>` });
@@ -175,12 +176,16 @@ window.buildDocumentLayout = async function() {
                     rowHtml += `<td rowspan="${rowCount}"></td><td rowspan="${rowCount}"></td>`;
                 }
 
-                rowHtml += `
-                    <td rowspan="${rowCount}" style="vertical-align: top;">
-                        <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
-                        <strong>Objectives:</strong><br>${objText}
-                    </td>
-                `;
+                // 🚀 NEW: Conditionally erase Competencies and Objectives for Flex sessions
+                if (isFlex) {
+                    rowHtml += `<td rowspan="${rowCount}"></td>`;
+                } else {
+                    rowHtml += 
+                        `<td rowspan="${rowCount}" style="vertical-align: top;">
+                            <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
+                            <strong>Objectives:</strong><br>${objText}
+                        </td>`;
+                }
 
                 rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
                 rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
@@ -347,9 +352,9 @@ async function processAndUploadToDrive(accessToken) {
             }
         ];
 
-        // Resize Main 7-Column Table
+        // Resize Main 7-Column Table (8%, 14%, 14%, 4%, 32%, 14%, 14%)
         if (tables.length > 0) {
-            const mainWidths = [69, 155, 155, 51, 260, 104, 69]; 
+            const mainWidths = [69, 121, 121, 35, 276, 121, 121]; 
             mainWidths.forEach((width, index) => {
                 requests.push({
                     updateTableColumnProperties: {
