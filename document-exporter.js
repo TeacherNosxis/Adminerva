@@ -112,7 +112,6 @@ window.buildDocumentLayout = async function() {
         const isLab = session.session_name.includes("4-6");
         const compText = isFlex ? '' : (session.competencies || ''); 
         const objText = isFlex ? '' : window.formatListForPrint(session.objectives || 'N/A', true);
-        const objText = window.formatListForPrint(session.objectives || 'N/A', true); 
         const matText = window.formatListForPrint(window.currentWeeklyOverview.materials || '', false); 
         const prelimText = window.formatListForPrint(session.preliminary || '', true);
         const activitiesText = window.formatListForPrint(session.learning_activities || '', true);
