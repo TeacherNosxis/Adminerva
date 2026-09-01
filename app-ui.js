@@ -34,46 +34,38 @@ window.bibleVerses = [
 // 2. INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-        const scrollBtn = document.getElementById('floatingScrollBtn');
-        const scrollIcon = document.getElementById('scrollIcon');
+    if(window.initFirebase) window.initFirebase();
+    window.generateRollingWeekDropdown();
+
+    // 🚀 DYNAMIC FLOATING SCROLL BUTTON LOGIC
+    const scrollBtn = document.getElementById('floatingScrollBtn');
+    const scrollIcon = document.getElementById('scrollIcon');
+    
+    if (scrollBtn && scrollIcon) {
         let isPointingUp = false;
 
-        // 1. Extract the math into a reusable function
-        const updateButtonState = () => {
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            
-            // Prevent division by zero errors on empty pages
-            if (maxScroll <= 0) return; 
-
-            const scrollPercent = (window.scrollY / maxScroll) * 100;
+        window.addEventListener('scroll', () => {
+            const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
             
             if (scrollPercent >= 50 && !isPointingUp) {
                 isPointingUp = true;
                 scrollIcon.classList.add('rotate-180');
                 scrollBtn.title = "Scroll to Top";
-            } 
-            else if (scrollPercent < 50 && isPointingUp) {
+            } else if (scrollPercent < 50 && isPointingUp) {
                 isPointingUp = false;
                 scrollIcon.classList.remove('rotate-180');
                 scrollBtn.title = "Scroll to Export Buttons";
             }
-        };
+        });
 
-        // 2. Trigger on physical scroll
-        window.addEventListener('scroll', updateButtonState);
-
-        // 3. Trigger instantly whenever the page height changes (e.g., loading a plan)
-        const resizeObserver = new ResizeObserver(() => updateButtonState());
-        resizeObserver.observe(document.body);
-
-        // 4. Click action
         scrollBtn.addEventListener('click', () => {
             window.scrollTo({ 
                 top: isPointingUp ? 0 : document.body.scrollHeight, 
                 behavior: 'smooth' 
             });
         });
-    });
+    }
+});
 
 // ==========================================
 // 3. UI & CALENDAR HELPERS
