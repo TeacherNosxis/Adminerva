@@ -108,98 +108,142 @@ window.buildDocumentLayout = async function() {
     tbody.innerHTML = ''; 
 
     window.currentPlan.forEach((session, index) => {
-        const isFlex = session.session_name.toLowerCase().includes('flex');
-        const isLab = session.session_name.includes("4-6");
-        const compText = isFlex ? '' : (session.competencies || ''); 
-        const objText = isFlex ? '' : window.formatListForPrint(session.objectives || 'N/A', true);
-        const matText = window.formatListForPrint(window.currentWeeklyOverview.materials || '', false); 
-        const prelimText = window.formatListForPrint(session.preliminary || '', true);
-        const activitiesText = window.formatListForPrint(session.learning_activities || '', true);
-        const cleanRemarks = String(session.remarks || '').replace(/\s*\|\s*/g, '<br>').replace(/;/g, '<br>').replace(/\\n|\n/g, '<br>');
+      const isFlex = session.session_name.toLowerCase().includes("flex");
+      const isLab = session.session_name.includes("4-6");
+      const compText = isFlex ? "" : session.competencies || "";
+      const objText = isFlex
+        ? ""
+        : window.formatListForPrint(session.objectives || "N/A", true);
+      const matText = window.formatListForPrint(
+        window.currentWeeklyOverview.materials || "",
+        false,
+      );
+      // 🚀 NEW: Regex to silently scrub AI time/label indicators like [10 mins], (15 mins), or [Prelims]
+      const timeScrubber =
+        /\s*[\(\[]\s*([A-Za-z\s\/]+)?\s*\d+\s*mins?\s*[\)\]]/gi;
+      const tagScrubber =
+        /\s*\[Prelims\]|\[Motivation\]|\[Activities\]|\[Evaluation\]|\[Closing\]/gi;
+      const prelimText = window.formatListForPrint(
+        session.preliminary || "",
+        true,
+      );
+      const activitiesText = window.formatListForPrint(
+        session.learning_activities || "",
+        true,
+      );
+      const cleanRemarks = String(session.remarks || "")
+        .replace(/\s*\|\s*/g, "<br>")
+        .replace(/;/g, "<br>")
+        .replace(/\\n|\n/g, "<br>");
 
-        // 1. Break the session into sequential row parts
-        let parts = [];
-        parts.push({ time: '', content: `<div style="font-weight: bold;">${session.session_name}</div>` });
+      // 1. Break the session into sequential row parts
+      let parts = [];
+      parts.push({
+        time: "",
+        content: `<div style="font-weight: bold;">${session.session_name}</div>`,
+      });
 
-        if (isFlex) {
-            parts.push({ time: '', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
-        } else {
-            // 🚀 REDISTRIBUTED LAB TIME LOGIC TO EQUAL 150 MINS
-            parts.push({ time: isLab ? '10 mins' : '5 mins', content: `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>` });
-            parts.push({ time: isLab ? '10 mins' : '5 mins', content: `<strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ''}</div>` });
-            parts.push({ time: isLab ? '110 mins' : '26 mins', content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>` });
-            parts.push({ time: isLab ? '15 mins' : '10 mins', content: `<strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ''}</div>` });
-            
-            if (session.closing) {
-                parts.push({ time: isLab ? '5 mins' : '4 mins', content: `<strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ''}</div>` });
-            }
-            if (session.values_integration) {
-                parts.push({ time: '', content: `<strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ''}</div>` });
-            }
+      if (isFlex) {
+        parts.push({
+          time: "",
+          content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`,
+        });
+      } else {
+        // 🚀 REDISTRIBUTED LAB TIME LOGIC TO EQUAL 150 MINS
+        parts.push({
+          time: isLab ? "10 mins" : "5 mins",
+          content: `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>`,
+        });
+        parts.push({
+          time: isLab ? "10 mins" : "5 mins",
+          content: `<strong>Motivation / Recall:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.motivation || ""}</div>`,
+        });
+        parts.push({
+          time: isLab ? "110 mins" : "26 mins",
+          content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`,
+        });
+        parts.push({
+          time: isLab ? "15 mins" : "10 mins",
+          content: `<strong>Evaluation:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.evaluation || ""}</div>`,
+        });
+
+        if (session.closing) {
+          parts.push({
+            time: isLab ? "5 mins" : "4 mins",
+            content: `<strong>Closing Activities:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.closing || ""}</div>`,
+          });
+        }
+        if (session.values_integration) {
+          parts.push({
+            time: "",
+            content: `<strong>Values Integration:</strong><br><div style="padding-left: 8px; white-space: pre-wrap;">${session.values_integration || ""}</div>`,
+          });
+        }
+      }
+
+      const rowCount = parts.length;
+
+      // 2. Loop through parts and assign native HTML rows with border erasure
+      parts.forEach((part, pIndex) => {
+        const tr = document.createElement("tr");
+        let rowHtml = "";
+
+        const isFirst = pIndex === 0;
+        const isLast = pIndex === rowCount - 1;
+
+        // 🚀 INLINE CSS TO REMOVE HORIZONTAL BORDERS BETWEEN SUB-ROWS
+        let timeStyle =
+          "text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;";
+        let contentStyle =
+          "vertical-align: top; font-size: 10pt; padding: 6px;";
+
+        if (!isFirst) {
+          timeStyle += " border-top: none !important;";
+          contentStyle += " border-top: none !important;";
+        }
+        if (!isLast) {
+          timeStyle += " border-bottom: none !important;";
+          contentStyle += " border-bottom: none !important;";
         }
 
-        const rowCount = parts.length;
-
-        // 2. Loop through parts and assign native HTML rows with border erasure
-        parts.forEach((part, pIndex) => {
-            const tr = document.createElement('tr');
-            let rowHtml = '';
-            
-            const isFirst = pIndex === 0;
-            const isLast = pIndex === rowCount - 1;
-
-            // 🚀 INLINE CSS TO REMOVE HORIZONTAL BORDERS BETWEEN SUB-ROWS
-            let timeStyle = "text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;";
-            let contentStyle = "vertical-align: top; font-size: 10pt; padding: 6px;";
-
-            if (!isFirst) {
-                timeStyle += " border-top: none !important;";
-                contentStyle += " border-top: none !important;";
-            }
-            if (!isLast) {
-                timeStyle += " border-bottom: none !important;";
-                contentStyle += " border-bottom: none !important;";
-            }
-
-            if (pIndex === 0) {
-                if (index === 0) {
-                    rowHtml += `
-                        <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">${window.currentWeeklyOverview.topic || ''}</td>
+        if (pIndex === 0) {
+          if (index === 0) {
+            rowHtml += `
+                        <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">${window.currentWeeklyOverview.topic || ""}</td>
                         <td rowspan="${rowCount}" style="vertical-align: top;">
-                            <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ''}<br><br>
-                            <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ''}<br><br>
-                            <strong>Formation Standard:</strong><br>${window.currentWeeklyOverview.formation_standard || ''}
+                            <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
+                            <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
+                            <strong>Formation Standard:</strong><br>${window.currentWeeklyOverview.formation_standard || ""}
                         </td>
                     `;
-                } else {
-                    rowHtml += `<td rowspan="${rowCount}"></td><td rowspan="${rowCount}"></td>`;
-                }
+          } else {
+            rowHtml += `<td rowspan="${rowCount}"></td><td rowspan="${rowCount}"></td>`;
+          }
 
-                // 🚀 NEW: Conditionally erase Competencies and Objectives for Flex sessions
-                if (isFlex) {
-                    rowHtml += `<td rowspan="${rowCount}"></td>`;
-                } else {
-                    rowHtml += 
-                        `<td rowspan="${rowCount}" style="vertical-align: top;">
-                            <strong>Competencies:</strong><br>${session.competencies || 'N/A'}<br><br>
+          // 🚀 NEW: Conditionally erase Competencies and Objectives for Flex sessions
+          if (isFlex) {
+            rowHtml += `<td rowspan="${rowCount}"></td>`;
+          } else {
+            rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">
+                            <strong>Competencies:</strong><br>${session.competencies || "N/A"}<br><br>
                             <strong>Objectives:</strong><br>${objText}
                         </td>`;
-                }
+          }
 
-                rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
-                rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
+          rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
+          rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
 
-                rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${matText}</td>`;
-                rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${cleanRemarks}</td>`;
-            } else {
-                rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
-                rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
-            }
+          rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${matText}</td>`;
+          rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${cleanRemarks}</td>`;
+        } else {
+          rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
+          rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
+        }
 
-            tr.innerHTML = rowHtml;
-            tbody.appendChild(tr);
-        });
-    });
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+      });
+    };);
 
     return true;
 };
