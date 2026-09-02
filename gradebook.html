@@ -1,83 +1,152 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RepoReview - Gradebook Matrix</title>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
-
+  </head>
+  <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     <div id="adminerva-nav" data-module="repo" data-page="gradebook"></div>
-<script src="adminerva-nav.js"></script>
+    <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Workspace -->
     <div class="max-w-screen-xl mx-auto w-full p-6 mt-4 flex-1">
-        <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-            
-            <div class="flex justify-between items-end mb-6 pb-4 border-b border-gray-200">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Sprint Gradebook</h2>
-                    <p class="text-sm text-gray-500 mt-1">View monthly matrices and export raw data for research analysis.</p>
-                </div>
-                <button onclick="exportToCsv()" id="exportCsvBtn" class="hidden bg-green-600 text-white px-5 py-2 rounded font-bold hover:bg-green-700 transition shadow flex items-center gap-2">
-                    <span>📥</span> Export to CSV
-                </button>
-            </div>
-            
-            <!-- Filters -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Class Section</label>
-                    <select id="sectionSelect" class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"></select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Year</label>
-                    <select id="yearSelect" class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"></select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Month</label>
-                    <select id="monthSelect" class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white">
-                        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
-                        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
-                        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
-                        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
-                    </select>
-                </div>
-                <div>
-                    <button onclick="fetchGradebook()" class="w-full bg-blue-600 text-white px-6 py-2.5 rounded font-bold hover:bg-blue-700 shadow-sm transition">
-                        Load Matrix
-                    </button>
-                </div>
-            </div>
-
-            <!-- Gradebook Matrix -->
-            <div class="mt-8 overflow-x-auto border rounded-lg shadow-sm">
-                <table class="min-w-full bg-white">
-                    <thead class="bg-gray-100 border-b-2 border-gray-200">
-                        <tr>
-                            <th class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase w-1/4">Student</th>
-                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase">Week 1</th>
-                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase">Week 2</th>
-                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase">Week 3</th>
-                            <th class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase">Week 4</th>
-                            <th class="py-3 px-4 text-center text-xs font-extrabold text-gray-800 uppercase bg-gray-200 border-l border-gray-300">Sprint Avg</th>
-                        </tr>
-                    </thead>
-                    <tbody id="gradebookTableBody">
-                        <tr><td colspan="6" class="py-8 text-center text-gray-400 italic">Select a section and load the matrix.</td></tr>
-                    </tbody>
-                </table>
-            </div>
+      <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <div
+          class="flex justify-between items-end mb-6 pb-4 border-b border-gray-200"
+        >
+          <div>
+            <h2 class="text-2xl font-bold text-gray-800">Sprint Gradebook</h2>
+            <p class="text-sm text-gray-500 mt-1">
+              View monthly matrices and export raw data for research analysis.
+            </p>
+          </div>
+          <button
+            onclick="exportToCsv()"
+            id="exportCsvBtn"
+            class="hidden bg-green-600 text-white px-5 py-2 rounded font-bold hover:bg-green-700 transition shadow flex items-center gap-2"
+          >
+            <span>📥</span> Export to CSV
+          </button>
         </div>
+
+        <!-- Filters -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border border-gray-200"
+        >
+          <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+              >Class Section</label
+            >
+            <select
+              id="sectionSelect"
+              class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"
+            ></select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+              >Year</label
+            >
+            <select
+              id="yearSelect"
+              class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"
+            ></select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+              >Month</label
+            >
+            <select
+              id="monthSelect"
+              class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"
+            >
+              <option value="0">January</option>
+              <option value="1">February</option>
+              <option value="2">March</option>
+              <option value="3">April</option>
+              <option value="4">May</option>
+              <option value="5">June</option>
+              <option value="6">July</option>
+              <option value="7">August</option>
+              <option value="8">September</option>
+              <option value="9">October</option>
+              <option value="10">November</option>
+              <option value="11">December</option>
+            </select>
+          </div>
+          <div>
+            <button
+              onclick="fetchGradebook()"
+              class="w-full bg-blue-600 text-white px-6 py-2.5 rounded font-bold hover:bg-blue-700 shadow-sm transition"
+            >
+              Load Matrix
+            </button>
+          </div>
+        </div>
+
+        <!-- Gradebook Matrix -->
+        <div class="mt-8 overflow-x-auto border rounded-lg shadow-sm">
+          <table class="min-w-full bg-white">
+            <thead class="bg-gray-100 border-b-2 border-gray-200">
+              <tr>
+                <th
+                  class="py-3 px-4 text-left text-xs font-bold text-gray-600 uppercase w-1/4"
+                >
+                  Student
+                </th>
+                <th
+                  class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Week 1
+                </th>
+                <th
+                  class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Week 2
+                </th>
+                <th
+                  class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Week 3
+                </th>
+                <th
+                  class="py-3 px-2 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Week 4
+                </th>
+                <th
+                  class="py-3 px-4 text-center text-xs font-extrabold text-gray-800 uppercase bg-gray-200 border-l border-gray-300"
+                >
+                  Sprint Avg
+                </th>
+              </tr>
+            </thead>
+            <tbody id="gradebookTableBody">
+              <tr>
+                <td colspan="6" class="py-8 text-center text-gray-400 italic">
+                  Select a section and load the matrix.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- GLOBAL LOADING OVERLAY -->
-    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"></div>
-        <p class="text-white font-bold text-xl tracking-wider mb-2">Compiling Data...</p>
+    <div
+      id="globalLoader"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col"
+    >
+      <div
+        class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"
+      ></div>
+      <p class="text-white font-bold text-xl tracking-wider mb-2">
+        Compiling Data...
+      </p>
     </div>
 
-    <script type="module" src="gradebook.js"></script>
-</body>
+    <script type="module" src="js/repo-review/gradebook.js"></script>
+  </body>
 </html>

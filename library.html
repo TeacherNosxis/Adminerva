@@ -1,84 +1,137 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LessonReview - Reference Library</title>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 font-sans min-h-screen flex flex-col">
-
+  </head>
+  <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
     <div id="adminerva-nav" data-module="lesson" data-page="library"></div>
-<script src="adminerva-nav.js"></script>
+    <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Workspace -->
-    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col lg:flex-row gap-6">
-        
-        <!-- LEFT COLUMN: Folder Directory -->
-        <div class="w-full lg:w-1/4 bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-            <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Curriculum Folders</h2>
-            
-            <!-- Add Folder -->
-            <div class="flex gap-2 mb-6">
-                <input type="text" id="newFolderInput" placeholder="e.g. Q1: Programming" class="w-full p-2 border rounded text-sm focus:ring-blue-500 bg-gray-50">
-                <button onclick="createFolder()" class="bg-gray-800 text-white px-3 py-2 rounded font-bold hover:bg-gray-700 transition text-sm">Add</button>
-            </div>
+    <div
+      class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col lg:flex-row gap-6"
+    >
+      <!-- LEFT COLUMN: Folder Directory -->
+      <div
+        class="w-full lg:w-1/4 bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col"
+      >
+        <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
+          Curriculum Folders
+        </h2>
 
-            <!-- Folder List -->
-            <div id="folderList" class="flex-1 overflow-y-auto space-y-2">
-                <!-- Dynamically injected folders -->
-            </div>
+        <!-- Add Folder -->
+        <div class="flex gap-2 mb-6">
+          <input
+            type="text"
+            id="newFolderInput"
+            placeholder="e.g. Q1: Programming"
+            class="w-full p-2 border rounded text-sm focus:ring-blue-500 bg-gray-50"
+          />
+          <button
+            onclick="createFolder()"
+            class="bg-gray-800 text-white px-3 py-2 rounded font-bold hover:bg-gray-700 transition text-sm"
+          >
+            Add
+          </button>
         </div>
 
-        <!-- RIGHT COLUMN: AI Ingestion Engine -->
-        <div class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-            
-            <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
-                <div>
-                    <h2 id="activeFolderTitle" class="text-2xl font-bold text-blue-900">Select a Folder</h2>
-                    <p class="text-sm text-gray-500 mt-1">Upload a PDF to extract its semantic text and save it to this directory.</p>
-                </div>
-            </div>
-
-            <!-- Upload Engine (Hidden until folder is selected) -->
-            <div id="uploadWorkspace" class="p-6 hidden flex-col gap-6">
-                
-                <div class="p-6 border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg text-center flex flex-col items-center justify-center">
-                    <span class="text-4xl mb-3">📄</span>
-                    <h3 class="font-extrabold text-blue-800 text-lg">AI PDF Ingestion</h3>
-                    <p class="text-sm text-gray-600 mb-4">The AI will read your PDF, discard the heavy formatting, and save only the pure educational text.</p>
-                    
-                    <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="extractPDF()">
-                    <button onclick="document.getElementById('pdfFileInput').click()" class="bg-blue-600 text-white font-bold py-2 px-6 rounded hover:bg-blue-700 transition shadow-md flex items-center gap-2">
-                        <span>🚀</span> Select PDF & Extract
-                    </button>
-                </div>
-
-                <!-- Document List for Active Folder -->
-                <div>
-                    <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider border-b pb-2 mb-4">Saved Documents in Folder</h3>
-                    <div id="documentList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Extracted text snippets injected here -->
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Blank State -->
-            <div id="blankWorkspace" class="p-6 flex-1 flex items-center justify-center text-gray-400 italic">
-                Create or select a folder on the left to begin uploading documents.
-            </div>
-
+        <!-- Folder List -->
+        <div id="folderList" class="flex-1 overflow-y-auto space-y-2">
+          <!-- Dynamically injected folders -->
         </div>
+      </div>
+
+      <!-- RIGHT COLUMN: AI Ingestion Engine -->
+      <div
+        class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col"
+      >
+        <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
+          <div>
+            <h2 id="activeFolderTitle" class="text-2xl font-bold text-blue-900">
+              Select a Folder
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">
+              Upload a PDF to extract its semantic text and save it to this
+              directory.
+            </p>
+          </div>
+        </div>
+
+        <!-- Upload Engine (Hidden until folder is selected) -->
+        <div id="uploadWorkspace" class="p-6 hidden flex-col gap-6">
+          <div
+            class="p-6 border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg text-center flex flex-col items-center justify-center"
+          >
+            <span class="text-4xl mb-3">📄</span>
+            <h3 class="font-extrabold text-blue-800 text-lg">
+              AI PDF Ingestion
+            </h3>
+            <p class="text-sm text-gray-600 mb-4">
+              The AI will read your PDF, discard the heavy formatting, and save
+              only the pure educational text.
+            </p>
+
+            <input
+              type="file"
+              id="pdfFileInput"
+              accept="application/pdf"
+              class="hidden"
+              onchange="extractPDF()"
+            />
+            <button
+              onclick="document.getElementById('pdfFileInput').click()"
+              class="bg-blue-600 text-white font-bold py-2 px-6 rounded hover:bg-blue-700 transition shadow-md flex items-center gap-2"
+            >
+              <span>🚀</span> Select PDF & Extract
+            </button>
+          </div>
+
+          <!-- Document List for Active Folder -->
+          <div>
+            <h3
+              class="text-sm font-bold text-gray-500 uppercase tracking-wider border-b pb-2 mb-4"
+            >
+              Saved Documents in Folder
+            </h3>
+            <div
+              id="documentList"
+              class="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
+              <!-- Extracted text snippets injected here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Blank State -->
+        <div
+          id="blankWorkspace"
+          class="p-6 flex-1 flex items-center justify-center text-gray-400 italic"
+        >
+          Create or select a folder on the left to begin uploading documents.
+        </div>
+      </div>
     </div>
 
     <!-- GLOBAL LOADING OVERLAY FOR EXTRACTION -->
-    <div id="extractionLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"></div>
-        <p class="text-white font-bold text-xl tracking-wider mb-2">Extracting PDF Data...</p>
-        <p class="text-blue-300 text-sm font-semibold text-center px-6">The AI is currently reading the document and cleaning the text.<br>Please do not close this window.</p>
+    <div
+      id="extractionLoader"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col"
+    >
+      <div
+        class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"
+      ></div>
+      <p class="text-white font-bold text-xl tracking-wider mb-2">
+        Extracting PDF Data...
+      </p>
+      <p class="text-blue-300 text-sm font-semibold text-center px-6">
+        The AI is currently reading the document and cleaning the text.<br />Please
+        do not close this window.
+      </p>
     </div>
 
-    <script type="module" src="library.js?v=1"></script>
-</body>
+    <script type="module" src="js/lesson-review/library.js?v=1"></script>
+  </body>
 </html>

@@ -1,82 +1,142 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RepoReview - Analytics Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
-
+  </head>
+  <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     <div id="adminerva-nav" data-module="repo" data-page="dashboard"></div>
-<script src="adminerva-nav.js"></script>
+    <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Workspace -->
-    <div class="max-w-screen-xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col gap-6">
-        
-        <!-- Header & Section Filter -->
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-800">Command Center</h2>
-                <p class="text-sm text-gray-500 mt-1">High-level metrics and iterative velocity tracking.</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <label class="text-sm font-bold text-gray-700 uppercase">Class Section:</label>
-                <select id="sectionSelect" onchange="loadDashboardData()" class="p-2 border rounded font-semibold focus:ring-purple-500 bg-gray-50 min-w-[200px]"></select>
-            </div>
+    <div
+      class="max-w-screen-xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col gap-6"
+    >
+      <!-- Header & Section Filter -->
+      <div
+        class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center"
+      >
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800">Command Center</h2>
+          <p class="text-sm text-gray-500 mt-1">
+            High-level metrics and iterative velocity tracking.
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-sm font-bold text-gray-700 uppercase"
+            >Class Section:</label
+          >
+          <select
+            id="sectionSelect"
+            onchange="loadDashboardData()"
+            class="p-2 border rounded font-semibold focus:ring-purple-500 bg-gray-50 min-w-[200px]"
+          ></select>
+        </div>
+      </div>
+
+      <!-- High-Level Stat Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div
+          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500"
+        >
+          <h3
+            class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+          >
+            Total Students
+          </h3>
+          <div class="text-4xl font-extrabold text-gray-800" id="statStudents">
+            0
+          </div>
+        </div>
+        <div
+          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500"
+        >
+          <h3
+            class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+          >
+            Grades Processed
+          </h3>
+          <div class="text-4xl font-extrabold text-gray-800" id="statGrades">
+            0
+          </div>
+        </div>
+        <div
+          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500"
+        >
+          <h3
+            class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+          >
+            Comments Published
+          </h3>
+          <div class="text-4xl font-extrabold text-gray-800" id="statComments">
+            0
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts & Insights -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        <!-- Velocity Chart -->
+        <div
+          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-2 flex flex-col"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-gray-800">
+              30-Day Commit Velocity
+            </h3>
+            <span
+              class="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded"
+              >Workflow Tracking</span
+            >
+          </div>
+          <div class="flex-1 relative min-h-[300px]">
+            <canvas id="velocityChart"></canvas>
+          </div>
+          <p class="text-[10px] text-gray-400 mt-3 text-center">
+            Spikes at the end of the month indicate cramming. A smooth curve
+            indicates consistent iterative development.
+          </p>
         </div>
 
-        <!-- High-Level Stat Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Students</h3>
-                <div class="text-4xl font-extrabold text-gray-800" id="statStudents">0</div>
+        <!-- Rubric Insights -->
+        <div
+          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col"
+        >
+          <h3 class="text-lg font-bold text-gray-800 mb-1">
+            Struggling Criteria
+          </h3>
+          <p class="text-xs text-gray-500 mb-4 pb-3 border-b">
+            Class average performance per rubric item.
+          </p>
+          <div id="criteriaList" class="space-y-4 overflow-y-auto flex-1">
+            <div class="text-center text-sm text-gray-400 italic mt-8">
+              Loading insights...
             </div>
-            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Grades Processed</h3>
-                <div class="text-4xl font-extrabold text-gray-800" id="statGrades">0</div>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Comments Published</h3>
-                <div class="text-4xl font-extrabold text-gray-800" id="statComments">0</div>
-            </div>
+          </div>
         </div>
-
-        <!-- Charts & Insights -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-            
-            <!-- Velocity Chart -->
-            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-2 flex flex-col">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">30-Day Commit Velocity</h3>
-                    <span class="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded">Workflow Tracking</span>
-                </div>
-                <div class="flex-1 relative min-h-[300px]">
-                    <canvas id="velocityChart"></canvas>
-                </div>
-                <p class="text-[10px] text-gray-400 mt-3 text-center">Spikes at the end of the month indicate cramming. A smooth curve indicates consistent iterative development.</p>
-            </div>
-
-            <!-- Rubric Insights -->
-            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                <h3 class="text-lg font-bold text-gray-800 mb-1">Struggling Criteria</h3>
-                <p class="text-xs text-gray-500 mb-4 pb-3 border-b">Class average performance per rubric item.</p>
-                <div id="criteriaList" class="space-y-4 overflow-y-auto flex-1">
-                    <div class="text-center text-sm text-gray-400 italic mt-8">Loading insights...</div>
-                </div>
-            </div>
-            
-        </div>
+      </div>
     </div>
 
     <!-- GLOBAL LOADING OVERLAY -->
-    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"></div>
-        <p class="text-white font-bold text-xl tracking-wider mb-2" id="loaderMessage">Aggregating Analytics...</p>
+    <div
+      id="globalLoader"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col"
+    >
+      <div
+        class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"
+      ></div>
+      <p
+        class="text-white font-bold text-xl tracking-wider mb-2"
+        id="loaderMessage"
+      >
+        Aggregating Analytics...
+      </p>
     </div>
 
-    <script type="module" src="dashboard.js"></script>
-</body>
+    <script type="module" src="js/repo-review/dashboard.js"></script>
+  </body>
 </html>

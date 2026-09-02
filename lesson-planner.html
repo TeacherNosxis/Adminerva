@@ -1,373 +1,761 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LessonReview - AI Curriculum Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-/* HIDE PRINT WRAPPER ON THE COMPUTER SCREEN */
-@media screen {
-    #printDocumentWrapper {
-        display: none !important;
-    }
-}
+      /* HIDE PRINT WRAPPER ON THE COMPUTER SCREEN */
+      @media screen {
+        #printDocumentWrapper {
+          display: none !important;
+        }
+      }
 
-/* SHOW PRINT WRAPPER AND HIDE APP UI ON THE PRINTER */
-@media print {
-    /* 1. CLEANLY HIDE ALL WEB UI ELEMENTS */
-    body > nav, 
-    #adminerva-nav,
-    body > div.max-w-screen-2xl, 
-    body > #globalLoader, 
-    body > #aiClarificationModal, 
-    body > #loadPlanModal {
-        display: none !important;
-    }
+      /* SHOW PRINT WRAPPER AND HIDE APP UI ON THE PRINTER */
+      @media print {
+        /* 1. CLEANLY HIDE ALL WEB UI ELEMENTS */
+        body > nav,
+        #adminerva-nav,
+        body > div.max-w-screen-2xl,
+        body > #globalLoader,
+        body > #aiClarificationModal,
+        body > #loadPlanModal {
+          display: none !important;
+        }
 
-    /* 2. RESTORE PROPER DOCUMENT FLOW FOR PRINT WRAPPER */
-    #printDocumentWrapper {
-        display: block !important;
-        position: relative !important;
-        width: 100% !important;
-        background: white !important;
-    }
+        /* 2. RESTORE PROPER DOCUMENT FLOW FOR PRINT WRAPPER */
+        #printDocumentWrapper {
+          display: block !important;
+          position: relative !important;
+          width: 100% !important;
+          background: white !important;
+        }
 
-    /* FORCE GLOBAL ARIAL NARROW & FONT SIZE */
-    #printDocumentWrapper, #printDocumentWrapper * {
-        visibility: visible !important;
-        font-family: "Arial Narrow", Arial, sans-serif !important;
-    }
+        /* FORCE GLOBAL ARIAL NARROW & FONT SIZE */
+        #printDocumentWrapper,
+        #printDocumentWrapper * {
+          visibility: visible !important;
+          font-family: "Arial Narrow", Arial, sans-serif !important;
+        }
 
-    /* 3. FORCE TABLE LINES AND PADDING */
-    .print-table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        margin-top: 10px !important;
-    }
-    .print-table th, .print-table td {
-        border: 1px solid #000000 !important;
-        padding: 6px 8px !important;
-        vertical-align: top !important;
-        text-align: left;
-        font-size: 10pt !important; /* Force 10pt size */
-    }
-    .print-table th {
-        text-align: center !important;
-        background-color: #b4c6e7 !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
+        /* 3. FORCE TABLE LINES AND PADDING */
+        .print-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          margin-top: 10px !important;
+        }
+        .print-table th,
+        .print-table td {
+          border: 1px solid #000000 !important;
+          padding: 6px 8px !important;
+          vertical-align: top !important;
+          text-align: left;
+          font-size: 10pt !important; /* Force 10pt size */
+        }
+        .print-table th {
+          text-align: center !important;
+          background-color: #b4c6e7 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
 
-    /* 4. FIX THE MASSIVE PAGE GAP (Allow rows to split across pages naturally) */
-    .print-table tr {
-        page-break-inside: auto !important;
-        break-inside: auto !important;
-    }
-    
-    /* 5. STOP HEADERS FROM REPEATING ON EVERY PAGE */
-    .print-table thead {
-        display: table-row-group !important;
-    }
+        /* 4. FIX THE MASSIVE PAGE GAP (Allow rows to split across pages naturally) */
+        .print-table tr {
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
 
-    /* 6. TIGHTEN TOP HEADER TEXT SPACING */
-    #printDocumentWrapper h2, 
-    #printDocumentWrapper p {
-        margin: 0 !important;
-        padding: 0 !important;
-        line-height: 1.2 !important;
-    }
-}
+        /* 5. STOP HEADERS FROM REPEATING ON EVERY PAGE */
+        .print-table thead {
+          display: table-row-group !important;
+        }
 
-/* Hide the print wrapper from the normal screen */
-#printDocumentWrapper { display: none; }
-</style>
-</head>
-<body class="bg-gray-50 font-sans min-h-screen flex flex-col">
+        /* 6. TIGHTEN TOP HEADER TEXT SPACING */
+        #printDocumentWrapper h2,
+        #printDocumentWrapper p {
+          margin: 0 !important;
+          padding: 0 !important;
+          line-height: 1.2 !important;
+        }
+      }
 
+      /* Hide the print wrapper from the normal screen */
+      #printDocumentWrapper {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
     <div id="adminerva-nav" data-module="lesson" data-page="planner"></div>
-<script src="adminerva-nav.js"></script>
+    <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Workspace (Full Width Stack) -->
-    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-2 flex-1 flex flex-col gap-6">
-        
-        <!-- TOP SECTION: Configuration Banner (Full Width) -->
-        <div class="w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Lesson Configuration</h2>
-            
-            <!-- NEW STREAMLINED 5-COLUMN GRID -->
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                
-                <!-- 1. School Year (Kept for AI/Printing) -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">School Year</label>
-                    <input type="text" id="lpSchoolYear" value="2026-2027" class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500">
-                </div>
+    <div
+      class="max-w-screen-2xl mx-auto w-full p-6 mt-2 flex-1 flex flex-col gap-6"
+    >
+      <!-- TOP SECTION: Configuration Banner (Full Width) -->
+      <div
+        class="w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200"
+      >
+        <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
+          Lesson Configuration
+        </h2>
 
-                <!-- 2. Target Grade (Kept for AI/Printing) -->
-                <div>
-                    <label class="block text-xs font-bold text-blue-700 uppercase mb-1">Target Grade</label>
-                    <select id="lpGradeLevel" class="w-full p-2 border rounded text-sm bg-blue-50 border-blue-200 focus:ring-blue-500 shadow-sm font-bold">
-                        <option value="Grade 11">Grade 11 (5 Sessions)</option>
-                        <option value="Grade 12">Grade 12 (4 Sessions)</option>
-                    </select>
-                </div>
+        <!-- NEW STREAMLINED 5-COLUMN GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+          <!-- 1. School Year (Kept for AI/Printing) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+              >School Year</label
+            >
+            <input
+              type="text"
+              id="lpSchoolYear"
+              value="2026-2027"
+              class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+            />
+          </div>
 
-                <!-- 3. Academic Term (Combined) -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Academic Term</label>
-                    <select id="lpAcademicTerm" class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm">
-                        <option value="FIRST SEMESTER/FIRST QUARTER">FIRST SEMESTER/FIRST QUARTER</option>
-                        <option value="FIRST SEMESTER/SECOND QUARTER">FIRST SEMESTER/SECOND QUARTER</option>
-                        <option value="SECOND SEMESTER/THIRD QUARTER">SECOND SEMESTER/THIRD QUARTER</option>
-                        <option value="SECOND SEMESTER/FOURTH QUARTER">SECOND SEMESTER/FOURTH QUARTER</option>
-                    </select>
-                </div>
+          <!-- 2. Target Grade (Kept for AI/Printing) -->
+          <div>
+            <label class="block text-xs font-bold text-blue-700 uppercase mb-1"
+              >Target Grade</label
+            >
+            <select
+              id="lpGradeLevel"
+              class="w-full p-2 border rounded text-sm bg-blue-50 border-blue-200 focus:ring-blue-500 shadow-sm font-bold"
+            >
+              <option value="Grade 11">Grade 11 (5 Sessions)</option>
+              <option value="Grade 12">Grade 12 (4 Sessions)</option>
+            </select>
+          </div>
 
-                <!-- 4. Course Week (Absolute Anchor) -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Course Week</label>
-                    <select id="lpCourseWeek" class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm">
-                        <option value="Week 1">Week 1</option>
-                        <option value="Week 2">Week 2</option>
-                        <option value="Week 3">Week 3</option>
-                        <option value="Week 4">Week 4</option>
-                        <option value="Week 5">Week 5</option>
-                        <option value="Week 6">Week 6</option>
-                        <option value="Week 7">Week 7</option>
-                        <option value="Week 8">Week 8</option>
-                        <option value="Week 9">Week 9</option>
-                        <option value="Week 10">Week 10</option>
-                    </select>
-                </div>
+          <!-- 3. Academic Term (Combined) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+              >Academic Term</label
+            >
+            <select
+              id="lpAcademicTerm"
+              class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+            >
+              <option value="FIRST SEMESTER/FIRST QUARTER">
+                FIRST SEMESTER/FIRST QUARTER
+              </option>
+              <option value="FIRST SEMESTER/SECOND QUARTER">
+                FIRST SEMESTER/SECOND QUARTER
+              </option>
+              <option value="SECOND SEMESTER/THIRD QUARTER">
+                SECOND SEMESTER/THIRD QUARTER
+              </option>
+              <option value="SECOND SEMESTER/FOURTH QUARTER">
+                SECOND SEMESTER/FOURTH QUARTER
+              </option>
+            </select>
+          </div>
 
-                <!-- 5. Physical Dates (Manual String) -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Physical Dates</label>
-                    <select id="lpDateRange" class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm">
-                        <!-- Javascript will automatically inject the dates here -->
-                    </select>
-                </div>
-            </div>
+          <!-- 4. Course Week (Absolute Anchor) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+              >Course Week</label
+            >
+            <select
+              id="lpCourseWeek"
+              class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+            >
+              <option value="Week 1">Week 1</option>
+              <option value="Week 2">Week 2</option>
+              <option value="Week 3">Week 3</option>
+              <option value="Week 4">Week 4</option>
+              <option value="Week 5">Week 5</option>
+              <option value="Week 6">Week 6</option>
+              <option value="Week 7">Week 7</option>
+              <option value="Week 8">Week 8</option>
+              <option value="Week 9">Week 9</option>
+              <option value="Week 10">Week 10</option>
+            </select>
+          </div>
 
-
-            <!-- Custom Instructions & Folders Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
-                <div>
-                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Custom Instructions / Lab Details</label>
-                    <textarea id="lpCustomInstructions" rows="4" class="w-full p-3 border border-blue-200 rounded text-sm bg-blue-50 focus:ring-blue-500 shadow-inner" placeholder="E.g., Make Session 4-6 a hands-on laboratory performance task involving an e-wallet calculator app..."></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-2">Select Reference Folders</label>
-                    <div id="libraryFolderContainer" class="bg-blue-50 border border-blue-200 rounded p-3 h-28 overflow-y-auto space-y-2 shadow-inner flex flex-wrap gap-4">
-                        <!-- Checkboxes injected via JS -->
-                    </div>
-                </div>
-            </div>
-<div class="flex gap-3 mt-4">
-    <button onclick="initiateGenerationFlow()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2">
-        ✨ Generate Curriculum Map / Lesson Plan
-    </button>
-    <button onclick="openLoadPlanModal()" class="px-6 bg-purple-600 text-white font-bold py-3 rounded hover:bg-purple-700 shadow-md transition flex items-center gap-2">
-        📂 Load Saved Plans
-    </button>
-</div>
+          <!-- 5. Physical Dates (Manual String) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+              >Physical Dates</label
+            >
+            <select
+              id="lpDateRange"
+              class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+            >
+              <!-- Javascript will automatically inject the dates here -->
+            </select>
+          </div>
         </div>
 
-        <!-- BOTTOM SECTION: Full Width Output & Editor -->
-        <div class="w-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-            <div id="weeklyOverviewContainer" class="bg-gray-100 border-b border-gray-200 hidden flex-col"></div>
-
-            <div class="bg-blue-600 text-white px-6 py-3 border-b flex justify-between items-center">
-                <h3 id="planHeaderTitle" class="font-bold text-lg">Generated Plan</h3>
-                <span id="planHeaderBadge" class="bg-blue-800 px-3 py-1 rounded text-xs font-bold">No Data</span>
+        <!-- Custom Instructions & Folders Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+          <div>
+            <label
+              class="block text-xs font-extrabold text-blue-700 uppercase mb-2"
+              >Custom Instructions / Lab Details</label
+            >
+            <textarea
+              id="lpCustomInstructions"
+              rows="4"
+              class="w-full p-3 border border-blue-200 rounded text-sm bg-blue-50 focus:ring-blue-500 shadow-inner"
+              placeholder="E.g., Make Session 4-6 a hands-on laboratory performance task involving an e-wallet calculator app..."
+            ></textarea>
+          </div>
+          <div>
+            <label
+              class="block text-xs font-extrabold text-blue-700 uppercase mb-2"
+              >Select Reference Folders</label
+            >
+            <div
+              id="libraryFolderContainer"
+              class="bg-blue-50 border border-blue-200 rounded p-3 h-28 overflow-y-auto space-y-2 shadow-inner flex flex-wrap gap-4"
+            >
+              <!-- Checkboxes injected via JS -->
             </div>
-            
-            <div id="outputContainer" class="p-6 overflow-y-auto bg-gray-50 min-h-[500px]">
-                <div class="text-center text-gray-400 italic mt-20">Select your scope, grade level, and folders to generate plans.</div>
-            </div>
-            
-            <div class="p-4 border-t bg-white flex justify-end gap-3">
-                <button onclick="window.exportToGoogleDocs()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 print:hidden">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-    </svg>
-    Export to Google Docs
-</button>
-                <button onclick="saveLessonPlan()" class="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded shadow-sm hover:bg-gray-300 transition flex items-center gap-2">
-                    <span>💾</span> Save Draft
-                </button>
-                <button onclick="exportPDF()" class="px-6 py-2 bg-blue-600 text-white font-bold rounded shadow-sm hover:bg-blue-700 transition flex items-center gap-2">
-                    <span>🖨️</span> Print PDF Only
-                </button>
-                <button onclick="saveAndPrint()" class="px-6 py-2 bg-green-600 text-white font-bold rounded shadow-sm hover:bg-green-700 transition flex items-center gap-2">
-                    <span>✅</span> Save & Print
-                </button>
-            </div>
+          </div>
         </div>
+        <div class="flex gap-3 mt-4">
+          <button
+            onclick="initiateGenerationFlow()"
+            class="flex-1 bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2"
+          >
+            ✨ Generate Curriculum Map / Lesson Plan
+          </button>
+          <button
+            onclick="openLoadPlanModal()"
+            class="px-6 bg-purple-600 text-white font-bold py-3 rounded hover:bg-purple-700 shadow-md transition flex items-center gap-2"
+          >
+            📂 Load Saved Plans
+          </button>
+        </div>
+      </div>
+
+      <!-- BOTTOM SECTION: Full Width Output & Editor -->
+      <div
+        class="w-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col"
+      >
+        <div
+          id="weeklyOverviewContainer"
+          class="bg-gray-100 border-b border-gray-200 hidden flex-col"
+        ></div>
+
+        <div
+          class="bg-blue-600 text-white px-6 py-3 border-b flex justify-between items-center"
+        >
+          <h3 id="planHeaderTitle" class="font-bold text-lg">Generated Plan</h3>
+          <span
+            id="planHeaderBadge"
+            class="bg-blue-800 px-3 py-1 rounded text-xs font-bold"
+            >No Data</span
+          >
+        </div>
+
+        <div
+          id="outputContainer"
+          class="p-6 overflow-y-auto bg-gray-50 min-h-[500px]"
+        >
+          <div class="text-center text-gray-400 italic mt-20">
+            Select your scope, grade level, and folders to generate plans.
+          </div>
+        </div>
+
+        <div class="p-4 border-t bg-white flex justify-end gap-3">
+          <button
+            onclick="window.exportToGoogleDocs()"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 print:hidden"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
+              />
+            </svg>
+            Export to Google Docs
+          </button>
+          <button
+            onclick="saveLessonPlan()"
+            class="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded shadow-sm hover:bg-gray-300 transition flex items-center gap-2"
+          >
+            <span>💾</span> Save Draft
+          </button>
+          <button
+            onclick="exportPDF()"
+            class="px-6 py-2 bg-blue-600 text-white font-bold rounded shadow-sm hover:bg-blue-700 transition flex items-center gap-2"
+          >
+            <span>🖨️</span> Print PDF Only
+          </button>
+          <button
+            onclick="saveAndPrint()"
+            class="px-6 py-2 bg-green-600 text-white font-bold rounded shadow-sm hover:bg-green-700 transition flex items-center gap-2"
+          >
+            <span>✅</span> Save & Print
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- AI CLARIFICATION MODAL (Popup for AI Questions) -->
-    <div id="aiClarificationModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4">
-        <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4">
-            <div class="flex items-center gap-3 border-b pb-3">
-                <span class="text-2xl">💡</span>
-                <h3 class="font-bold text-lg text-blue-900">AI Curriculum Assistant Has a Question</h3>
-            </div>
-            <p class="text-sm text-gray-600">Before building your lesson plan, the AI needs clarification on your custom instructions:</p>
-            <div id="aiQuestionBox" class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900">
-                <!-- Question injected here -->
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Your Response / Clarification</label>
-                <textarea id="userClarificationInput" rows="3" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500" placeholder="Type your answer here..."></textarea>
-            </div>
-            <div class="flex justify-end gap-3 pt-2 border-t">
-                <button onclick="cancelClarification()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Cancel</button>
-                <button onclick="submitClarificationAndProceed()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700">Submit & Continue</button>
-            </div>
+    <div
+      id="aiClarificationModal"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4"
+      >
+        <div class="flex items-center gap-3 border-b pb-3">
+          <span class="text-2xl">💡</span>
+          <h3 class="font-bold text-lg text-blue-900">
+            AI Curriculum Assistant Has a Question
+          </h3>
         </div>
+        <p class="text-sm text-gray-600">
+          Before building your lesson plan, the AI needs clarification on your
+          custom instructions:
+        </p>
+        <div
+          id="aiQuestionBox"
+          class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900"
+        >
+          <!-- Question injected here -->
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            >Your Response / Clarification</label
+          >
+          <textarea
+            id="userClarificationInput"
+            rows="3"
+            class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500"
+            placeholder="Type your answer here..."
+          ></textarea>
+        </div>
+        <div class="flex justify-end gap-3 pt-2 border-t">
+          <button
+            onclick="cancelClarification()"
+            class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            onclick="submitClarificationAndProceed()"
+            class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700"
+          >
+            Submit & Continue
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- GLOBAL LOADING OVERLAY -->
-    <div id="globalLoader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col text-center px-4">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-6"></div>
-        <p class="text-white font-bold text-xl tracking-wider mb-2">
-            <!-- 🚀 NEW: Added ID to the main text -->
-            <span id="loaderMainText">Processing...</span> <span id="elapsedTime" class="text-blue-400 ml-2">0s</span>
-        </p>
-        <!-- 🚀 NEW: Added ID to the sub text -->
-        <p id="loaderSubText" class="text-blue-300 text-sm font-semibold mb-8">Please wait a moment.</p>
-        
-        <!-- BIBLE VERSE CONTAINER -->
-        <div class="max-w-2xl text-gray-300 italic text-lg transition-opacity duration-300 min-h-[4rem]" id="bibleVerse">
-            Preparing wisdom...
-        </div>
+    <div
+      id="globalLoader"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col text-center px-4"
+    >
+      <div
+        class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-6"
+      ></div>
+      <p class="text-white font-bold text-xl tracking-wider mb-2">
+        <!-- 🚀 NEW: Added ID to the main text -->
+        <span id="loaderMainText">Processing...</span>
+        <span id="elapsedTime" class="text-blue-400 ml-2">0s</span>
+      </p>
+      <!-- 🚀 NEW: Added ID to the sub text -->
+      <p id="loaderSubText" class="text-blue-300 text-sm font-semibold mb-8">
+        Please wait a moment.
+      </p>
+
+      <!-- BIBLE VERSE CONTAINER -->
+      <div
+        class="max-w-2xl text-gray-300 italic text-lg transition-opacity duration-300 min-h-[4rem]"
+        id="bibleVerse"
+      >
+        Preparing wisdom...
+      </div>
     </div>
 
     <!-- AI CLARIFICATION MODAL -->
-    <div id="aiClarificationModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4">
-        <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4">
-            <div class="flex items-center gap-3 border-b pb-3">
-                <span class="text-2xl">💡</span>
-                <h3 class="font-bold text-lg text-blue-900">AI Curriculum Assistant Has a Question</h3>
-            </div>
-            <p class="text-sm text-gray-600">Before building your lesson plan, the AI needs clarification on your custom instructions:</p>
-            <div id="aiQuestionBox" class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900"></div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Your Response / Clarification</label>
-                <textarea id="userClarificationInput" rows="3" class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500" placeholder="Type your answer here..."></textarea>
-            </div>
-            <div class="flex justify-end gap-3 pt-2 border-t">
-                <button onclick="cancelClarification()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Cancel</button>
-                <button onclick="submitClarificationAndProceed()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700">Submit & Continue</button>
-            </div>
+    <div
+      id="aiClarificationModal"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4"
+      >
+        <div class="flex items-center gap-3 border-b pb-3">
+          <span class="text-2xl">💡</span>
+          <h3 class="font-bold text-lg text-blue-900">
+            AI Curriculum Assistant Has a Question
+          </h3>
         </div>
+        <p class="text-sm text-gray-600">
+          Before building your lesson plan, the AI needs clarification on your
+          custom instructions:
+        </p>
+        <div
+          id="aiQuestionBox"
+          class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900"
+        ></div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            >Your Response / Clarification</label
+          >
+          <textarea
+            id="userClarificationInput"
+            rows="3"
+            class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500"
+            placeholder="Type your answer here..."
+          ></textarea>
+        </div>
+        <div class="flex justify-end gap-3 pt-2 border-t">
+          <button
+            onclick="cancelClarification()"
+            class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            onclick="submitClarificationAndProceed()"
+            class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700"
+          >
+            Submit & Continue
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- LOAD SAVED PLANS MODAL -->
-<div id="loadPlanModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-center justify-center p-4">
-    <div class="bg-white rounded-lg max-w-4xl w-full p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[80vh]">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-3">
-            <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
-                📂 Saved Lesson Plans
-            </h3>
-            <div class="flex items-center gap-4">
-                <select id="modalSyFilter" onchange="openLoadPlanModal()" class="p-1.5 border border-gray-300 rounded text-sm font-bold text-blue-900 bg-blue-50 focus:ring-blue-500 shadow-sm cursor-pointer">
-                    <!-- Populated dynamically -->
-                </select>
-                <button onclick="closeLoadPlanModal()" class="text-gray-400 hover:text-red-500 font-bold text-xl px-2">✖</button>
-            </div>
+    <div
+      id="loadPlanModal"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-lg max-w-4xl w-full p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[80vh]"
+      >
+        <div
+          class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-3"
+        >
+          <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
+            📂 Saved Lesson Plans
+          </h3>
+          <div class="flex items-center gap-4">
+            <select
+              id="modalSyFilter"
+              onchange="openLoadPlanModal()"
+              class="p-1.5 border border-gray-300 rounded text-sm font-bold text-blue-900 bg-blue-50 focus:ring-blue-500 shadow-sm cursor-pointer"
+            >
+              <!-- Populated dynamically -->
+            </select>
+            <button
+              onclick="closeLoadPlanModal()"
+              class="text-gray-400 hover:text-red-500 font-bold text-xl px-2"
+            >
+              ✖
+            </button>
+          </div>
         </div>
-        <div id="savedPlansListContainer" class="overflow-y-auto space-y-3 flex-1 pr-2">
-            <p class="text-gray-400 italic text-center py-8">Loading saved plans from Firebase...</p>
+        <div
+          id="savedPlansListContainer"
+          class="overflow-y-auto space-y-3 flex-1 pr-2"
+        >
+          <p class="text-gray-400 italic text-center py-8">
+            Loading saved plans from Firebase...
+          </p>
         </div>
         <div class="flex justify-end pt-4 border-t mt-4">
-            <button onclick="closeLoadPlanModal()" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300">Close</button>
+          <button
+            onclick="closeLoadPlanModal()"
+            class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
+          >
+            Close
+          </button>
         </div>
+      </div>
     </div>
-</div>
 
     <!-- PRINT-ONLY CURRICULUM MAP CONTAINER -->
-<div id="printDocumentWrapper" style="font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
+    <div
+      id="printDocumentWrapper"
+      style="
+        font-family: &quot;Arial Narrow&quot;, Arial, sans-serif;
+        font-size: 10pt;
+      "
+    >
+      <!-- 1. IMAGE CENTERED PROPERLY FOR WORD & PDF (Fixed Size) -->
+      <div
+        id="printHeaderBannerContainer"
+        style="text-align: center; margin-bottom: 0"
+      >
+        <img
+          id="printHeaderImage"
+          src=""
+          alt="School Header"
+          style="
+            max-height: 85px !important;
+            width: auto !important;
+            max-width: 500px !important;
+            margin: 0 auto;
+            display: inline-block;
+          "
+          class="hidden"
+        />
+      </div>
 
-    <!-- 1. IMAGE CENTERED PROPERLY FOR WORD & PDF (Fixed Size) -->
-    <div id="printHeaderBannerContainer" style="text-align: center; margin-bottom: 0;">
-        <img id="printHeaderImage" src="" alt="School Header" style="max-height: 85px !important; width: auto !important; max-width: 500px !important; margin: 0 auto; display: inline-block;" class="hidden">
-    </div>
-    
-    <!-- TITLES -->
-    <div style="text-align: center; margin-bottom: 5px;">
-        <div id="printMainTitle" style="font-size: 11pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;">CURRICULUM MAP / LEARNING PLAN IN SUBJECT</div>
-        <div id="printSYHeader" style="font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;">SCHOOL YEAR 2026 - 2027</div>
-        <div style="font-size: 10pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.2;"><span id="printSemester"></span> — <span id="printQuarter"></span></div>
-    </div>
+      <!-- TITLES -->
+      <div style="text-align: center; margin-bottom: 5px">
+        <div
+          id="printMainTitle"
+          style="
+            font-size: 11pt;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+            line-height: 1.2;
+          "
+        >
+          CURRICULUM MAP / LEARNING PLAN IN SUBJECT
+        </div>
+        <div
+          id="printSYHeader"
+          style="
+            font-size: 10pt;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+            line-height: 1.2;
+          "
+        >
+          SCHOOL YEAR 2026 - 2027
+        </div>
+        <div
+          style="
+            font-size: 10pt;
+            font-weight: bold;
+            margin: 0;
+            padding: 0;
+            line-height: 1.2;
+          "
+        >
+          <span id="printSemester"></span> — <span id="printQuarter"></span>
+        </div>
+      </div>
 
-    <table class="print-table" style="width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
+      <table
+        class="print-table"
+        style="
+          width: 100%;
+          border-collapse: collapse;
+          font-family: &quot;Arial Narrow&quot;, Arial, sans-serif;
+          font-size: 10pt;
+        "
+      >
         <!-- Wrapper color removed to stop bleeding into the content -->
-        <tbody style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
-            <tr>
-                <th style="width: 8%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Content</th>
-                <th style="width: 14%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Learning Standards</th>
-                <th style="width: 14%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Learning Competencies</th>
-                <th style="width: 4%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Time Frame</th>
-                <!-- Shrunk to 32% -->
-                <th style="width: 32%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">
-                    Learning Experiences & Activities<br>
-                    <span id="printScopeHeader" style="font-weight: normal; font-size: 10pt;"></span>
-                </th>
-                <!-- Expanded to 14% -->
-                <th style="width: 14%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Learning Materials &<br>Technology Integration</th>
-                <th style="width: 14%; border: 1px solid #000; padding: 6px; text-align: center; background-color: #b4c6e7;">Remarks and Interventions</th>
-            </tr>
+        <tbody
+          style="-webkit-print-color-adjust: exact; print-color-adjust: exact"
+        >
+          <tr>
+            <th
+              style="
+                width: 8%;
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: center;
+                background-color: #b4c6e7;
+              "
+            >
+              Content
+            </th>
+            <th
+              style="
+                width: 14%;
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: center;
+                background-color: #b4c6e7;
+              "
+            >
+              Learning Standards
+            </th>
+            <th
+              style="
+                width: 14%;
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: center;
+                background-color: #b4c6e7;
+              "
+            >
+              Learning Competencies
+            </th>
+            <th
+              style="
+                width: 4%;
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: center;
+                background-color: #b4c6e7;
+              "
+            >
+              Time Frame
+            </th>
+            <!-- Shrunk to 32% -->
+            <th
+              style="
+                width: 32%;
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: center;
+                background-color: #b4c6e7;
+              "
+            >
+              Learning Experiences & Activities<br />
+              <span
+                id="printScopeHeader"
+                style="font-weight: normal; font-size: 10pt"
+              ></span>
+            </th>
+            <!-- Expanded to 14% -->
+            <th
+              style="
+                width: 14%;
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: center;
+                background-color: #b4c6e7;
+              "
+            >
+              Learning Materials &<br />Technology Integration
+            </th>
+            <th
+              style="
+                width: 14%;
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: center;
+                background-color: #b4c6e7;
+              "
+            >
+              Remarks and Interventions
+            </th>
+          </tr>
         </tbody>
         <tbody id="printTableBody">
-            <!-- Dynamically populated via exportPDF() -->
+          <!-- Dynamically populated via exportPDF() -->
         </tbody>
-    </table>
+      </table>
 
-    <!-- SIGNATORIES FOOTER -->
-    <table style="width: 100%; margin-top: 40px; border-collapse: collapse; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt;">
+      <!-- SIGNATORIES FOOTER -->
+      <table
+        style="
+          width: 100%;
+          margin-top: 40px;
+          border-collapse: collapse;
+          font-family: &quot;Arial Narrow&quot;, Arial, sans-serif;
+          font-size: 10pt;
+        "
+      >
         <tr>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <div style="margin-bottom: 30px;">Prepared by:</div>
-                <div style="font-weight: bold; text-decoration: underline;" id="printSig1Name"></div>
-                <div id="printSig1Title" style="font-size: 10pt; color: #333;"></div>
-            </td>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <div style="margin-bottom: 30px;">Submitted to:</div>
-                <div style="font-weight: bold; text-decoration: underline;" id="printSig2Name"></div>
-                <div id="printSig2Title" style="font-size: 10pt; color: #333;"></div>
-            </td>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <div style="margin-bottom: 30px;">Noted by:</div>
-                <div style="font-weight: bold; text-decoration: underline;" id="printSig3Name"></div>
-                <div id="printSig3Title" style="font-size: 10pt; color: #333;"></div>
-            </td>
-            <td style="width: 25%; text-align: center; border: none; vertical-align: top;">
-                <div style="margin-bottom: 30px;">Approved by:</div>
-                <div style="font-weight: bold; text-decoration: underline;" id="printSig4Name"></div>
-                <div id="printSig4Title" style="font-size: 10pt; color: #333;"></div>
-            </td>
+          <td
+            style="
+              width: 25%;
+              text-align: center;
+              border: none;
+              vertical-align: top;
+            "
+          >
+            <div style="margin-bottom: 30px">Prepared by:</div>
+            <div
+              style="font-weight: bold; text-decoration: underline"
+              id="printSig1Name"
+            ></div>
+            <div id="printSig1Title" style="font-size: 10pt; color: #333"></div>
+          </td>
+          <td
+            style="
+              width: 25%;
+              text-align: center;
+              border: none;
+              vertical-align: top;
+            "
+          >
+            <div style="margin-bottom: 30px">Submitted to:</div>
+            <div
+              style="font-weight: bold; text-decoration: underline"
+              id="printSig2Name"
+            ></div>
+            <div id="printSig2Title" style="font-size: 10pt; color: #333"></div>
+          </td>
+          <td
+            style="
+              width: 25%;
+              text-align: center;
+              border: none;
+              vertical-align: top;
+            "
+          >
+            <div style="margin-bottom: 30px">Noted by:</div>
+            <div
+              style="font-weight: bold; text-decoration: underline"
+              id="printSig3Name"
+            ></div>
+            <div id="printSig3Title" style="font-size: 10pt; color: #333"></div>
+          </td>
+          <td
+            style="
+              width: 25%;
+              text-align: center;
+              border: none;
+              vertical-align: top;
+            "
+          >
+            <div style="margin-bottom: 30px">Approved by:</div>
+            <div
+              style="font-weight: bold; text-decoration: underline"
+              id="printSig4Name"
+            ></div>
+            <div id="printSig4Title" style="font-size: 10pt; color: #333"></div>
+          </td>
         </tr>
-    </table>
-</div>
-<!-- DYNAMIC FLOATING SCROLL BUTTON -->
-<button id="floatingScrollBtn" 
-        class="fixed bottom-8 right-8 bg-blue-600 text-white p-4 rounded-full shadow-2xl hover:bg-blue-700 transition-all transform hover:scale-110 z-50 flex items-center justify-center print:hidden"
-        title="Scroll to Export Buttons">
-    <svg id="scrollIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-500 ease-in-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-    </svg>
-</button>
+      </table>
+    </div>
+    <!-- DYNAMIC FLOATING SCROLL BUTTON -->
+    <button
+      id="floatingScrollBtn"
+      class="fixed bottom-8 right-8 bg-blue-600 text-white p-4 rounded-full shadow-2xl hover:bg-blue-700 transition-all transform hover:scale-110 z-50 flex items-center justify-center print:hidden"
+      title="Scroll to Export Buttons"
+    >
+      <svg
+        id="scrollIcon"
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6 transition-transform duration-500 ease-in-out"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M19 14l-7 7m0 0l-7-7m7 7V3"
+        />
+      </svg>
+    </button>
     <!-- HTML DOCX GENERATOR (Must load first) -->
-<script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.min.js"></script>
 
-<!-- YOUR 4 MODULAR APP FILES -->
-<script type="module" src="app-ui.js"></script>
-<script type="module" src="firebase-service.js"></script>
-<script type="module" src="ai-engine.js"></script>
-<script type="module" src="document-exporter.js"></script>
-</body>
+    <!-- YOUR 4 MODULAR APP FILES -->
+    <script type="module" src="js/lesson-review/app-ui.js"></script>
+    <script type="module" src="js/lesson-review/firebase-service.js"></script>
+    <script type="module" src="js/lesson-review/ai-engine.js"></script>
+    <script type="module" src="js/lesson-review/document-exporter.js"></script>
+  </body>
 </html>
