@@ -1,58 +1,59 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const navContainer = document.getElementById('adminerva-nav');
-    if (!navContainer) return;
+document.addEventListener("DOMContentLoaded", () => {
+  const navContainer = document.getElementById("adminerva-nav");
+  if (!navContainer) return;
 
-    // Read where we are from the HTML attributes
-    const activeModule = navContainer.getAttribute('data-module') || 'lesson'; 
-    const activePage = navContainer.getAttribute('data-page') || 'planner';
+  // Read where we are from the HTML attributes
+  const activeModule = navContainer.getAttribute("data-module") || "lesson";
+  const activePage = navContainer.getAttribute("data-page") || "planner";
 
-    let centerLinks = "";
-    let rightSide = "";
+  let centerLinks = "";
+  let rightSide = "";
 
-    // 🚀 ROUTING: Determine Links & Active States (With Cyber-Cyan Glowing Effects)
-    if (activeModule === 'lesson') {
-        const getStyle = (pageId) => activePage === pageId 
-            ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" 
-            : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
+  // 🚀 ROUTING: Determine Links & Active States (With Cyber-Cyan Glowing Effects)
+  if (activeModule === "lesson") {
+    const getStyle = (pageId) =>
+      activePage === pageId
+        ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+        : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
 
-        centerLinks = `
-            <a href="lesson-planner.html" class="${getStyle('planner')}">AI Planner</a>
-            <a href="schedule.html" class="${getStyle('schedule')}">Teacher's Schedule</a>
-            <a href="library.html" class="${getStyle('library')}">Reference Library</a>
+    centerLinks = `
+            <a href="lesson-planner.html" class="${getStyle("planner")}">AI Planner</a>
+            <a href="schedule.html" class="${getStyle("schedule")}">Teacher's Schedule</a>
+            <a href="library.html" class="${getStyle("library")}">Reference Library</a>
         `;
-        rightSide = `
-            <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 px-4 py-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center gap-2 font-bold text-sm">
-                <span>⚙️</span> Global Settings
+    // Reduced to Icon-Only
+    rightSide = `
+            <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2.5 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center" title="Global Settings">
+                <span class="text-xl leading-none">⚙️</span>
             </a>
         `;
-    } else if (activeModule === 'repo') {
-        const getStyle = (pageId) => activePage === pageId 
-            ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" 
-            : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
+  } else if (activeModule === "repo") {
+    const getStyle = (pageId) =>
+      activePage === pageId
+        ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+        : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
 
-        // 🚀 RESTORED GRADEBOOK AND ADMIN HUB
-        centerLinks = `
-            <a href="index.html" class="${getStyle('dashboard')}">Analytics Dashboard</a>
-            <a href="grading.html" class="${getStyle('grader')}">AutoGrader</a>
-            <a href="gradebook.html" class="${getStyle('gradebook')}">Gradebook</a>
-            <a href="admin.html" class="${getStyle('admin')}">Admin Hub</a>
+    centerLinks = `
+            <a href="index.html" class="${getStyle("dashboard")}">Analytics Dashboard</a>
+            <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
+            <a href="gradebook.html" class="${getStyle("gradebook")}">Gradebook</a>
+            <a href="admin.html" class="${getStyle("admin")}">Admin Hub</a>
         `;
-        rightSide = `
-            <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 px-4 py-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center gap-2 font-bold text-sm">
-                <span>⚙️</span> Global Settings
+    // Reduced to Icon-Only
+    rightSide = `
+            <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2.5 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center" title="Global Settings">
+                <span class="text-xl leading-none">⚙️</span>
             </a>
         `;
-    } else if (activeModule === 'settings') {
-        centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide">System Configuration</span>`;
-        rightSide = `
-            <span class="bg-cyan-950/50 border border-cyan-400 px-4 py-2 rounded text-cyan-50 font-bold text-sm shadow-[0_0_15px_rgba(6,182,212,0.5)] flex items-center gap-2">
-                <span>⚙️</span> Control Center
-            </span>
-        `;
-    }
+  } else if (activeModule === "settings") {
+    centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide">System Configuration</span>`;
 
-    // 🚀 INJECT: Build the unified HTML with Sticky Glassmorphism Header
-    navContainer.innerHTML = `
+    // 🚀 Hidden entirely on the settings page to avoid redundancy
+    rightSide = ``;
+  }
+
+  // 🚀 INJECT: Build the unified HTML with Sticky Glassmorphism Header
+  navContainer.innerHTML = `
     <nav class="bg-gray-900/95 backdrop-blur-md text-white shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative z-50 border-b border-cyan-900/50 sticky top-0">
         <div class="max-w-screen-2xl mx-auto px-6 py-2 flex justify-between items-center">
             

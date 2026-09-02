@@ -40,68 +40,63 @@
       class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col md:flex-row gap-8"
     >
       <!-- LEFT SIDEBAR -->
-      <aside class="w-full md:w-64 shrink-0 flex flex-col gap-1">
-        <div class="mb-6 px-2">
-          <h2 class="text-2xl font-extrabold text-gray-800 tracking-tight">
-            Settings
-          </h2>
-          <p class="text-xs text-gray-500 mt-1 font-medium">
-            Manage global configurations.
-          </p>
-        </div>
+      <aside class="w-full md:w-52 shrink-0 flex flex-col gap-1">
+        <!-- 🚀 Redundant Header Removed entirely -->
 
         <button
           onclick="switchSettingsCategory('security')"
           id="navBtn-security"
-          class="sidebar-btn sidebar-active"
+          class="sidebar-btn sidebar-active justify-between"
         >
-          <span class="text-lg">🔒</span> API & Security
+          <span>API & Security</span> <span class="text-lg opacity-60">🔒</span>
         </button>
 
         <div
-          class="mt-4 mb-2 px-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
+          class="mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
         >
           RepoReview
         </div>
         <button
           onclick="switchSettingsCategory('students')"
           id="navBtn-students"
-          class="sidebar-btn"
+          class="sidebar-btn justify-between"
         >
-          <span class="text-lg">👨‍🎓</span> Student Roster
+          <span>Student Roster</span> <span class="text-lg opacity-60">👨‍🎓</span>
         </button>
         <button
           onclick="switchSettingsCategory('rubrics')"
           id="navBtn-rubrics"
-          class="sidebar-btn"
+          class="sidebar-btn justify-between"
         >
-          <span class="text-lg">📋</span> Grading Rubrics
+          <span>Grading Rubrics</span>
+          <span class="text-lg opacity-60">📋</span>
         </button>
 
         <div
-          class="mt-4 mb-2 px-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
+          class="mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
         >
           LessonReview
         </div>
         <button
           onclick="switchSettingsCategory('lesson')"
           id="navBtn-lesson"
-          class="sidebar-btn"
+          class="sidebar-btn justify-between"
         >
-          <span class="text-lg">📘</span> Export Defaults
+          <span>Export Defaults</span>
+          <span class="text-lg opacity-60">📘</span>
         </button>
 
         <div
-          class="mt-4 mb-2 px-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
+          class="mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
         >
-          Upcoming Modules
+          Upcoming
         </div>
         <button
           onclick="switchSettingsCategory('presentation')"
           id="navBtn-presentation"
-          class="sidebar-btn"
+          class="sidebar-btn justify-between"
         >
-          <span class="text-lg">📽️</span> Presentations
+          <span>Presentations</span> <span class="text-lg opacity-60">📽️</span>
         </button>
       </aside>
 
