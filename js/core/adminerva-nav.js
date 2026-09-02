@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="relative group cursor-pointer py-1">
                 <div class="flex items-center gap-3 text-xl font-bold transition">
                     <!-- 🚀 FIXED .PNG EXTENSION -->
-                    <img src="New Adminerva logo.png" alt="Adminerva Logo" class="h-16 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                    <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-16 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
                     
                     <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
                     <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity">▼</span>

@@ -21,14 +21,6 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #a8a8a8;
       }
-
-      /* Sidebar active states */
-      .sidebar-btn {
-        @apply w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 text-gray-600 hover:bg-gray-100;
-      }
-      .sidebar-active {
-        @apply bg-purple-50 text-purple-700 border-r-4 border-purple-600 rounded-r-none;
-      }
     </style>
   </head>
   <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
@@ -41,12 +33,11 @@
     >
       <!-- LEFT SIDEBAR -->
       <aside class="w-full md:w-52 shrink-0 flex flex-col gap-1">
-        <!-- 🚀 Redundant Header Removed entirely -->
-
+        <!-- Default Active Button -->
         <button
           onclick="switchSettingsCategory('security')"
           id="navBtn-security"
-          class="sidebar-btn sidebar-active justify-between"
+          class="sidebar-btn w-full text-left px-4 py-3 text-sm font-bold transition-all flex items-center gap-3 justify-between bg-purple-50 text-purple-700 border-r-4 border-purple-600"
         >
           <span>API & Security</span> <span class="text-lg opacity-60">🔒</span>
         </button>
@@ -56,17 +47,20 @@
         >
           RepoReview
         </div>
+
+        <!-- Inactive Buttons -->
         <button
           onclick="switchSettingsCategory('students')"
           id="navBtn-students"
-          class="sidebar-btn justify-between"
+          class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
         >
           <span>Student Roster</span> <span class="text-lg opacity-60">👨‍🎓</span>
         </button>
+
         <button
           onclick="switchSettingsCategory('rubrics')"
           id="navBtn-rubrics"
-          class="sidebar-btn justify-between"
+          class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
         >
           <span>Grading Rubrics</span>
           <span class="text-lg opacity-60">📋</span>
@@ -77,10 +71,11 @@
         >
           LessonReview
         </div>
+
         <button
           onclick="switchSettingsCategory('lesson')"
           id="navBtn-lesson"
-          class="sidebar-btn justify-between"
+          class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
         >
           <span>Export Defaults</span>
           <span class="text-lg opacity-60">📘</span>
@@ -89,12 +84,13 @@
         <div
           class="mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
         >
-          Upcoming
+          Upcoming Modules
         </div>
+
         <button
           onclick="switchSettingsCategory('presentation')"
           id="navBtn-presentation"
-          class="sidebar-btn justify-between"
+          class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
         >
           <span>Presentations</span> <span class="text-lg opacity-60">📽️</span>
         </button>

@@ -11,22 +11,38 @@ window.hideLoader = function () {
 };
 
 // 🚀 Vertical Sidebar Navigation
+// 🚀 Vertical Sidebar Navigation (Dynamic Tailwind Injection)
 window.switchSettingsCategory = function (targetPanelId) {
-  // 1. Hide all panels
+  // 1. Hide all right-side panels
   const panels = document.querySelectorAll(".settings-panel");
   panels.forEach((p) => p.classList.replace("block", "hidden"));
 
-  // 2. Remove active state from all buttons
-  const buttons = document.querySelectorAll(".sidebar-btn");
-  buttons.forEach((b) => b.classList.remove("sidebar-active"));
+  // 2. Define the exact Tailwind strings for our states
+  const activeClasses = [
+    "bg-purple-50",
+    "text-purple-700",
+    "border-r-4",
+    "border-purple-600",
+  ];
+  const inactiveClasses = ["text-gray-600", "hover:bg-gray-100", "rounded-lg"];
 
-  // 3. Show target panel and set active state
+  // 3. Reset ALL buttons to the inactive gray state
+  const buttons = document.querySelectorAll(".sidebar-btn");
+  buttons.forEach((b) => {
+    b.classList.remove(...activeClasses);
+    b.classList.add(...inactiveClasses);
+  });
+
+  // 4. Show the target panel and apply the purple active state to the clicked button
   const targetPanel = document.getElementById(`panel-${targetPanelId}`);
   const targetBtn = document.getElementById(`navBtn-${targetPanelId}`);
 
   if (targetPanel && targetBtn) {
     targetPanel.classList.replace("hidden", "block");
-    targetBtn.classList.add("sidebar-active");
+
+    // Strip the gray hover and rounded corners, add the purple highlight
+    targetBtn.classList.remove(...inactiveClasses);
+    targetBtn.classList.add(...activeClasses);
   }
 };
 
