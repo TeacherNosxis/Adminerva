@@ -462,35 +462,6 @@
             Document Export & Signatories
           </h3>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label
-                class="block text-xs font-bold text-gray-600 uppercase mb-1"
-                >Default Teacher Name</label
-              >
-              <input
-                type="text"
-                id="setTeacherName"
-                placeholder="e.g., Joseph Sixson"
-                class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label
-                class="block text-xs font-bold text-gray-600 uppercase mb-1"
-                >Default Subject Title</label
-              >
-              <input
-                type="text"
-                id="setSubjectTitle"
-                list="savedSubjectsList"
-                placeholder="Select or type a subject..."
-                class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
-              />
-              <datalist id="savedSubjectsList"></datalist>
-            </div>
-          </div>
-
           <div class="mb-8 p-4 bg-gray-50 border rounded-lg">
             <h4 class="text-xs font-bold text-gray-700 uppercase mb-1">
               Print Header / School Logo Upload
@@ -540,6 +511,62 @@
               </button>
             </div>
             <input type="hidden" id="settingsHeaderBase64" />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+              <label
+                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Teacher Name</label
+              >
+              <input
+                type="text"
+                id="setTeacherName"
+                placeholder="e.g., Joseph Sixson"
+                class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Subject Title</label
+              >
+              <input
+                type="text"
+                id="setSubjectTitle"
+                list="savedSubjectsList"
+                placeholder="Select or type a subject..."
+                class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+              />
+              <datalist id="savedSubjectsList"></datalist>
+            </div>
+          </div>
+          <!-- NEW: Preliminary & Closing Defaults -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+              <label
+                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Preliminary Activities</label
+              >
+              <textarea
+                id="setPrelimActivities"
+                rows="3"
+                class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+                placeholder="e.g., Opening Prayer\nAttendance Checking"
+              ></textarea>
+            </div>
+            <div>
+              <label
+                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Closing Activities</label
+              >
+              <textarea
+                id="setClosingActivities"
+                rows="3"
+                class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+                placeholder="e.g., Summary of the lesson\nClosing Prayer"
+              ></textarea>
+            </div>
           </div>
 
           <h4 class="text-sm font-bold text-gray-700 uppercase mb-3">

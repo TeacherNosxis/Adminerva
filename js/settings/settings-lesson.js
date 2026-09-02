@@ -52,6 +52,17 @@ window.loadLessonReviewSettings = async function () {
       cloudData?.subject_title ||
       localStorage.getItem("lessonReview_defaultSubject") ||
       "",
+
+    // 🚀 NEW: Load Activity Defaults (with fallbacks to standard text)
+    default_prelim:
+      cloudData?.default_prelim ||
+      localStorage.getItem("lessonReview_defaultPrelim") ||
+      "Opening Prayer\nAttendance Checking\nTECHNOTES",
+    default_closing:
+      cloudData?.default_closing ||
+      localStorage.getItem("lessonReview_defaultClosing") ||
+      "Summary of the Lesson\nClosing Prayer",
+
     sig_teacher:
       cloudData?.sig_teacher ||
       localStorage.getItem("lessonReview_sig1Name") ||
@@ -92,6 +103,11 @@ window.loadLessonReviewSettings = async function () {
 
   safeSet("setTeacherName", data.teacher_name);
   safeSet("setSubjectTitle", data.subject_title);
+
+  // 🚀 NEW: Bind Activity Defaults to UI
+  safeSet("setPrelimActivities", data.default_prelim);
+  safeSet("setClosingActivities", data.default_closing);
+
   safeSet("sigTeacher", data.sig_teacher);
   safeSet("sigTeacherTitle", data.sig_teacher_title);
   safeSet("sigSubjectCoord", data.sig_subject_coord);
@@ -122,6 +138,11 @@ window.saveLessonReviewSettings = async function () {
   const settingsData = {
     teacher_name: safeGet("setTeacherName"),
     subject_title: safeGet("setSubjectTitle"),
+
+    // 🚀 NEW: Grab Activity Defaults from UI
+    default_prelim: safeGet("setPrelimActivities"),
+    default_closing: safeGet("setClosingActivities"),
+
     header_image_base64: safeGet("settingsHeaderBase64"),
     sig_teacher: safeGet("sigTeacher"),
     sig_teacher_title: safeGet("sigTeacherTitle"),
@@ -142,6 +163,17 @@ window.saveLessonReviewSettings = async function () {
     "lessonReview_defaultSubject",
     settingsData.subject_title,
   );
+
+  // 🚀 NEW: Save Activity Defaults Locally
+  localStorage.setItem(
+    "lessonReview_defaultPrelim",
+    settingsData.default_prelim,
+  );
+  localStorage.setItem(
+    "lessonReview_defaultClosing",
+    settingsData.default_closing,
+  );
+
   localStorage.setItem(
     "lessonReview_headerImage",
     settingsData.header_image_base64,
