@@ -265,13 +265,13 @@ window.renderOutput = function () {
 
     if (!isFlex) {
       html += `
+                <div class="md:col-span-2 mb-2">
+                    <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Session Sub-Topic</label>
+                    <textarea class="session-input w-full p-2 border border-blue-200 rounded text-sm bg-white font-bold text-gray-800" rows="1" data-idx="${index}" data-key="topic">${session.topic || window.currentWeeklyOverview.topic || ""}</textarea>
+                </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Learning Competencies</label>
                     <textarea class="session-input w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3" data-idx="${index}" data-key="competencies">${session.competencies || ""}</textarea>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">Specific Objectives</label>
-                    <textarea class="session-input w-full p-2 border border-blue-100 rounded text-sm bg-blue-50" rows="3" data-idx="${index}" data-key="objectives">${session.objectives || ""}</textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Preliminary Action</label>

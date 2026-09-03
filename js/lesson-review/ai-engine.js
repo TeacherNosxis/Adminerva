@@ -149,7 +149,6 @@ window.executeFinalGeneration = async function (userClarification) {
 3. SESSIONS: Create exactly 5 sessions named: "Session 1", "Session 2", "Session 3", "Session 4-6", and "Session Flex".
 4. SESSION 4-6 RULE (3-Hour Laboratory Period / 150 mins total): 
    - Design these sessions as a hands-on laboratory or performance task based on custom instructions.
-   - You MUST format the "learning_activities" with dynamic minute allocations in parentheses for each phase, ensuring the total equals exactly 150 minutes.
    - You must use -ing verbs at the start of each bullet in the "learning_activities" section.`;
       scheduleRules = `
      * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to "Session 4-6".
@@ -173,7 +172,6 @@ window.executeFinalGeneration = async function (userClarification) {
 
   let lookbackContext = "";
   if (window.cachedPreviousPlan && window.cachedPreviousPlan.sessions) {
-    // 🚀 NEW: Safely sanitize the lookback text by converting any double quotes to single quotes to protect the JSON
     const safeTextState = window.cachedPreviousPlan.sessions
       .map(
         (s) =>
@@ -207,16 +205,15 @@ CRITICAL FORMATTING RULES:
 2. "sessions" array: Generate daily sessions.
 ${gradeSpecificRules}
 5. SESSION DETAILS (Normal): 
+   - "topic": Provide a specific, concise sub-topic for THIS session (e.g., "Arithmetic Operators").
    - "competencies": Provide 1 to 2 clear learning competencies.
    - "objectives": Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy. DO NOT explicitly write the domain names (e.g., never output "(Cognitive)", "(Psychomotor)", or "(Affective)").
    - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
-   - 🚀 STUDENT P.O.V. & STRATEGY RULE: "motivation" and "learning_activities" MUST be written strictly from the Student's Point of View AND must explicitly state the specific teaching strategy used. Every bullet MUST begin with an "-ing" verb indicating what the STUDENT is actively doing, followed by the strategy (e.g., "Guessing the computer parts through the use of Picture Analysis").
+   - 🚀 STUDENT P.O.V. & STRATEGY RULE: "motivation" and "learning_activities" MUST be written strictly from the Student's Point of View AND must explicitly state the specific teaching strategy used. 
+   - 🚀 LEARNING ACTIVITIES FORMAT: Heavily bulleted using dashes (-). Every bullet MUST begin with an "-ing" verb. DO NOT include timestamps, minute allocations, or pipes (|) in this field. Just the pure activity text.
    - "formation_standard": Extract or formulate a specific character formation goal for THIS specific session (e.g., perseverance for a lab, integrity for an exam) based on the uploaded Reference Text guides.
    - "evaluation": Suggest diverse and appropriate formative or summative assessments based on the topic. Do NOT default to a Quipper quiz.
    - "values_integration": Output ONLY core value keywords, followed by a short phrase. CRITICAL ALIGNMENT: This value MUST explicitly connect this session's "formation_standard" to the actual topic of this specific session.
-   
-   - TIME FRAME MAPPING (CRITICAL LINE-BY-LINE ALIGNMENT): 
-     In the time frame column, do NOT just write a generic label. You must provide a line-by-line minute breakdown that visually matches the vertical layout of the "Learning Experiences" or specific activity lines. Format it with precise vertical spacing or line breaks so each minute allocation sits horizontally level with its corresponding activity part.
 
    - SCHEDULE MAPPING (CRITICAL MULTI-SECTION SCAN): Map the provided Teacher Schedule slots into the "remarks" field based on period length, NOT chronological days:
 ${scheduleRules}
@@ -283,6 +280,7 @@ ${window.cachedCompiledText.substring(0, 25000)}
                     type: "OBJECT",
                     properties: {
                       session_name: { type: "STRING" },
+                      topic: { type: "STRING" },
                       competencies: { type: "STRING" },
                       objectives: { type: "STRING" },
                       preliminary: { type: "STRING" },
@@ -294,7 +292,7 @@ ${window.cachedCompiledText.substring(0, 25000)}
                       values_integration: { type: "STRING" },
                       remarks: { type: "STRING" },
                     },
-                    required: ["session_name", "learning_activities"],
+                    required: ["session_name", "topic", "learning_activities"],
                   },
                 },
               },
@@ -313,11 +311,9 @@ ${window.cachedCompiledText.substring(0, 25000)}
     const aiResult = await response.json();
     const rawText = aiResult.candidates[0].content.parts[0].text;
 
-    // 🚀 NEW: Robust JSON Extractor. Grabs strictly the code between the first '{' and last '}'
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     let rawJson = jsonMatch ? jsonMatch[0] : rawText;
 
-    // Final safety scrub to aggressively rip out any physical control characters before parsing
     rawJson = rawJson.replace(/[\u0000-\u0009\u000B-\u001F]+/g, "");
 
     const planData = JSON.parse(rawJson);

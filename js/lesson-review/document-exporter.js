@@ -226,36 +226,17 @@ window.buildDocumentLayout = async function () {
       }
 
       if (pIndex === 0) {
-        if (index === 0) {
-          // 🚀 EXTRACT UNIQUE FORMATION STANDARDS FROM ALL SESSIONS
-          const uniqueFormations = [
-            ...new Set(
-              window.currentPlan
-                .map((s) => s.formation_standard)
-                .filter((fs) => fs && fs.trim() !== ""),
-            ),
-          ];
-
-          const formationText =
-            uniqueFormations.length > 0
-              ? `<ul style="margin: 0; padding-left: 15px; list-style-type: disc;">` +
-                uniqueFormations
-                  .map((f) => `<li style="margin-bottom: 4px;">${f}</li>`)
-                  .join("") +
-                `</ul>`
-              : "N/A";
-
-          rowHtml += `
-                        <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">${window.currentWeeklyOverview.topic || ""}</td>
-                        <td rowspan="${rowCount}" style="vertical-align: top;">
-                            <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
-                            <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
-                            <strong>Formation Standard:</strong><br>${formationText}
-                        </td>
-                    `;
-        } else {
-          rowHtml += `<td rowspan="${rowCount}"></td><td rowspan="${rowCount}"></td>`;
-        }
+        // 🚀 NEW: This now populates on EVERY session row instead of just index === 0
+        rowHtml += `
+                    <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
+                        ${session.topic || window.currentWeeklyOverview.topic || ""}
+                    </td>
+                    <td rowspan="${rowCount}" style="vertical-align: top;">
+                        <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
+                        <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
+                        <strong>Formation Standard:</strong><br>${session.formation_standard || "N/A"}
+                    </td>
+                `;
 
         if (isFlex) {
           rowHtml += `<td rowspan="${rowCount}"></td>`;
