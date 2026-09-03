@@ -140,7 +140,6 @@ window.executeFinalGeneration = async function (userClarification) {
   const subject =
     localStorage.getItem("lessonReview_defaultSubject") || "Subject";
 
-  // 🚀 NEW: Dynamically separate BOTH Session Rules and Schedule Rules
   let gradeSpecificRules = "";
   let scheduleRules = "";
 
@@ -165,7 +164,6 @@ window.executeFinalGeneration = async function (userClarification) {
       break;
 
     default:
-      // 🚀 THE BULLETPROOF FALLBACK FOR 3-SESSION GRADES
       gradeSpecificRules = `
 3. SESSIONS: Compress topics into exactly 3 sessions named: "Session 1", "Session 2", and "Session Flex".`;
       scheduleRules = `
@@ -175,7 +173,6 @@ window.executeFinalGeneration = async function (userClarification) {
 
   let lookbackContext = "";
   if (window.cachedPreviousPlan && window.cachedPreviousPlan.sessions) {
-    // Renamed label to "Original Planned Activities" for clarity
     const safeTextState = window.cachedPreviousPlan.sessions
       .map(
         (s) =>
@@ -203,18 +200,19 @@ You are an expert curriculum developer. Based on the Reference Text, Target Scop
 CRITICAL FORMATTING RULES:
 1. "weekly_overview": 
    - "topic": Keep short and punchy.
-   - "content_standard", "performance_standard", "formation_standard", and "materials": MANDATORY FIELDS. Professionally infer them based on the text if needed.
+   - "content_standard", "performance_standard", and "materials": MANDATORY FIELDS. Professionally infer them based on the text if needed.
    - MATERIALS FORMAT: You MUST format the "materials" field as a heavily bulleted list using dashes (-). Do NOT output a single comma-separated paragraph. Ensure each item is on its own line.
    - FALLBACK KNOWLEDGE: If no Reference Text is provided, or if this is a Tech-Voc/TVL subject, you MUST utilize standard DepEd (Department of Education) and TESDA curriculum guides to formulate standards and content accurately.
 2. "sessions" array: Generate daily sessions.
 ${gradeSpecificRules}
 5. SESSION DETAILS (Normal): 
    - "competencies": Provide 1 to 2 clear learning competencies.
-   - "objectives": Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy, explicitly covering cognitive, psychomotor, and affective domains where applicable.
-   - 🚀 STUDENT P.O.V. & STRATEGY RULE: "motivation" and "learning_activities" MUST be written strictly from the Student's Point of View AND must explicitly state the specific teaching strategy used. Every bullet MUST begin with an "-ing" verb indicating what the STUDENT is actively doing, followed by the strategy (e.g., "Guessing the computer parts through the use of Picture Analysis", "Identifying keywords using a Hangman game", "Analyzing the concept through a 4 Pics 1 Word activity", "Brainstorming ideas via Think-Pair-Share"). Do NOT describe what the teacher is doing.
+   - "objectives": Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy. DO NOT explicitly write the domain names (e.g., never output "(Cognitive)", "(Psychomotor)", or "(Affective)").
+   - "preliminary" MUST always start with: "Opening Prayer\nAttendance Checking\nTECHNOTES".
+   - 🚀 STUDENT P.O.V. & STRATEGY RULE: "motivation" and "learning_activities" MUST be written strictly from the Student's Point of View AND must explicitly state the specific teaching strategy used. Every bullet MUST begin with an "-ing" verb indicating what the STUDENT is actively doing, followed by the strategy (e.g., "Guessing the computer parts through the use of Picture Analysis").
+   - "formation_standard": Extract or formulate a specific character formation goal for THIS specific session (e.g., perseverance for a lab, integrity for an exam) based on the uploaded Reference Text guides.
    - "evaluation": Suggest diverse and appropriate formative or summative assessments based on the topic. Do NOT default to a Quipper quiz.
-   - "values_integration": Output ONLY core value keywords, optionally followed by a short phrase or definition connecting it to the lesson.
-
+   - "values_integration": Output ONLY core value keywords, followed by a short phrase. CRITICAL ALIGNMENT: This value MUST explicitly connect this session's "formation_standard" to the actual topic of this specific session.
    
    - TIME FRAME MAPPING (CRITICAL LINE-BY-LINE ALIGNMENT): 
      In the time frame column, do NOT just write a generic label. You must provide a line-by-line minute breakdown that visually matches the vertical layout of the "Learning Experiences" or specific activity lines. Format it with precise vertical spacing or line breaks so each minute allocation sits horizontally level with its corresponding activity part.
@@ -269,14 +267,12 @@ ${window.cachedCompiledText.substring(0, 25000)}
                     topic: { type: "STRING" },
                     content_standard: { type: "STRING" },
                     performance_standard: { type: "STRING" },
-                    formation_standard: { type: "STRING" },
                     materials: { type: "STRING" },
                   },
                   required: [
                     "topic",
                     "content_standard",
                     "performance_standard",
-                    "formation_standard",
                     "materials",
                   ],
                 },
@@ -291,6 +287,7 @@ ${window.cachedCompiledText.substring(0, 25000)}
                       preliminary: { type: "STRING" },
                       motivation: { type: "STRING" },
                       learning_activities: { type: "STRING" },
+                      formation_standard: { type: "STRING" },
                       evaluation: { type: "STRING" },
                       closing: { type: "STRING" },
                       values_integration: { type: "STRING" },
@@ -319,13 +316,26 @@ ${window.cachedCompiledText.substring(0, 25000)}
       .replace(/\s*```$/i, "")
       .trim();
 
-    // Final safety scrub to remove any lingering raw control characters before parsing
     rawJson = rawJson.replace(/[\u0000-\u0009\u000B-\u001F]+/g, "");
 
     const planData = JSON.parse(rawJson);
 
+    const defaultPrelim =
+      localStorage.getItem("lessonReview_defaultPrelim") ||
+      "Opening Prayer\nAttendance Checking\nTECHNOTES";
+    const defaultClosing =
+      localStorage.getItem("lessonReview_defaultClosing") ||
+      "Summary of the Lesson\nClosing Prayer";
+
+    window.currentPlan = planData.sessions.map((session) => {
+      if (!session.session_name.toLowerCase().includes("flex")) {
+        session.preliminary = defaultPrelim;
+        session.closing = defaultClosing;
+      }
+      return session;
+    });
+
     window.currentWeeklyOverview = planData.weekly_overview;
-    window.currentPlan = planData.sessions;
 
     window.renderOverview();
     window.renderOutput();

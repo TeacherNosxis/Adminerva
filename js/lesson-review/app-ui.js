@@ -44,12 +44,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (scrollBtn && scrollIcon) {
     let isPointingUp = false;
 
-    // 1. Extract the math into a reusable function
     const updateScrollState = () => {
       const maxScroll =
         document.documentElement.scrollHeight - window.innerHeight;
 
-      // Prevent division by zero errors if the page hasn't expanded yet
       if (maxScroll <= 0) {
         if (isPointingUp) {
           isPointingUp = false;
@@ -72,14 +70,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
 
-    // 2. Trigger on physical scroll
     window.addEventListener("scroll", updateScrollState);
 
-    // 3. 🚀 CRITICAL FIX: Trigger instantly whenever the page height changes (e.g., loading a plan)
     const resizeObserver = new ResizeObserver(() => updateScrollState());
     resizeObserver.observe(document.body);
 
-    // 4. Click action
     scrollBtn.addEventListener("click", () => {
       window.scrollTo({
         top: isPointingUp ? 0 : document.body.scrollHeight,
@@ -96,8 +91,6 @@ window.showLoader = function (
   subText = "Analyzing scope and structuring session activities.",
 ) {
   const loader = document.getElementById("globalLoader");
-
-  // 🚀 DYNAMIC TEXT INJECTION
   const mainTextEl = document.getElementById("loaderMainText");
   const subTextEl = document.getElementById("loaderSubText");
   if (mainTextEl) mainTextEl.textContent = mainText;
@@ -213,15 +206,17 @@ window.renderOverview = function () {
 
   container.classList.remove("hidden");
   container.classList.add("flex");
+
+  // 🚀 UI SHIFT: Removed Formation Standard from this section, adjusted to a 2-column grid
   container.innerHTML = `
-        <div class="p-6">
+        <div class="p-6 w-full">
             <h3 class="text-sm font-extrabold text-gray-400 uppercase tracking-widest mb-4">Weekly Curriculum Overview</h3>
             <div class="space-y-3">
                 <div>
                     <label class="block text-[10px] font-bold text-gray-500 uppercase">Topic / Content</label>
                     <textarea class="w-full p-2 border border-transparent rounded text-sm bg-white font-bold text-gray-800" rows="1">${window.currentWeeklyOverview.topic || ""}</textarea>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[10px] font-bold text-gray-500 uppercase">Content Standard</label>
                         <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${window.currentWeeklyOverview.content_standard || ""}</textarea>
@@ -229,10 +224,6 @@ window.renderOverview = function () {
                     <div>
                         <label class="block text-[10px] font-bold text-gray-500 uppercase">Performance Standard</label>
                         <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${window.currentWeeklyOverview.performance_standard || ""}</textarea>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Formation Standard</label>
-                        <textarea class="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows="2">${window.currentWeeklyOverview.formation_standard || ""}</textarea>
                     </div>
                 </div>
                 <div>
@@ -308,11 +299,18 @@ window.renderOutput = function () {
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Closing Activities</label>
                     <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="closing">${session.closing || ""}</textarea>
                 </div>
+                
+                <!-- 🚀 NEW: Formation Standard now natively integrated per session -->
+                <div>
+                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Formation Standard</label>
+                    <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="formation_standard">${session.formation_standard || ""}</textarea>
+                </div>
                 <div>
                     <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Values Integration</label>
                     <textarea class="session-input w-full p-2 border rounded text-sm bg-gray-50" rows="2" data-idx="${index}" data-key="values_integration">${session.values_integration || ""}</textarea>
                 </div>
-                <div>
+                
+                <div class="md:col-span-2">
                     <label class="block text-[10px] font-extrabold text-amber-600 uppercase tracking-wider mb-1">Remarks / Intervention</label>
                     <textarea class="session-input w-full p-2 border rounded text-sm bg-amber-50 border-amber-200" rows="2" data-idx="${index}" data-key="remarks">${session.remarks || ""}</textarea>
                 </div>`;
@@ -328,13 +326,11 @@ window.renderOutput = function () {
       const key = e.target.getAttribute("data-key");
       window.currentPlan[idx][key] = e.target.value;
 
-      // 🚀 NEW: Auto-expand when typing
       e.target.style.height = "auto";
       e.target.style.height = e.target.scrollHeight + "px";
     });
   });
 
-  // 🚀 NEW: Auto-expand all textareas instantly after rendering
   setTimeout(() => {
     const textareas = container.querySelectorAll(".session-input");
     textareas.forEach((ta) => {
@@ -369,7 +365,6 @@ window.loadSpecificPlan = function (planData) {
     });
   }
 
-  // 🚀 SMART UI MAPPING (Handles both old and new data seamlessly)
   if (document.getElementById("lpAcademicTerm")) {
     document.getElementById("lpAcademicTerm").value =
       planData.safeTerm ||
@@ -381,7 +376,6 @@ window.loadSpecificPlan = function (planData) {
       planData.safeWeek || planData.course_week || "Week 1";
   }
 
-  // Check if the rolling date dropdown exists and inject old physical dates safely
   const dateRangeEl = document.getElementById("lpDateRange");
   const physicalDateStr = planData.safeDate || planData.date_range;
   if (dateRangeEl && physicalDateStr) {
@@ -418,18 +412,14 @@ window.generateRollingWeekDropdown = function () {
   if (!selectEl) return;
 
   selectEl.innerHTML = "";
-
-  // Get today's exact date
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Find THIS week's Monday
   const day = today.getDay();
   const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
   const thisMonday = new Date(today);
   thisMonday.setDate(diffToMonday);
 
-  // Loop from -6 weeks to +6 weeks
   for (let i = -6; i <= 6; i++) {
     const mon = new Date(thisMonday);
     mon.setDate(thisMonday.getDate() + i * 7);
@@ -443,7 +433,6 @@ window.generateRollingWeekDropdown = function () {
     const fDay = fri.getDate();
     const year = fri.getFullYear();
 
-    // Format exactly as requested: "August 24-28, 2026" or "August 31-September 4, 2026"
     let dateStr = "";
     if (mMonth === fMonth) {
       dateStr = `${mMonth} ${mDay}-${fDay}, ${year}`;
@@ -453,7 +442,6 @@ window.generateRollingWeekDropdown = function () {
 
     const opt = document.createElement("option");
     opt.value = dateStr;
-    // Add a visual indicator for the current week
     opt.textContent = i === 0 ? `👉 Current: ${dateStr}` : dateStr;
     if (i === 0) opt.selected = true;
 

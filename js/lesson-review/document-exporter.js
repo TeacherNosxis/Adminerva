@@ -7,7 +7,6 @@ const GOOGLE_CLIENT_ID =
 
 window.formatListForPrint = function (text, isOrdered = true) {
   if (!text) return "";
-  // 🚀 NEW: Splits the text perfectly whether the AI uses real newlines or literal "\n" strings
   const lines = String(text)
     .split(/\\n|\n/)
     .map((l) => l.trim())
@@ -128,23 +127,30 @@ window.buildDocumentLayout = async function () {
   window.currentPlan.forEach((session, index) => {
     const isFlex = session.session_name.toLowerCase().includes("flex");
     const isLab = session.session_name.includes("4-6");
-    const compText = isFlex ? "" : session.competencies || "";
+    const taxonomyScrubber =
+      /\s*[\(\[]?(?:Cognitive|Psychomotor|Affective)[\)\]]?\.?/gi;
+
+    const compText = isFlex
+      ? ""
+      : (session.competencies || "").replace(taxonomyScrubber, "");
+
     const objText = isFlex
       ? ""
-      : window.formatListForPrint(session.objectives || "N/A", true);
+      : window.formatListForPrint(
+          (session.objectives || "N/A").replace(taxonomyScrubber, ""),
+          true,
+        );
+
     const matText = window.formatListForPrint(
       window.currentWeeklyOverview.materials || "",
       false,
     );
-    // 🚀 NEW: Regex to silently scrub AI time/label indicators like [10 mins], (15 mins), or [Prelims]
-    const timeScrubber =
-      /\s*[\(\[]\s*([A-Za-z\s\/]+)?\s*\d+\s*mins?\s*[\)\]]/gi;
-    const tagScrubber =
-      /\s*\[Prelims\]|\[Motivation\]|\[Activities\]|\[Evaluation\]|\[Closing\]/gi;
+
     const prelimText = window.formatListForPrint(
       session.preliminary || "",
       true,
     );
+
     const activitiesText = window.formatListForPrint(
       session.learning_activities || "",
       true,
@@ -154,7 +160,6 @@ window.buildDocumentLayout = async function () {
       .replace(/;/g, "<br>")
       .replace(/\\n|\n/g, "<br>");
 
-    // 1. Break the session into sequential row parts
     let parts = [];
     parts.push({
       time: "",
@@ -167,7 +172,6 @@ window.buildDocumentLayout = async function () {
         content: `<strong>Learning Activities:</strong><br><div style="padding-left: 8px;">${activitiesText}</div>`,
       });
     } else {
-      // 🚀 REDISTRIBUTED LAB TIME LOGIC TO EQUAL 150 MINS
       parts.push({
         time: isLab ? "10 mins" : "5 mins",
         content: `<strong>Preliminary Activities:</strong><br><div style="padding-left: 8px;">${prelimText}</div>`,
@@ -201,7 +205,6 @@ window.buildDocumentLayout = async function () {
 
     const rowCount = parts.length;
 
-    // 2. Loop through parts and assign native HTML rows with border erasure
     parts.forEach((part, pIndex) => {
       const tr = document.createElement("tr");
       let rowHtml = "";
@@ -209,7 +212,6 @@ window.buildDocumentLayout = async function () {
       const isFirst = pIndex === 0;
       const isLast = pIndex === rowCount - 1;
 
-      // 🚀 INLINE CSS TO REMOVE HORIZONTAL BORDERS BETWEEN SUB-ROWS
       let timeStyle =
         "text-align: center; font-weight: bold; vertical-align: top; font-size: 10pt; padding: 6px;";
       let contentStyle = "vertical-align: top; font-size: 10pt; padding: 6px;";
@@ -225,24 +227,41 @@ window.buildDocumentLayout = async function () {
 
       if (pIndex === 0) {
         if (index === 0) {
+          // 🚀 EXTRACT UNIQUE FORMATION STANDARDS FROM ALL SESSIONS
+          const uniqueFormations = [
+            ...new Set(
+              window.currentPlan
+                .map((s) => s.formation_standard)
+                .filter((fs) => fs && fs.trim() !== ""),
+            ),
+          ];
+
+          const formationText =
+            uniqueFormations.length > 0
+              ? `<ul style="margin: 0; padding-left: 15px; list-style-type: disc;">` +
+                uniqueFormations
+                  .map((f) => `<li style="margin-bottom: 4px;">${f}</li>`)
+                  .join("") +
+                `</ul>`
+              : "N/A";
+
           rowHtml += `
                         <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">${window.currentWeeklyOverview.topic || ""}</td>
                         <td rowspan="${rowCount}" style="vertical-align: top;">
                             <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
                             <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
-                            <strong>Formation Standard:</strong><br>${window.currentWeeklyOverview.formation_standard || ""}
+                            <strong>Formation Standard:</strong><br>${formationText}
                         </td>
                     `;
         } else {
           rowHtml += `<td rowspan="${rowCount}"></td><td rowspan="${rowCount}"></td>`;
         }
 
-        // 🚀 NEW: Conditionally erase Competencies and Objectives for Flex sessions
         if (isFlex) {
           rowHtml += `<td rowspan="${rowCount}"></td>`;
         } else {
           rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">
-                            <strong>Competencies:</strong><br>${session.competencies || "N/A"}<br><br>
+                            <strong>The learners should be able to...</strong><br>${compText}<br><br>
                             <strong>Objectives:</strong><br>${objText}
                         </td>`;
         }
@@ -292,7 +311,6 @@ window.exportToGoogleDocs = function () {
 
   const tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
-    // 🚀 REQUEST BOTH DRIVE AND DOCS SCOPES
     scope:
       "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents",
     callback: async (tokenResponse) => {
@@ -313,7 +331,6 @@ window.exportToGoogleDocs = function () {
       await processAndUploadToDrive(tokenResponse.access_token);
     },
   });
-  // Allow Google to silently reuse the existing session without forcing the consent screen
   tokenClient.requestAccessToken();
 };
 
@@ -342,16 +359,10 @@ async function processAndUploadToDrive(accessToken) {
   const printWrapper = document.getElementById("printDocumentWrapper");
   let cleanHtml = printWrapper.innerHTML;
 
-  // 1. Force Image Sizing
   cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
-
-  // 2. CLEAN TAG SWAP: Convert <th> to <td> without breaking the existing inline styles
   cleanHtml = cleanHtml.replace(/<th\b/gi, "<td").replace(/<\/th>/gi, "</td>");
-
-  // 3. SMART INJECTION: Find the blue background cells and inject the bold font directly into them
   cleanHtml = cleanHtml.replace(/#b4c6e7;/gi, "#b4c6e7; font-weight: bold;");
 
-  // 4. Send the pure HTML (No aggressive global CSS)
   const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -440,7 +451,6 @@ async function processAndUploadToDrive(accessToken) {
       },
     ];
 
-    // Resize Main 7-Column Table (8%, 14%, 14%, 4%, 32%, 14%, 14%)
     if (tables.length > 0) {
       const mainWidths = [69, 121, 121, 35, 276, 121, 121];
       mainWidths.forEach((width, index) => {
@@ -458,7 +468,6 @@ async function processAndUploadToDrive(accessToken) {
       });
     }
 
-    // Resize Signatories 4-Column Table
     if (tables.length > 1) {
       const sigWidths = [216, 216, 216, 216];
       sigWidths.forEach((width, index) => {
