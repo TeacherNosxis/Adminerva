@@ -173,10 +173,11 @@ window.executeFinalGeneration = async function (userClarification) {
 
   let lookbackContext = "";
   if (window.cachedPreviousPlan && window.cachedPreviousPlan.sessions) {
+    // 🚀 NEW: Safely sanitize the lookback text by converting any double quotes to single quotes to protect the JSON
     const safeTextState = window.cachedPreviousPlan.sessions
       .map(
         (s) =>
-          `[Session: ${s.session_name}]\nRemarks: ${s.remarks || "None"}\nOriginal Planned Activities: ${s.learning_activities || "None"}`,
+          `[Session: ${s.session_name}]\nRemarks: ${(s.remarks || "None").replace(/"/g, "'")}\nOriginal Planned Activities: ${(s.learning_activities || "None").replace(/"/g, "'")}`,
       )
       .join("\n\n");
 
@@ -229,8 +230,8 @@ ${scheduleRules}
 
 8. STRICT JSON ESCAPING (CRITICAL): 
    - Your output MUST be completely valid JSON. 
-   - Do NOT use raw line breaks inside string values. You MUST use the exact escaped characters "\\n" to denote a new line.
-   - Properly escape all internal double quotes as \\".
+   - NEVER use double quotes (") INSIDE your text/string values. If you need to quote something, use single quotes (') instead to prevent JSON parsing errors.
+   - Do NOT use raw physical line breaks inside string values. You MUST use the exact escaped sequence "\\n" to denote a new line.
 ${lookbackContext}
 
 Target Scope: ${window.cachedScope}
@@ -310,12 +311,13 @@ ${window.cachedCompiledText.substring(0, 25000)}
     }
 
     const aiResult = await response.json();
-    let rawJson = aiResult.candidates[0].content.parts[0].text;
-    rawJson = rawJson
-      .replace(/^```json\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
+    const rawText = aiResult.candidates[0].content.parts[0].text;
 
+    // 🚀 NEW: Robust JSON Extractor. Grabs strictly the code between the first '{' and last '}'
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    let rawJson = jsonMatch ? jsonMatch[0] : rawText;
+
+    // Final safety scrub to aggressively rip out any physical control characters before parsing
     rawJson = rawJson.replace(/[\u0000-\u0009\u000B-\u001F]+/g, "");
 
     const planData = JSON.parse(rawJson);
