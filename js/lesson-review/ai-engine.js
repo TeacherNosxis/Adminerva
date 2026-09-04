@@ -1,9 +1,4 @@
 window.initiateGenerationFlow = async function () {
-  const gemKey = localStorage.getItem("repoReview_gemini_token");
-  const model =
-    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash";
-  if (!gemKey) return alert("Missing Gemini API Key in Global Settings.");
-
   const customInstructionsText = document
     .getElementById("lpCustomInstructions")
     .value.trim();
@@ -44,7 +39,6 @@ window.initiateGenerationFlow = async function () {
     document.getElementById("lpDateRange").value || "No Dates Provided";
 
   window.currentTargetGrade = document.getElementById("lpGradeLevel").value;
-
   window.cachedScope = `${courseWeek}: ${dateRange} (${academicTerm})`;
   window.cachedCustomInstructions = customInstructionsText;
 
@@ -71,23 +65,22 @@ You are an expert curriculum assistant. Review ONLY the Custom Instructions.
 
 Target Grade & Scope: ${window.currentTargetGrade}, ${window.cachedScope}
 Custom Instructions: ${window.cachedCustomInstructions}
-        `;
+    `;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: preCheckPrompt }] }],
-        }),
-      },
-    );
+    // 🚀 NEW: Route to Local Backend Proxy (Creative Task)
+    const response = await fetch("http://localhost:3000/api/generate-lesson", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: preCheckPrompt,
+        taskType: "creative", // Hits llama3.2:3b without JSON forcing
+      }),
+    });
 
     if (!response.ok) throw new Error(`Pre-check failed (${response.status})`);
 
     const result = await response.json();
-    const aiReply = result.candidates[0].content.parts[0].text.trim();
+    const aiReply = result.result.trim();
 
     if (aiReply.toUpperCase().startsWith("READY")) {
       window.executeFinalGeneration("");
@@ -120,9 +113,6 @@ window.submitClarificationAndProceed = function () {
 };
 
 window.executeFinalGeneration = async function (userClarification) {
-  const gemKey = localStorage.getItem("repoReview_gemini_token");
-  const model =
-    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash";
   const schoolYear =
     document.getElementById("lpSchoolYear").value || "2026-2027";
   const subject =
@@ -206,6 +196,33 @@ ${scheduleRules}
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted learning_activities. Set all other fields to empty strings.
 
+9. JSON SKELETON (CRITICAL):
+   You MUST return a single JSON object that PERFECTLY matches this exact structure. Do not skip any keys or arrays.
+   {
+     "weekly_overview": {
+       "topic": "...",
+       "content_standard": "...",
+       "performance_standard": "...",
+       "materials": "..."
+     },
+     "sessions": [
+       {
+         "session_name": "...",
+         "topic": "...",
+         "competencies": "...",
+         "objectives": "...",
+         "preliminary": "...",
+         "motivation": "...",
+         "learning_activities": "...",
+         "formation_standard": "...",
+         "evaluation": "...",
+         "closing": "...",
+         "values_integration": "...",
+         "remarks": "..."
+       }
+     ]
+   }
+
 ${lookbackContext}
 
 Target Scope: ${window.cachedScope}
@@ -222,75 +239,29 @@ ${window.cachedCompiledText.substring(0, 25000)}
   window.showLoader();
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.2,
-            maxOutputTokens: 8192,
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                weekly_overview: {
-                  type: "OBJECT",
-                  properties: {
-                    topic: { type: "STRING" },
-                    content_standard: { type: "STRING" },
-                    performance_standard: { type: "STRING" },
-                    materials: { type: "STRING" },
-                  },
-                  required: [
-                    "topic",
-                    "content_standard",
-                    "performance_standard",
-                    "materials",
-                  ],
-                },
-                sessions: {
-                  type: "ARRAY",
-                  items: {
-                    type: "OBJECT",
-                    properties: {
-                      session_name: { type: "STRING" },
-                      topic: { type: "STRING" },
-                      competencies: { type: "STRING" },
-                      objectives: { type: "STRING" },
-                      preliminary: { type: "STRING" },
-                      motivation: { type: "STRING" },
-                      learning_activities: { type: "STRING" },
-                      formation_standard: { type: "STRING" },
-                      evaluation: { type: "STRING" },
-                      closing: { type: "STRING" },
-                      values_integration: { type: "STRING" },
-                      remarks: { type: "STRING" },
-                    },
-                    required: ["session_name", "topic", "learning_activities"],
-                  },
-                },
-              },
-              required: ["weekly_overview", "sessions"],
-            },
-          },
-        }),
-      },
-    );
+    // 🚀 NEW: Route to Local Backend Proxy (Structured JSON Task)
+    const response = await fetch("http://localhost:3000/api/generate-lesson", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: prompt,
+        taskType: "structured", // Hits qwen2.5:3b and FORCES strict JSON output
+      }),
+    });
 
     if (!response.ok) {
       const errBody = await response.text();
-      throw new Error(`API Error (${response.status}): ${errBody}`);
+      throw new Error(`Proxy Error (${response.status}): ${errBody}`);
     }
 
     const aiResult = await response.json();
-    let rawJson = aiResult.candidates[0].content.parts[0].text;
+    let rawText = aiResult.result;
 
-    const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
-    if (jsonMatch) rawJson = jsonMatch[0];
+    // Safety net: Extract exactly what is between the JSON brackets
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    let rawJson = jsonMatch ? jsonMatch[0] : rawText;
 
+    // Erase lingering physical control characters
     rawJson = rawJson.replace(/[\u0000-\u0009\u000B-\u001F]+/g, "");
 
     let planData;
@@ -300,7 +271,7 @@ ${window.cachedCompiledText.substring(0, 25000)}
       console.error("CRASH REPORT - Raw AI Output Below:");
       console.error(rawJson);
       throw new Error(
-        "The AI failed to format the JSON properly. Press F12 to open the developer console and view the broken output.",
+        "The local AI failed to format the JSON properly. Check backend logs.",
       );
     }
 
