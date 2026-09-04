@@ -281,9 +281,15 @@ ${window.cachedCompiledText.substring(0, 25000)}
     const defaultClosing =
       localStorage.getItem("lessonReview_defaultClosing") ||
       "Summary of the Lesson\nClosing Prayer";
+    // 🚀 SAFE MAPPING WITH FALLBACK ARRAYS
+    const sessionsArray = planData.sessions || [];
 
-    window.currentPlan = planData.sessions.map((session) => {
-      if (!session.session_name.toLowerCase().includes("flex")) {
+    window.currentPlan = sessionsArray.map((session) => {
+      if (
+        session &&
+        session.session_name &&
+        !session.session_name.toLowerCase().includes("flex")
+      ) {
         session.preliminary = defaultPrelim;
         session.closing = defaultClosing;
       }
