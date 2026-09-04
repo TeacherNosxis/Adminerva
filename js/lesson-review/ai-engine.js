@@ -147,7 +147,11 @@ window.executeFinalGeneration = async function (userClarification) {
   }
 
   let lookbackContext = "";
-  if (window.cachedPreviousPlan && window.cachedPreviousPlan.sessions) {
+  // 🚀 Ensure cachedPreviousPlan and its sessions exist before mapping
+  if (
+    window.cachedPreviousPlan &&
+    Array.isArray(window.cachedPreviousPlan.sessions)
+  ) {
     const safeTextState = window.cachedPreviousPlan.sessions
       .map(
         (s) =>
