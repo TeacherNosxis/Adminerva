@@ -4,7 +4,7 @@ import cors from "cors";
 const app = express();
 const PORT = 3000;
 // Use 127.0.0.1 instead of localhost to prevent IPv6 binding issues in Node
-const OLLAMA_URL = "http://127.0.0.1:11434/api/generate";
+const OLLAMA_URL = "http://localhost:11434/api/generate";
 
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
