@@ -49,6 +49,8 @@ app.post("/api/generate-lesson", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ollamaPayload),
+      // 🚀 NEW: Increase headers timeout to 10 minutes (600,000ms) for CPU-bound models
+      signal: AbortSignal.timeout(600000),
     });
 
     if (!ollamaResponse.ok)
