@@ -226,10 +226,6 @@ window.buildDocumentLayout = async function () {
       }
 
       if (pIndex === 0) {
-        rowHtml += `
-            <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
-                ${session.topic || window.currentWeeklyOverview.topic || ""}
-            </td>`;
         if (isFlex) {
           // 🚀 FIX: Blank out Topic, Standards, Objectives, and Materials for Flex
           rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Topic
@@ -239,6 +235,10 @@ window.buildDocumentLayout = async function () {
           rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
           rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Materials
         } else {
+          rowHtml += `
+            <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
+                ${session.topic || window.currentWeeklyOverview.topic || ""}
+            </td>`;
           rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">
                         <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
                         <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
