@@ -289,7 +289,6 @@ window.extractPDF = async function () {
     return;
   }
 
-  // 🚀 THE FIX: Forcefully trim spaces and newlines from your saved credentials
   const gemKey = (localStorage.getItem("repoReview_gemini_token") || "").trim();
   const modelName = (
     localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash"
@@ -305,9 +304,19 @@ window.extractPDF = async function () {
   const folder = libraryData.find((f) => f.id === activeFolderId);
   let updatedDocs = [...(folder.documents || [])];
 
+  // 🚀 NEW: Helper function to pause execution
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
   try {
     for (let i = 0; i < fileInput.files.length; i++) {
       const file = fileInput.files[i];
+
+      // 🚀 NEW: Apply a 4-second cooldown BEFORE the 2nd, 3rd, 4th, and 5th files
+      if (i > 0) {
+        if (loaderText)
+          loaderText.innerText = `Cooling down API to prevent rate limits (waiting 4s)...`;
+        await delay(4000);
+      }
 
       if (loaderText) {
         loaderText.innerText = `Extracting ${i + 1} of ${fileInput.files.length}: ${file.name}...`;
@@ -320,7 +329,6 @@ window.extractPDF = async function () {
         reader.readAsDataURL(file);
       });
 
-      // 🚀 THE FIX: Dynamically inject your sanitized modelName and gemKey
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(gemKey)}`;
 
       const response = await fetch(apiUrl, {
@@ -343,14 +351,14 @@ window.extractPDF = async function () {
         }),
       });
 
+      // 🚀 FIX: Removed the hardcoded "Not found" string to avoid confusing 503s with 404s
       if (!response.ok)
         throw new Error(
-          `API Error on ${file.name}: ${response.status} - The model or endpoint was not found.`,
+          `API Error on ${file.name}: Status ${response.status}. The API may be overloaded.`,
         );
 
       const result = await response.json();
 
-      // Bulletproof check for empty responses
       if (!result.candidates || result.candidates.length === 0) {
         console.error(`[Gemini API Error for ${file.name}]:`, result);
         throw new Error(
