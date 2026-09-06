@@ -7,21 +7,9 @@ const safeSet = (id, val) => {
   if (document.getElementById(id))
     document.getElementById(id).value = val || "";
 };
+
 const safeGet = (id) =>
   document.getElementById(id) ? document.getElementById(id).value.trim() : "";
-
-window.loadSecuritySettings = function () {
-  safeSet("adminGithubToken", localStorage.getItem("repoReview_github_token"));
-  safeSet("adminGeminiKey", localStorage.getItem("repoReview_gemini_token"));
-  safeSet(
-    "adminAiModel",
-    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash",
-  );
-  safeSet(
-    "firebaseConfigInput",
-    localStorage.getItem("repoReview_firebase_config"),
-  );
-};
 
 window.saveSecuritySettings = async function () {
   localStorage.setItem(
@@ -35,7 +23,7 @@ window.saveSecuritySettings = async function () {
     safeGet("adminAiModel") || "gemini-1.5-flash",
   );
 
-  // 🚀 NEW: Save the AI Processing Engine toggle
+  // Save the AI Processing Engine toggle
   localStorage.setItem(
     "repoReview_engine_mode",
     safeGet("globalAiEngine") || "cloud",
@@ -47,11 +35,6 @@ window.saveSecuritySettings = async function () {
 };
 
 window.loadSecuritySettings = function () {
-  const safeSet = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.value = val;
-  };
-
   safeSet(
     "firebaseConfigInput",
     localStorage.getItem("repoReview_firebase_config") || "",
@@ -64,12 +47,13 @@ window.loadSecuritySettings = function () {
     "adminGeminiKey",
     localStorage.getItem("repoReview_gemini_token") || "",
   );
+  // Restored stable fallback model
   safeSet(
     "adminAiModel",
-    localStorage.getItem("repoReview_ai_model") || "gemini-3.5-flash",
+    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash",
   );
 
-  // 🚀 NEW: Load the AI Processing Engine toggle
+  // Load the AI Processing Engine toggle
   safeSet(
     "globalAiEngine",
     localStorage.getItem("repoReview_engine_mode") || "cloud",
@@ -88,10 +72,8 @@ window.initFirebase = function () {
     const app = initializeApp(JSON.parse(configStr));
     window.db = getFirestore(app);
 
-    // Trigger RepoReview database pulls
+    // Trigger database pulls
     if (window.loadSectionsAndStudents) window.loadSectionsAndStudents();
-
-    // Trigger LessonReview defaults pulls
     if (window.loadLessonReviewSettings) window.loadLessonReviewSettings();
   } catch (e) {
     console.error("Firebase Init Failed:", e);
