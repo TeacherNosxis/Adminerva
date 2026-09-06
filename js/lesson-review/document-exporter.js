@@ -226,6 +226,10 @@ window.buildDocumentLayout = async function () {
       }
 
       if (pIndex === 0) {
+        rowHtml += `
+            <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
+                ${session.topic || window.currentWeeklyOverview.topic || ""}
+            </td>`;
         if (isFlex) {
           // 🚀 FIX: Blank out Topic, Standards, Objectives, and Materials for Flex
           rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Topic
