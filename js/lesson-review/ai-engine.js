@@ -323,13 +323,11 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
             retries--;
             continue;
           }
-
           if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
 
           const result = await response.json();
           let rawJson = result.candidates[0].content.parts[0].text;
 
-          // 1. Clean formatting and neutralize physical line breaks
           rawJson = rawJson.trim();
           if (rawJson.startsWith("```")) {
             rawJson = rawJson
@@ -340,7 +338,6 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
           rawJson = rawJson.replace(/[\u0000-\u0008\u000B-\u001F]+/g, "");
           rawJson = rawJson.replace(/,\s*([\]}])/g, "$1");
 
-          // 2. Try the Bracket Fixes
           let parsed = false;
           const fixAttempts = [
             rawJson,
@@ -357,10 +354,9 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
             } catch (e) {}
           }
 
-          // 3. If parsing still fails (Severe Truncation), throw an error to trigger the retry loop
           if (!parsed) throw new Error("Severe truncation mid-string.");
 
-          generationSuccess = true; // Success! Break the loop.
+          generationSuccess = true;
         } catch (error) {
           if (retries > 0) {
             console.warn(
@@ -376,8 +372,28 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
           }
         }
       }
+    } else {
+      // 🚀 THE FIX: Restored Local Proxy block so it doesn't crash if engineMode !== "cloud"
+      const response = await fetch(
+        "http://localhost:3000/api/generate-lesson",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: prompt, taskType: "structured" }),
+        },
+      );
+      if (!response.ok) throw new Error("Local Proxy Error");
+      const result = await response.json();
+
+      let rawJson = result.result;
+      rawJson = rawJson
+        .replace(/[\n\r\t]+/g, " ")
+        .replace(/[\u0000-\u0008\u000B-\u001F]+/g, "")
+        .replace(/,\s*([\]}])/g, "$1");
+      planData = JSON.parse(rawJson);
     }
 
+    // 🚀 THE FIX: Standardized to the new Adminerva namespace
     const defaultPrelim =
       localStorage.getItem("Adminerva_defaultPrelim") ||
       "Opening Prayer\nAttendance Checking\nTECHNOTES";
@@ -419,11 +435,12 @@ window.generateBlankPlan = function () {
     materials: "",
   };
 
+  // 🚀 THE FIX: Updated these to Adminerva_ to match the main generation function
   const defaultPrelim =
-    localStorage.getItem("lessonReview_defaultPrelim") ||
+    localStorage.getItem("Adminerva_defaultPrelim") ||
     "Opening Prayer\nAttendance Checking\nTECHNOTES";
   const defaultClosing =
-    localStorage.getItem("lessonReview_defaultClosing") ||
+    localStorage.getItem("Adminerva_defaultClosing") ||
     "Summary of the Lesson\nClosing Prayer";
 
   let sessionNames = [];
