@@ -226,31 +226,34 @@ window.buildDocumentLayout = async function () {
       }
 
       if (pIndex === 0) {
-        // 🚀 NEW: This now populates on EVERY session row instead of just index === 0
         rowHtml += `
-                    <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
-                        ${session.topic || window.currentWeeklyOverview.topic || ""}
-                    </td>
-                    <td rowspan="${rowCount}" style="vertical-align: top;">
-                        <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
-                        <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
-                        <strong>Formation Standard:</strong><br>${session.formation_standard || "N/A"}
-                    </td>
-                `;
+            <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
+                ${session.topic || window.currentWeeklyOverview.topic || ""}
+            </td>`;
 
         if (isFlex) {
+          // 🚀 FIX: Leave Standards, Objectives, and Materials completely blank for Flex Sessions
+          rowHtml += `<td rowspan="${rowCount}"></td>`;
+          rowHtml += `<td rowspan="${rowCount}"></td>`;
+          rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
+          rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
           rowHtml += `<td rowspan="${rowCount}"></td>`;
         } else {
           rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">
-                            <strong>The learners should be able to...</strong><br>${compText}<br><br>
-                            <strong>Objectives:</strong><br>${objText}
-                        </td>`;
+                        <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
+                        <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
+                        <strong>Formation Standard:</strong><br>${session.formation_standard || "N/A"}
+                      </td>`;
+          rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">
+                        <strong>The learners should be able to...</strong><br>${compText}<br><br>
+                        <strong>Objectives:</strong><br>${objText}
+                      </td>`;
+          rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
+          rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
+          rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${matText}</td>`;
         }
 
-        rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
-        rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
-
-        rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${matText}</td>`;
+        // Remarks are kept for both normal and Flex sessions to maintain schedule visibility
         rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">${cleanRemarks}</td>`;
       } else {
         rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
@@ -339,7 +342,8 @@ async function processAndUploadToDrive(accessToken) {
 
   const printWrapper = document.getElementById("printDocumentWrapper");
   let cleanHtml = printWrapper.innerHTML;
-
+  cleanHtml = cleanHtml.replace(/>\s+</g, "><");
+  cleanHtml = cleanHtml.replace(/(<\/div>|<img[^>]+>)\s*<br\s*\/?>/gi, "$1");
   cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
   cleanHtml = cleanHtml.replace(/<th\b/gi, "<td").replace(/<\/th>/gi, "</td>");
   cleanHtml = cleanHtml.replace(/#b4c6e7;/gi, "#b4c6e7; font-weight: bold;");
@@ -433,7 +437,8 @@ async function processAndUploadToDrive(accessToken) {
     ];
 
     if (tables.length > 0) {
-      const mainWidths = [69, 121, 121, 35, 276, 121, 121];
+      // 🚀 FIX: Reduced Materials & Remarks from 121 to 90. Added the saved width to Activities (276 -> 338).
+      const mainWidths = [69, 121, 121, 35, 338, 90, 90];
       mainWidths.forEach((width, index) => {
         requests.push({
           updateTableColumnProperties: {
