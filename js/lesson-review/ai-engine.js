@@ -343,14 +343,30 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
 
     const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
     if (jsonMatch) rawJson = jsonMatch[0];
-    rawJson = rawJson.replace(/[\u0000-\u0009\u000B-\u001F]+/g, "");
 
-    const planData = JSON.parse(rawJson);
+    // 🚀 THE FIX: Flatten all physical line breaks and tabs into spaces.
+    // This neutralizes rogue line breaks inside strings but preserves the literal '\n' sequences needed for your UI formatting.
+    rawJson = rawJson.replace(/[\n\r\t]+/g, " ");
+
+    // Strip any remaining invisible control characters that break JSON
+    rawJson = rawJson.replace(/[\u0000-\u0008\u000B-\u001F]+/g, "");
+
+    let planData;
+    try {
+      planData = JSON.parse(rawJson);
+    } catch (parseError) {
+      // 🚀 DEBUG NET: If it still crashes, it will print the exact broken text to your console so we can see what the AI did.
+      console.error("RAW AI JSON OUTPUT THAT CAUSED CRASH:", rawJson);
+      throw new Error(
+        "AI generated corrupt JSON formatting. Check the browser console for details.",
+      );
+    }
+
     const defaultPrelim =
-      localStorage.getItem("lessonReview_defaultPrelim") ||
+      localStorage.getItem("Adminerva_defaultPrelim") ||
       "Opening Prayer\nAttendance Checking\nTECHNOTES";
     const defaultClosing =
-      localStorage.getItem("lessonReview_defaultClosing") ||
+      localStorage.getItem("Adminerva_defaultClosing") ||
       "Summary of the Lesson\nClosing Prayer";
     const sessionsArray = planData.sessions || [];
 
