@@ -281,7 +281,6 @@ window.extractPDF = async function () {
   const fileInput = document.getElementById("pdfFileInput");
   if (!fileInput.files.length) return;
 
-  // 🚀 NEW: Enforce the 5-file maximum limit
   if (fileInput.files.length > 5) {
     alert(
       "To prevent API rate limits, please select a maximum of 5 PDFs at once.",
@@ -290,8 +289,14 @@ window.extractPDF = async function () {
     return;
   }
 
-  const gemKey = localStorage.getItem("repoReview_gemini_token");
-  if (!gemKey) return alert("Missing Gemini API Key.");
+  // 🚀 THE FIX: Forcefully trim spaces and newlines from your saved credentials
+  const gemKey = (localStorage.getItem("repoReview_gemini_token") || "").trim();
+  const modelName = (
+    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash"
+  ).trim();
+
+  if (!gemKey)
+    return alert("Missing Gemini API Key. Please check your Global Settings.");
 
   const loader = document.getElementById("extractionLoader");
   const loaderText = document.getElementById("loaderText");
@@ -301,11 +306,9 @@ window.extractPDF = async function () {
   let updatedDocs = [...(folder.documents || [])];
 
   try {
-    // 🚀 NEW: Sequential processing loop
     for (let i = 0; i < fileInput.files.length; i++) {
       const file = fileInput.files[i];
 
-      // Dynamic UI update
       if (loaderText) {
         loaderText.innerText = `Extracting ${i + 1} of ${fileInput.files.length}: ${file.name}...`;
       }
@@ -317,39 +320,41 @@ window.extractPDF = async function () {
         reader.readAsDataURL(file);
       });
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${gemKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: "Extract pure educational text." },
-                  {
-                    inline_data: {
-                      mime_type: "application/pdf",
-                      data: base64String,
-                    },
+      // 🚀 THE FIX: Dynamically inject your sanitized modelName and gemKey
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(gemKey)}`;
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: "Extract pure educational text." },
+                {
+                  inline_data: {
+                    mime_type: "application/pdf",
+                    data: base64String,
                   },
-                ],
-              },
-            ],
-          }),
-        },
-      );
+                },
+              ],
+            },
+          ],
+        }),
+      });
 
       if (!response.ok)
-        throw new Error(`API Error on ${file.name}: ${response.status}`);
+        throw new Error(
+          `API Error on ${file.name}: ${response.status} - The model or endpoint was not found.`,
+        );
 
       const result = await response.json();
 
-      // 🚀 NEW: Bulletproof check for missing candidates (safety blocks or blank PDFs)
+      // Bulletproof check for empty responses
       if (!result.candidates || result.candidates.length === 0) {
         console.error(`[Gemini API Error for ${file.name}]:`, result);
         throw new Error(
-          `The AI refused or failed to read "${file.name}". It may have triggered Google's safety filters or the PDF contains no readable text.`,
+          `The AI refused to read "${file.name}". It may have triggered safety filters.`,
         );
       }
 
@@ -362,7 +367,7 @@ window.extractPDF = async function () {
       });
     }
 
-    // 🚀 NEW: Save everything to Firebase only after the loop finishes successfully
+    // Save to Firebase
     await updateDoc(doc(db, "reference_folders", activeFolderId), {
       documents: updatedDocs,
       updatedAt: new Date().toISOString(),
@@ -371,15 +376,12 @@ window.extractPDF = async function () {
     folder.documents = updatedDocs;
     localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
   } catch (error) {
-    alert(
-      "Bulk extraction stopped or partially failed. Error: " + error.message,
-    );
+    alert("Bulk extraction stopped. Error: " + error.message);
   } finally {
     fileInput.value = "";
     renderFolders();
     renderDocuments(folder.documents);
 
-    // Reset loader UI
     loader.classList.replace("flex", "hidden");
     if (loaderText) loaderText.innerText = "Extracting PDF Data...";
   }

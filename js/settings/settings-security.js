@@ -20,7 +20,7 @@ window.saveSecuritySettings = async function () {
   localStorage.setItem("repoReview_gemini_token", safeGet("adminGeminiKey"));
   localStorage.setItem(
     "repoReview_ai_model",
-    safeGet("adminAiModel") || "gemini-1.5-flash",
+    safeGet("adminAiModel") || "gemini-3.5-flash",
   );
 
   // Save the AI Processing Engine toggle
