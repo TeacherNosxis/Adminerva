@@ -25,7 +25,7 @@ window.initiateGenerationFlow = async function () {
   }
 
   const libraryData = JSON.parse(
-    localStorage.getItem("lessonReview_library") || "[]",
+    localStorage.getItem("Adminerva_library") || "[]",
   );
   window.cachedCompiledText = "";
 
@@ -42,10 +42,9 @@ window.initiateGenerationFlow = async function () {
     });
   }
 
-  const subject =
-    localStorage.getItem("lessonReview_defaultSubject") || "Subject";
+  const subject = localStorage.getItem("Adminerva_defaultSubject") || "Subject";
   window.cachedSchedule =
-    localStorage.getItem("lessonReview_schedule") || "No schedule provided.";
+    localStorage.getItem("Adminerva_schedule") || "No schedule provided.";
   const academicTerm = document.getElementById("lpAcademicTerm").value;
   const courseWeek = document.getElementById("lpCourseWeek").value;
   const dateRange =
@@ -149,8 +148,7 @@ window.executeFinalGeneration = async function (userClarification) {
     localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash";
   const schoolYear =
     document.getElementById("lpSchoolYear").value || "2026-2027";
-  const subject =
-    localStorage.getItem("lessonReview_defaultSubject") || "Subject";
+  const subject = localStorage.getItem("Adminerva_defaultSubject") || "Subject";
 
   let gradeSpecificRules = "";
   let scheduleRules = "";
