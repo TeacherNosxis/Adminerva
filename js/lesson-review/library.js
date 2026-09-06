@@ -338,7 +338,10 @@ window.extractPDF = async function () {
           contents: [
             {
               parts: [
-                { text: "Extract pure educational text." },
+                // 🚀 THE FIX: An unconditional command to extract everything (Text + Images)
+                {
+                  text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
+                },
                 {
                   inline_data: {
                     mime_type: "application/pdf",
