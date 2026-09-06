@@ -344,24 +344,24 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
     const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
     if (jsonMatch) rawJson = jsonMatch[0];
 
-    // 🚀 THE FIX: Flatten all physical line breaks and tabs into spaces.
-    // This neutralizes rogue line breaks inside strings but preserves the literal '\n' sequences needed for your UI formatting.
+    // 🚀 THE FIX: Flatten all rogue physical line breaks and tabs into spaces.
     rawJson = rawJson.replace(/[\n\r\t]+/g, " ");
 
-    // Strip any remaining invisible control characters that break JSON
+    // Strip any remaining invisible control characters
     rawJson = rawJson.replace(/[\u0000-\u0008\u000B-\u001F]+/g, "");
 
     let planData;
     try {
       planData = JSON.parse(rawJson);
     } catch (parseError) {
-      // 🚀 DEBUG NET: If it still crashes, it will print the exact broken text to your console so we can see what the AI did.
+      // 🚀 DEBUG NET: If it crashes, this prints the exact broken text to your console.
       console.error("RAW AI JSON OUTPUT THAT CAUSED CRASH:", rawJson);
       throw new Error(
         "AI generated corrupt JSON formatting. Check the browser console for details.",
       );
     }
 
+    // 🚀 UPDATED KEYS: Matching your new global namespace
     const defaultPrelim =
       localStorage.getItem("Adminerva_defaultPrelim") ||
       "Opening Prayer\nAttendance Checking\nTECHNOTES";
