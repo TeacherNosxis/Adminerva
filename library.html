@@ -80,13 +80,23 @@
             >
               📄 Upload PDF
             </button>
+            <!-- Inside your Drive Workspace Toolbar -->
             <input
               type="file"
               id="pdfFileInput"
               accept="application/pdf"
+              multiple
               class="hidden"
               onchange="extractPDF()"
             />
+
+            <!-- Inside your GLOBAL LOADING OVERLAY at the bottom of the file -->
+            <p
+              id="loaderText"
+              class="text-white font-bold text-xl tracking-wider mb-2"
+            >
+              Extracting PDF Data...
+            </p>
           </div>
         </div>
 
