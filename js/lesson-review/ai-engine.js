@@ -8,9 +8,12 @@ window.initiateGenerationFlow = async function () {
     return alert("Missing Gemini API Key in Global Settings.");
   }
 
-  const customInstructionsText = document
+  // 🚀 THE FIX: Intercept and convert all double quotes to single quotes
+  let customInstructionsText = document
     .getElementById("lpCustomInstructions")
     .value.trim();
+  customInstructionsText = customInstructionsText.replace(/"/g, "'");
+
   const selectedCheckboxes = document.querySelectorAll(
     ".folder-checkbox:checked",
   );
@@ -31,7 +34,9 @@ window.initiateGenerationFlow = async function () {
       const folder = libraryData.find((f) => f.id === cb.value);
       if (folder && folder.documents) {
         folder.documents.forEach((doc) => {
-          window.cachedCompiledText += `\n\n--- DOCUMENT: ${doc.title} ---\n${doc.text}`;
+          // 🚀 EXTRA SAFETY: Sanitize the reference text as well
+          const safeDocText = doc.text.replace(/"/g, "'");
+          window.cachedCompiledText += `\n\n--- DOCUMENT: ${doc.title} ---\n${safeDocText}`;
         });
       }
     });
