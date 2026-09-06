@@ -59,6 +59,20 @@ app.post("/api/generate-lesson", async (req, res) => {
     const data = await ollamaResponse.json();
     const generatedText = data.response;
 
+    // 🚀 DEBUG CONSOLE LOG (INSERTED HERE)
+    console.log(
+      "[DEBUG] Raw Ollama Output length:",
+      generatedText ? generatedText.length : 0,
+    );
+    console.log("[DEBUG] Raw Ollama Output preview:", generatedText);
+
+    if (!generatedText || generatedText.trim() === "") {
+      return res.status(500).json({
+        error:
+          "Ollama returned an empty response. The model may have timed out or choked on the JSON format constraint.",
+      });
+    }
+
     // 🚀 DATABASE-READY PIPELINE
     // The data is fully generated and sitting in RAM right here.
     // TODO: Insert your database logic here to save 'generatedText'
