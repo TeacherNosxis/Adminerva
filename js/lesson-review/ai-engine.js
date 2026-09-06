@@ -264,7 +264,52 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
                   responseMimeType: "application/json",
                   temperature: 0.2,
                   maxOutputTokens: 8192,
-                  // Keep your schema definition exactly as it is here
+                  responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                      weekly_overview: {
+                        type: "OBJECT",
+                        properties: {
+                          topic: { type: "STRING" },
+                          content_standard: { type: "STRING" },
+                          performance_standard: { type: "STRING" },
+                          materials: { type: "STRING" },
+                        },
+                        required: [
+                          "topic",
+                          "content_standard",
+                          "performance_standard",
+                          "materials",
+                        ],
+                      },
+                      sessions: {
+                        type: "ARRAY",
+                        items: {
+                          type: "OBJECT",
+                          properties: {
+                            session_name: { type: "STRING" },
+                            topic: { type: "STRING" },
+                            competencies: { type: "STRING" },
+                            objectives: { type: "STRING" },
+                            preliminary: { type: "STRING" },
+                            motivation: { type: "STRING" },
+                            learning_activities: { type: "STRING" },
+                            formation_standard: { type: "STRING" },
+                            evaluation: { type: "STRING" },
+                            closing: { type: "STRING" },
+                            values_integration: { type: "STRING" },
+                            remarks: { type: "STRING" },
+                          },
+                          required: [
+                            "session_name",
+                            "topic",
+                            "learning_activities",
+                          ],
+                        },
+                      },
+                    },
+                    required: ["weekly_overview", "sessions"],
+                  },
                 },
               }),
             },
