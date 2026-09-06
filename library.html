@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LessonReview - Reference Library</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .group-hover-show {
+        visibility: hidden;
+      }
+      .group:hover .group-hover-show {
+        visibility: visible;
+      }
+    </style>
   </head>
   <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
     <div id="adminerva-nav" data-module="lesson" data-page="library"></div>
@@ -19,61 +27,59 @@
         class="w-full lg:w-1/4 bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col"
       >
         <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
-          Curriculum Folders
+          My Drive
         </h2>
 
-        <!-- Add Folder -->
         <div class="flex gap-2 mb-6">
           <input
             type="text"
             id="newFolderInput"
-            placeholder="e.g. Q1: Programming"
+            placeholder="New folder name..."
             class="w-full p-2 border rounded text-sm focus:ring-blue-500 bg-gray-50"
           />
           <button
             onclick="createFolder()"
-            class="bg-gray-800 text-white px-3 py-2 rounded font-bold hover:bg-gray-700 transition text-sm"
+            class="bg-blue-600 text-white px-3 py-2 rounded font-bold hover:bg-blue-700 transition text-sm"
           >
-            Add
+            + New
           </button>
         </div>
 
-        <!-- Folder List -->
-        <div id="folderList" class="flex-1 overflow-y-auto space-y-2">
+        <div id="folderList" class="flex-1 overflow-y-auto space-y-1">
           <!-- Dynamically injected folders -->
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: AI Ingestion Engine -->
+      <!-- RIGHT COLUMN: Drive Workspace -->
       <div
         class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col"
       >
-        <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
-          <div>
-            <h2 id="activeFolderTitle" class="text-2xl font-bold text-blue-900">
-              Select a Folder
-            </h2>
-            <p class="text-sm text-gray-500 mt-1">
-              Upload a PDF to extract its semantic text and save it to this
-              directory.
-            </p>
-          </div>
-        </div>
-
-        <!-- Upload Engine (Hidden until folder is selected) -->
-        <div id="uploadWorkspace" class="p-6 hidden flex-col gap-6">
-          <div
-            class="p-6 border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg text-center flex flex-col items-center justify-center"
+        <!-- Top Toolbar -->
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+          <h2
+            id="activeFolderTitle"
+            class="text-xl font-bold text-gray-800 flex items-center gap-2"
           >
-            <span class="text-4xl mb-3">📄</span>
-            <h3 class="font-extrabold text-blue-800 text-lg">
-              AI PDF Ingestion
-            </h3>
-            <p class="text-sm text-gray-600 mb-4">
-              The AI will read your PDF, discard the heavy formatting, and save
-              only the pure educational text.
-            </p>
+            <span>📂</span> Select a Folder
+          </h2>
 
+          <div
+            class="flex gap-4 items-center w-1/2 justify-end hidden"
+            id="driveToolbar"
+          >
+            <input
+              type="text"
+              id="searchInput"
+              oninput="filterDocuments()"
+              placeholder="Search in folder..."
+              class="w-full max-w-sm p-2 border rounded-full text-sm bg-white focus:ring-2 focus:ring-blue-500 pl-4 shadow-inner"
+            />
+            <button
+              onclick="document.getElementById('pdfFileInput').click()"
+              class="bg-blue-100 text-blue-700 font-bold py-2 px-4 rounded hover:bg-blue-200 transition whitespace-nowrap"
+            >
+              📄 Upload PDF
+            </button>
             <input
               type="file"
               id="pdfFileInput"
@@ -81,41 +87,38 @@
               class="hidden"
               onchange="extractPDF()"
             />
-            <button
-              onclick="document.getElementById('pdfFileInput').click()"
-              class="bg-blue-600 text-white font-bold py-2 px-6 rounded hover:bg-blue-700 transition shadow-md flex items-center gap-2"
-            >
-              <span>🚀</span> Select PDF & Extract
-            </button>
+          </div>
+        </div>
+
+        <!-- Document List Area -->
+        <div id="documentWorkspace" class="p-0 hidden flex-col flex-1">
+          <!-- Table Header -->
+          <div
+            class="grid grid-cols-12 gap-4 px-6 py-3 border-b bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider"
+          >
+            <div class="col-span-6">Name</div>
+            <div class="col-span-4">Last Modified</div>
+            <div class="col-span-2 text-right">Actions</div>
           </div>
 
-          <!-- Document List for Active Folder -->
-          <div>
-            <h3
-              class="text-sm font-bold text-gray-500 uppercase tracking-wider border-b pb-2 mb-4"
-            >
-              Saved Documents in Folder
-            </h3>
-            <div
-              id="documentList"
-              class="grid grid-cols-1 md:grid-cols-2 gap-4"
-            >
-              <!-- Extracted text snippets injected here -->
-            </div>
+          <!-- Document Rows -->
+          <div id="documentList" class="flex-1 overflow-y-auto">
+            <!-- Extracted text snippets injected here -->
           </div>
         </div>
 
         <!-- Blank State -->
         <div
           id="blankWorkspace"
-          class="p-6 flex-1 flex items-center justify-center text-gray-400 italic"
+          class="p-6 flex-1 flex flex-col items-center justify-center text-gray-400 italic"
         >
-          Create or select a folder on the left to begin uploading documents.
+          <span class="text-6xl mb-4">🗂️</span>
+          <p>Select a folder on the left to view or upload documents.</p>
         </div>
       </div>
     </div>
 
-    <!-- GLOBAL LOADING OVERLAY FOR EXTRACTION -->
+    <!-- GLOBAL LOADING OVERLAY -->
     <div
       id="extractionLoader"
       class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col"
@@ -126,12 +129,8 @@
       <p class="text-white font-bold text-xl tracking-wider mb-2">
         Extracting PDF Data...
       </p>
-      <p class="text-blue-300 text-sm font-semibold text-center px-6">
-        The AI is currently reading the document and cleaning the text.<br />Please
-        do not close this window.
-      </p>
     </div>
 
-    <script type="module" src="js/lesson-review/library.js?v=1"></script>
+    <script type="module" src="js/lesson-review/library.js"></script>
   </body>
 </html>

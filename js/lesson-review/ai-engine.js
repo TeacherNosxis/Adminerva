@@ -202,14 +202,14 @@ ${gradeSpecificRules}
    - 'competencies': Provide 1 to 2 clear learning competencies.
    - 'objectives': Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy. DO NOT explicitly write the domain names.
    - 'preliminary' MUST always start with: 'Opening Prayer\\nAttendance Checking\\nTECHNOTES'.
-   - 🚀 MOTIVATION RULE: Format exactly as: 'Strategy: [Strategy Name]\\n[Description]'. The description MUST be written from the Student's Point of View (e.g., 'The students will...').
-   - 🚀 LEARNING ACTIVITIES RULE: Format exactly as: 'Strategy: [Strategy Name]\\n- [Action 1]\\n- [Action 2]'. 
-     * CRITICAL: You MUST use the escaped sequence '\\n' before EVERY dash (-) to create actual line breaks in the UI. Do NOT bunch them into one paragraph.
-     * CRITICAL: Every bullet MUST begin with an '-ing' verb.
+   - 🚀 MOTIVATION RULE: Do NOT use the word "Strategy:" or any detached headers. The sentence MUST start with an '-ing' verb describing what the student is doing, followed directly by "through [Teaching Strategy]". Example: 'Analyzing the provided code and spotting the differences through picture comparison (Spot the difference).'
+   - 🚀 LEARNING ACTIVITIES RULE: Weave the teaching strategy directly into the student actions. Do NOT use a detached 'Strategy: [Name]' header.
+     * CRITICAL FORMAT: Heavily bulleted using dashes (-). You MUST use the escaped sequence '\\n' before EVERY dash to create actual line breaks in the UI. 
+     * CRITICAL POV: Every bullet MUST begin with an '-ing' verb representing the student's point of view and their specific strategy (e.g., '- Debugging syntax errors through pair programming to...').
      * ABSOLUTELY NO TIMESTAMPS. Do NOT include minute allocations (e.g., NEVER write '110 mins' or '60 mins') anywhere in this field.
-   - 'formation_standard': State a specific character formation goal for this session (e.g., 'Integrity in coding'). DO NOT USE QUOTES.
+   - 🚀 FORMATION STANDARD RULE: Provide the core value keyword(s) followed by its general definition. Format exactly as: '[Core Value Keyword] - [General Definition]'. DO NOT USE QUOTES.
    - 'evaluation': Suggest diverse and appropriate formative or summative assessments. Do NOT default to a Quipper quiz.
-   - 🚀 VALUES INTEGRATION RULE: Format exactly as: '[Core Value Keyword] - [Short phrase connecting the formation standard to the topic]'.
+   - 🚀 VALUES INTEGRATION RULE: Format exactly as: '[Core Value Keyword] - [Specific application of this value to the current lesson's technical topic]'.
    - SCHEDULE MAPPING: Map the Teacher Schedule slots into the remarks field based on period length:
 ${scheduleRules}
      * RULE C: Scan the ENTIRE Teacher Schedule. Identify EVERY section taking EXACTLY the subject '${subject}'.
@@ -236,7 +236,6 @@ Custom Instructions: ${window.cachedCustomInstructions}
 User Clarification: ${userClarification || "None"}
 Teacher Schedule:\n${window.cachedSchedule}
 Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
-
   window.showLoader();
   let rawJson = "";
 
