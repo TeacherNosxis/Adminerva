@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initFirebase() {
-  const configStr = localStorage.getItem("repoReview_firebase_config");
+  const configStr = localStorage.getItem("Adminerva_firebase_config");
   if (!configStr) {
     document.getElementById("folderList").innerHTML =
       '<div class="text-xs text-red-500 italic p-4">Firebase not configured.</div>';
@@ -289,9 +289,9 @@ window.extractPDF = async function () {
     return;
   }
 
-  const gemKey = (localStorage.getItem("repoReview_gemini_token") || "").trim();
+  const gemKey = (localStorage.getItem("Adminerva_gemini_token") || "").trim();
   const modelName = (
-    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash"
+    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash"
   ).trim();
 
   if (!gemKey)

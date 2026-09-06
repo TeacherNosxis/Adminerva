@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initFirebase() {
-    const configStr = localStorage.getItem('repoReview_firebase_config');
+    const configStr = localStorage.getItem('Adminerva_firebase_config');
     if (!configStr) {
         document.getElementById('gradingTableBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-red-500 font-bold">Firebase not configured. Please visit the Admin Hub.</td></tr>`;
         return;
@@ -173,7 +173,7 @@ async function loadSections() {
 // FETCHING DATA (GITHUB + FIRESTORE)
 // ==========================================
 window.fetchSectionCommits = async function() {
-    const ghToken = localStorage.getItem('repoReview_github_token');
+    const ghToken = localStorage.getItem('Adminerva_github_token');
     if (!ghToken) return alert("Missing GitHub PAT. Configure it in Admin Hub.");
     if (!db) return alert("Firebase not connected.");
 
@@ -472,8 +472,8 @@ window.saveEditedGrade = async function() {
 // STRICT AI GRADING
 // ==========================================
 window.gradeCode = async function(studentId) {
-    const gemKey = localStorage.getItem('repoReview_gemini_token');
-    const model = localStorage.getItem('repoReview_ai_model') || 'gemini-3.5-flash';
+    const gemKey = localStorage.getItem('Adminerva_gemini_token');
+    const model = localStorage.getItem('Adminerva_ai_model') || 'gemini-3.5-flash';
     if (!gemKey) return alert("Missing Gemini API Key.");
 
     const student = currentStudents.find(s => s.id === studentId);
@@ -631,7 +631,7 @@ ${data.patches.substring(0, 15000)}
 let pendingPublishAction = null; 
 
 async function postCommentToGithub(student, gradeRec) {
-    const ghToken = localStorage.getItem('repoReview_github_token');
+    const ghToken = localStorage.getItem('Adminerva_github_token');
     let owner, repo;
     
     try {

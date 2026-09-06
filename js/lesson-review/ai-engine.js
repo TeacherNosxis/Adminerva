@@ -1,8 +1,8 @@
 window.initiateGenerationFlow = async function () {
-  const engineMode = localStorage.getItem("repoReview_engine_mode") || "cloud";
-  const gemKey = localStorage.getItem("repoReview_gemini_token");
+  const engineMode = localStorage.getItem("Adminerva_engine_mode") || "cloud";
+  const gemKey = localStorage.getItem("Adminerva_gemini_token");
   const model =
-    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash";
+    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash";
 
   if (engineMode === "cloud" && !gemKey) {
     return alert("Missing Gemini API Key in Global Settings.");
@@ -143,10 +143,10 @@ window.submitClarificationAndProceed = function () {
 };
 
 window.executeFinalGeneration = async function (userClarification) {
-  const engineMode = localStorage.getItem("repoReview_engine_mode") || "cloud";
-  const gemKey = localStorage.getItem("repoReview_gemini_token");
+  const engineMode = localStorage.getItem("Adminerva_engine_mode") || "cloud";
+  const gemKey = localStorage.getItem("Adminerva_gemini_token");
   const model =
-    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash";
+    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash";
   const schoolYear =
     document.getElementById("lpSchoolYear").value || "2026-2027";
   const subject =
@@ -246,67 +246,83 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
 
   try {
     if (engineMode === "cloud") {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.2,
-              maxOutputTokens: 8192,
-              responseSchema: {
-                type: "OBJECT",
-                properties: {
-                  weekly_overview: {
-                    type: "OBJECT",
-                    properties: {
-                      topic: { type: "STRING" },
-                      content_standard: { type: "STRING" },
-                      performance_standard: { type: "STRING" },
-                      materials: { type: "STRING" },
-                    },
-                    required: [
-                      "topic",
-                      "content_standard",
-                      "performance_standard",
-                      "materials",
-                    ],
-                  },
-                  sessions: {
-                    type: "ARRAY",
-                    items: {
+      let response;
+      let retries = 2; // Automatically try up to 3 times total
+
+      while (retries >= 0) {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.2,
+                maxOutputTokens: 8192,
+                responseSchema: {
+                  type: "OBJECT",
+                  properties: {
+                    weekly_overview: {
                       type: "OBJECT",
                       properties: {
-                        session_name: { type: "STRING" },
                         topic: { type: "STRING" },
-                        competencies: { type: "STRING" },
-                        objectives: { type: "STRING" },
-                        preliminary: { type: "STRING" },
-                        motivation: { type: "STRING" },
-                        learning_activities: { type: "STRING" },
-                        formation_standard: { type: "STRING" },
-                        evaluation: { type: "STRING" },
-                        closing: { type: "STRING" },
-                        values_integration: { type: "STRING" },
-                        remarks: { type: "STRING" },
+                        content_standard: { type: "STRING" },
+                        performance_standard: { type: "STRING" },
+                        materials: { type: "STRING" },
                       },
                       required: [
-                        "session_name",
                         "topic",
-                        "learning_activities",
+                        "content_standard",
+                        "performance_standard",
+                        "materials",
                       ],
                     },
+                    sessions: {
+                      type: "ARRAY",
+                      items: {
+                        type: "OBJECT",
+                        properties: {
+                          session_name: { type: "STRING" },
+                          topic: { type: "STRING" },
+                          competencies: { type: "STRING" },
+                          objectives: { type: "STRING" },
+                          preliminary: { type: "STRING" },
+                          motivation: { type: "STRING" },
+                          learning_activities: { type: "STRING" },
+                          formation_standard: { type: "STRING" },
+                          evaluation: { type: "STRING" },
+                          closing: { type: "STRING" },
+                          values_integration: { type: "STRING" },
+                          remarks: { type: "STRING" },
+                        },
+                        required: [
+                          "session_name",
+                          "topic",
+                          "learning_activities",
+                        ],
+                      },
+                    },
                   },
+                  required: ["weekly_overview", "sessions"],
                 },
-                required: ["weekly_overview", "sessions"],
               },
-            },
-          }),
-        },
-      );
+            }),
+          },
+        );
+
+        // 🚀 NEW: Intercept 503 overloads and retry automatically
+        if (response.status === 503 && retries > 0) {
+          console.warn(
+            `[Gemini 503 Overload] Retrying in 4 seconds... (${retries} attempts left)`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 4000));
+          retries--;
+        } else {
+          break; // Exit the loop if successful or if it's a different error
+        }
+      }
 
       if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
       const result = await response.json();

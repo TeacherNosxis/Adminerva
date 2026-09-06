@@ -67,11 +67,11 @@ window.saveSecuritySettings = async function () {
     }
 
     // 🚀 3. SAVE IF VALIDATIONS PASS
-    localStorage.setItem("repoReview_firebase_config", fbConfigStr);
-    localStorage.setItem("repoReview_github_token", githubToken);
-    localStorage.setItem("repoReview_gemini_token", geminiKey);
-    localStorage.setItem("repoReview_ai_model", aiModel);
-    localStorage.setItem("repoReview_engine_mode", engineMode);
+    localStorage.setItem("Adminerva_firebase_config", fbConfigStr);
+    localStorage.setItem("Adminerva_github_token", githubToken);
+    localStorage.setItem("Adminerva_gemini_token", geminiKey);
+    localStorage.setItem("Adminerva_ai_model", aiModel);
+    localStorage.setItem("Adminerva_engine_mode", engineMode);
 
     alert(
       "✅ Connections Verified & Settings Saved! Refresh the page to apply changes.",
@@ -88,31 +88,31 @@ window.saveSecuritySettings = async function () {
 window.loadSecuritySettings = function () {
   safeSet(
     "firebaseConfigInput",
-    localStorage.getItem("repoReview_firebase_config") || "",
+    localStorage.getItem("Adminerva_firebase_config") || "",
   );
   safeSet(
     "adminGithubToken",
-    localStorage.getItem("repoReview_github_token") || "",
+    localStorage.getItem("Adminerva_github_token") || "",
   );
   safeSet(
     "adminGeminiKey",
-    localStorage.getItem("repoReview_gemini_token") || "",
+    localStorage.getItem("Adminerva_gemini_token") || "",
   );
   // Restored stable fallback model
   safeSet(
     "adminAiModel",
-    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash",
+    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash",
   );
 
   // Load the AI Processing Engine toggle
   safeSet(
     "globalAiEngine",
-    localStorage.getItem("repoReview_engine_mode") || "cloud",
+    localStorage.getItem("Adminerva_engine_mode") || "cloud",
   );
 };
 
 window.initFirebase = function () {
-  const configStr = localStorage.getItem("repoReview_firebase_config");
+  const configStr = localStorage.getItem("Adminerva_firebase_config");
 
   if (!configStr) {
     if (window.loadLessonReviewSettings) window.loadLessonReviewSettings();

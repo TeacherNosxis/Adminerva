@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initFirebase() {
-    const configStr = localStorage.getItem('repoReview_firebase_config');
+    const configStr = localStorage.getItem('Adminerva_firebase_config');
     if (!configStr) return alert("Firebase not configured. Please visit the Admin Hub.");
     
     db = getFirestore(initializeApp(JSON.parse(configStr)));
@@ -131,7 +131,7 @@ function renderCriteriaInsights(stats) {
 }
 
 async function renderVelocityChart(students) {
-    const ghToken = localStorage.getItem('repoReview_github_token');
+    const ghToken = localStorage.getItem('Adminerva_github_token');
     if (!ghToken) return renderEmptyChart();
 
     // Generate last 30 days array formatted as YYYY-MM-DD
