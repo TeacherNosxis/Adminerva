@@ -226,18 +226,14 @@ window.buildDocumentLayout = async function () {
       }
 
       if (pIndex === 0) {
-        rowHtml += `
-            <td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
-                ${session.topic || window.currentWeeklyOverview.topic || ""}
-            </td>`;
-
         if (isFlex) {
-          // 🚀 FIX: Leave Standards, Objectives, and Materials completely blank for Flex Sessions
-          rowHtml += `<td rowspan="${rowCount}"></td>`;
-          rowHtml += `<td rowspan="${rowCount}"></td>`;
+          // 🚀 FIX: Blank out Topic, Standards, Objectives, and Materials for Flex
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Topic
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Standards
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Objectives
           rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
           rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
-          rowHtml += `<td rowspan="${rowCount}"></td>`;
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Materials
         } else {
           rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">
                         <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
@@ -344,7 +340,14 @@ async function processAndUploadToDrive(accessToken) {
   let cleanHtml = printWrapper.innerHTML;
   cleanHtml = cleanHtml.replace(/>\s+</g, "><");
   cleanHtml = cleanHtml.replace(/(<\/div>|<img[^>]+>)\s*<br\s*\/?>/gi, "$1");
-  cleanHtml = cleanHtml.replace(/<img /gi, '<img height="80" ');
+  cleanHtml = cleanHtml.replace(
+    /<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi,
+    '<div style="font-weight: bold; text-align: center; margin: 0; padding: 0; font-size: 14pt;">$1</div>',
+  );
+  cleanHtml = cleanHtml.replace(
+    /<img /gi,
+    '<img height="80" style="margin: 0 auto; display: block;" ',
+  );
   cleanHtml = cleanHtml.replace(/<th\b/gi, "<td").replace(/<\/th>/gi, "</td>");
   cleanHtml = cleanHtml.replace(/#b4c6e7;/gi, "#b4c6e7; font-weight: bold;");
 
@@ -354,10 +357,10 @@ async function processAndUploadToDrive(accessToken) {
         <head>
             <meta charset="utf-8">
             <style>
-                body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
-                table { border-collapse: collapse; margin-top: 15px; width: 100%; }
+                /* 🚀 FIX: Force zero margins on the body and all blocks */
+                body, div, p { margin: 0; padding: 0; font-family: 'Arial Narrow', Arial, sans-serif; font-size: 10pt; color: #333; }
+                table { border-collapse: collapse; margin-top: 10px; width: 100%; }
                 td { border: 1px solid #000; padding: 6px 8px; font-size: 10pt; vertical-align: top; }
-                img { max-height: 80px; display: block; margin: 0 auto 10px auto; }
             </style>
         </head>
         <body>

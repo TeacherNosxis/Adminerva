@@ -16,7 +16,7 @@ window.populateSettingsSubjectDropdown = function () {
   const dataList = document.getElementById("savedSubjectsList");
   if (!dataList) return;
 
-  const savedSub = localStorage.getItem("lessonReview_subjects") || "";
+  const savedSub = localStorage.getItem("Adminerva_subjects") || "";
   const subjects = savedSub
     .split(",")
     .map((s) => s.trim())
@@ -49,65 +49,65 @@ window.loadLessonReviewSettings = async function () {
   const data = {
     teacher_name:
       cloudData?.teacher_name ||
-      localStorage.getItem("lessonReview_defaultTeacher") ||
-      localStorage.getItem("lessonReview_teacherName") ||
+      localStorage.getItem("Adminerva_defaultTeacher") ||
+      localStorage.getItem("Adminerva_teacherName") ||
       "",
     subject_title:
       cloudData?.subject_title ||
-      localStorage.getItem("lessonReview_defaultSubject") ||
-      localStorage.getItem("lessonReview_subjectTitle") ||
+      localStorage.getItem("Adminerva_defaultSubject") ||
+      localStorage.getItem("Adminerva_subjectTitle") ||
       "",
     default_prelim:
       cloudData?.default_prelim ||
-      localStorage.getItem("lessonReview_defaultPrelim") ||
+      localStorage.getItem("Adminerva_defaultPrelim") ||
       "Opening Prayer\nAttendance Checking\nTECHNOTES",
     default_closing:
       cloudData?.default_closing ||
-      localStorage.getItem("lessonReview_defaultClosing") ||
+      localStorage.getItem("Adminerva_defaultClosing") ||
       "Summary of the Lesson\nClosing Prayer",
     sig_teacher:
       cloudData?.sig_teacher ||
-      localStorage.getItem("lessonReview_sig1Name") ||
-      localStorage.getItem("lessonReview_sigTeacher") ||
+      localStorage.getItem("Adminerva_sig1Name") ||
+      localStorage.getItem("Adminerva_sigTeacher") ||
       "",
     sig_teacher_title:
       cloudData?.sig_teacher_title ||
-      localStorage.getItem("lessonReview_sig1Title") ||
-      localStorage.getItem("lessonReview_sigTeacherTitle") ||
+      localStorage.getItem("Adminerva_sig1Title") ||
+      localStorage.getItem("Adminerva_sigTeacherTitle") ||
       "",
     sig_subject_coord:
       cloudData?.sig_subject_coord ||
-      localStorage.getItem("lessonReview_sig2Name") ||
-      localStorage.getItem("lessonReview_sigSubjectCoord") ||
+      localStorage.getItem("Adminerva_sig2Name") ||
+      localStorage.getItem("Adminerva_sigSubjectCoord") ||
       "",
     sig_subject_coord_title:
       cloudData?.sig_subject_coord_title ||
-      localStorage.getItem("lessonReview_sig2Title") ||
-      localStorage.getItem("lessonReview_sigSubjectCoordTitle") ||
+      localStorage.getItem("Adminerva_sig2Title") ||
+      localStorage.getItem("Adminerva_sigSubjectCoordTitle") ||
       "",
     sig_grade_coord:
       cloudData?.sig_grade_coord ||
-      localStorage.getItem("lessonReview_sig3Name") ||
-      localStorage.getItem("lessonReview_sigGradeCoord") ||
+      localStorage.getItem("Adminerva_sig3Name") ||
+      localStorage.getItem("Adminerva_sigGradeCoord") ||
       "",
     sig_grade_coord_title:
       cloudData?.sig_grade_coord_title ||
-      localStorage.getItem("lessonReview_sig3Title") ||
-      localStorage.getItem("lessonReview_sigGradeCoordTitle") ||
+      localStorage.getItem("Adminerva_sig3Title") ||
+      localStorage.getItem("Adminerva_sigGradeCoordTitle") ||
       "",
     sig_principal:
       cloudData?.sig_principal ||
-      localStorage.getItem("lessonReview_sig4Name") ||
-      localStorage.getItem("lessonReview_sigPrincipal") ||
+      localStorage.getItem("Adminerva_sig4Name") ||
+      localStorage.getItem("Adminerva_sigPrincipal") ||
       "",
     sig_principal_title:
       cloudData?.sig_principal_title ||
-      localStorage.getItem("lessonReview_sig4Title") ||
-      localStorage.getItem("lessonReview_sigPrincipalTitle") ||
+      localStorage.getItem("Adminerva_sig4Title") ||
+      localStorage.getItem("Adminerva_sigPrincipalTitle") ||
       "",
     headerBase64:
       cloudData?.header_image_base64 ||
-      localStorage.getItem("lessonReview_headerImage") ||
+      localStorage.getItem("Adminerva_headerImage") ||
       "",
   };
 
@@ -207,73 +207,54 @@ window.saveLessonReviewSettings = async function () {
     updated_at: new Date().toISOString(),
   };
 
-  // Sync back to localStorage keys for dual compatibility across apps
+  localStorage.setItem("Adminerva_defaultTeacher", settingsData.teacher_name);
+  localStorage.setItem("Adminerva_teacherName", settingsData.teacher_name);
+  localStorage.setItem("Adminerva_defaultSubject", settingsData.subject_title);
+  localStorage.setItem("Adminerva_subjectTitle", settingsData.subject_title);
+  localStorage.setItem("Adminerva_defaultPrelim", settingsData.default_prelim);
   localStorage.setItem(
-    "lessonReview_defaultTeacher",
-    settingsData.teacher_name,
-  );
-  localStorage.setItem("lessonReview_teacherName", settingsData.teacher_name);
-  localStorage.setItem(
-    "lessonReview_defaultSubject",
-    settingsData.subject_title,
-  );
-  localStorage.setItem("lessonReview_subjectTitle", settingsData.subject_title);
-  localStorage.setItem(
-    "lessonReview_defaultPrelim",
-    settingsData.default_prelim,
-  );
-  localStorage.setItem(
-    "lessonReview_defaultClosing",
+    "Adminerva_defaultClosing",
     settingsData.default_closing,
   );
   localStorage.setItem(
-    "lessonReview_headerImage",
+    "Adminerva_headerImage",
     settingsData.header_image_base64,
   );
-  localStorage.setItem("lessonReview_sig1Name", settingsData.sig_teacher);
-  localStorage.setItem("lessonReview_sigTeacher", settingsData.sig_teacher);
+  localStorage.setItem("Adminerva_sig1Name", settingsData.sig_teacher);
+  localStorage.setItem("Adminerva_sigTeacher", settingsData.sig_teacher);
+  localStorage.setItem("Adminerva_sig1Title", settingsData.sig_teacher_title);
   localStorage.setItem(
-    "lessonReview_sig1Title",
+    "Adminerva_sigTeacherTitle",
     settingsData.sig_teacher_title,
   );
+  localStorage.setItem("Adminerva_sig2Name", settingsData.sig_subject_coord);
   localStorage.setItem(
-    "lessonReview_sigTeacherTitle",
-    settingsData.sig_teacher_title,
-  );
-  localStorage.setItem("lessonReview_sig2Name", settingsData.sig_subject_coord);
-  localStorage.setItem(
-    "lessonReview_sigSubjectCoord",
+    "Adminerva_sigSubjectCoord",
     settingsData.sig_subject_coord,
   );
   localStorage.setItem(
-    "lessonReview_sig2Title",
+    "Adminerva_sig2Title",
     settingsData.sig_subject_coord_title,
   );
   localStorage.setItem(
-    "lessonReview_sigSubjectCoordTitle",
+    "Adminerva_sigSubjectCoordTitle",
     settingsData.sig_subject_coord_title,
   );
-  localStorage.setItem("lessonReview_sig3Name", settingsData.sig_grade_coord);
+  localStorage.setItem("Adminerva_sig3Name", settingsData.sig_grade_coord);
+  localStorage.setItem("Adminerva_sigGradeCoord", settingsData.sig_grade_coord);
   localStorage.setItem(
-    "lessonReview_sigGradeCoord",
-    settingsData.sig_grade_coord,
-  );
-  localStorage.setItem(
-    "lessonReview_sig3Title",
+    "Adminerva_sig3Title",
     settingsData.sig_grade_coord_title,
   );
   localStorage.setItem(
-    "lessonReview_sigGradeCoordTitle",
+    "Adminerva_sigGradeCoordTitle",
     settingsData.sig_grade_coord_title,
   );
-  localStorage.setItem("lessonReview_sig4Name", settingsData.sig_principal);
-  localStorage.setItem("lessonReview_sigPrincipal", settingsData.sig_principal);
+  localStorage.setItem("Adminerva_sig4Name", settingsData.sig_principal);
+  localStorage.setItem("Adminerva_sigPrincipal", settingsData.sig_principal);
+  localStorage.setItem("Adminerva_sig4Title", settingsData.sig_principal_title);
   localStorage.setItem(
-    "lessonReview_sig4Title",
-    settingsData.sig_principal_title,
-  );
-  localStorage.setItem(
-    "lessonReview_sigPrincipalTitle",
+    "Adminerva_sigPrincipalTitle",
     settingsData.sig_principal_title,
   );
 
@@ -284,9 +265,7 @@ window.saveLessonReviewSettings = async function () {
         settingsData,
         { merge: true },
       );
-      alert(
-        "✅ LessonReview settings and default activities successfully saved to the cloud and synced locally!",
-      );
+      alert("✅ Settings successfully saved to the cloud and synced locally!");
     } catch (e) {
       alert(`⚠️ Saved locally, but cloud sync failed: ${e.message}`);
     }

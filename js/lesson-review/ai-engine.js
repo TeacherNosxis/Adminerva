@@ -411,10 +411,23 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
         session.preliminary = defaultPrelim;
         session.closing = defaultClosing;
       }
+      for (let key in session) {
+        if (typeof session[key] === "string") {
+          session[key] = session[key].replace(/\\n/g, "\n");
+        }
+      }
       return session;
     });
 
     window.currentWeeklyOverview = planData.weekly_overview || {};
+    for (let key in window.currentWeeklyOverview) {
+      if (typeof window.currentWeeklyOverview[key] === "string") {
+        window.currentWeeklyOverview[key] = window.currentWeeklyOverview[
+          key
+        ].replace(/\\n/g, "\n");
+      }
+    }
+
     window.renderOverview();
     window.renderOutput();
   } catch (error) {
