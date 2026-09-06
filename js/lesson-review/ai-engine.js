@@ -245,123 +245,94 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
   let rawJson = "";
 
   try {
+    let planData;
+    let generationSuccess = false;
+
     if (engineMode === "cloud") {
-      let response;
-      let retries = 2; // Automatically try up to 3 times total
+      let retries = 2; // Try up to 3 times total
 
-      while (retries >= 0) {
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                responseMimeType: "application/json",
-                temperature: 0.2,
-                maxOutputTokens: 8192,
-                responseSchema: {
-                  type: "OBJECT",
-                  properties: {
-                    weekly_overview: {
-                      type: "OBJECT",
-                      properties: {
-                        topic: { type: "STRING" },
-                        content_standard: { type: "STRING" },
-                        performance_standard: { type: "STRING" },
-                        materials: { type: "STRING" },
-                      },
-                      required: [
-                        "topic",
-                        "content_standard",
-                        "performance_standard",
-                        "materials",
-                      ],
-                    },
-                    sessions: {
-                      type: "ARRAY",
-                      items: {
-                        type: "OBJECT",
-                        properties: {
-                          session_name: { type: "STRING" },
-                          topic: { type: "STRING" },
-                          competencies: { type: "STRING" },
-                          objectives: { type: "STRING" },
-                          preliminary: { type: "STRING" },
-                          motivation: { type: "STRING" },
-                          learning_activities: { type: "STRING" },
-                          formation_standard: { type: "STRING" },
-                          evaluation: { type: "STRING" },
-                          closing: { type: "STRING" },
-                          values_integration: { type: "STRING" },
-                          remarks: { type: "STRING" },
-                        },
-                        required: [
-                          "session_name",
-                          "topic",
-                          "learning_activities",
-                        ],
-                      },
-                    },
-                  },
-                  required: ["weekly_overview", "sessions"],
+      while (retries >= 0 && !generationSuccess) {
+        try {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  temperature: 0.2,
+                  maxOutputTokens: 8192,
+                  // Keep your schema definition exactly as it is here
                 },
-              },
-            }),
-          },
-        );
-
-        // 🚀 NEW: Intercept 503 overloads and retry automatically
-        if (response.status === 503 && retries > 0) {
-          console.warn(
-            `[Gemini 503 Overload] Retrying in 4 seconds... (${retries} attempts left)`,
+              }),
+            },
           );
-          await new Promise((resolve) => setTimeout(resolve, 4000));
-          retries--;
-        } else {
-          break; // Exit the loop if successful or if it's a different error
+
+          if (response.status === 503) {
+            console.warn(
+              `[Gemini 503 Overload] Retrying in 4 seconds... (${retries} attempts left)`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 4000));
+            retries--;
+            continue;
+          }
+
+          if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
+
+          const result = await response.json();
+          let rawJson = result.candidates[0].content.parts[0].text;
+
+          // 1. Clean formatting and neutralize physical line breaks
+          rawJson = rawJson.trim();
+          if (rawJson.startsWith("```")) {
+            rawJson = rawJson
+              .replace(/^```json\s*/i, "")
+              .replace(/\s*```$/i, "");
+          }
+          rawJson = rawJson.replace(/[\n\r\t]+/g, " ");
+          rawJson = rawJson.replace(/[\u0000-\u0008\u000B-\u001F]+/g, "");
+          rawJson = rawJson.replace(/,\s*([\]}])/g, "$1");
+
+          // 2. Try the Bracket Fixes
+          let parsed = false;
+          const fixAttempts = [
+            rawJson,
+            rawJson + "}",
+            rawJson + "]}",
+            rawJson + "}]}",
+          ];
+
+          for (const attempt of fixAttempts) {
+            try {
+              planData = JSON.parse(attempt);
+              parsed = true;
+              break;
+            } catch (e) {}
+          }
+
+          // 3. If parsing still fails (Severe Truncation), throw an error to trigger the retry loop
+          if (!parsed) throw new Error("Severe truncation mid-string.");
+
+          generationSuccess = true; // Success! Break the loop.
+        } catch (error) {
+          if (retries > 0) {
+            console.warn(
+              `[Generation Cutoff] The AI stopped mid-sentence. Retrying... (${retries} attempts left)`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 4000));
+            retries--;
+          } else {
+            console.error("RAW AI JSON OUTPUT THAT CAUSED CRASH:", error);
+            throw new Error(
+              "The AI repeatedly failed to complete the response due to server timeouts. Please try generating again.",
+            );
+          }
         }
       }
-
-      if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
-      const result = await response.json();
-      rawJson = result.candidates[0].content.parts[0].text;
-    } else {
-      const response = await fetch(
-        "http://localhost:3000/api/generate-lesson",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: prompt, taskType: "structured" }),
-        },
-      );
-      if (!response.ok) throw new Error("Local Proxy Error");
-      const result = await response.json();
-      rawJson = result.result;
     }
 
-    const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
-    if (jsonMatch) rawJson = jsonMatch[0];
-
-    // 🚀 THE FIX: Flatten all rogue physical line breaks and tabs into spaces.
-    rawJson = rawJson.replace(/[\n\r\t]+/g, " ");
-
-    // Strip any remaining invisible control characters
-    rawJson = rawJson.replace(/[\u0000-\u0008\u000B-\u001F]+/g, "");
-
-    let planData;
-    try {
-      planData = JSON.parse(rawJson);
-    } catch (parseError) {
-      // 🚀 DEBUG NET: If it crashes, this prints the exact broken text to your console.
-      console.error("RAW AI JSON OUTPUT THAT CAUSED CRASH:", rawJson);
-      throw new Error(
-        "AI generated corrupt JSON formatting. Check the browser console for details.",
-      );
-    }
-
-    // 🚀 UPDATED KEYS: Matching your new global namespace
     const defaultPrelim =
       localStorage.getItem("Adminerva_defaultPrelim") ||
       "Opening Prayer\nAttendance Checking\nTECHNOTES";
