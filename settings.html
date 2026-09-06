@@ -108,6 +108,26 @@
           <h3 class="text-xl font-bold text-gray-800 border-b pb-3 mb-6">
             Database & API Credentials
           </h3>
+          <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2"
+              >AI Processing Engine</label
+            >
+            <select
+              id="globalAiEngine"
+              class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-600"
+            >
+              <option value="cloud">
+                🌩️ Cloud (Google Gemini) - Fast & Stable
+              </option>
+              <option value="local">
+                💻 Local (Ollama Proxy) - In Development
+              </option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              Cloud requires an API key. Local requires the Node.js backend
+              proxy running on port 3000.
+            </p>
+          </div>
 
           <div class="space-y-6">
             <div class="p-5 border rounded-lg bg-gray-50">

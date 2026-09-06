@@ -34,8 +34,45 @@ window.saveSecuritySettings = async function () {
     "repoReview_ai_model",
     safeGet("adminAiModel") || "gemini-1.5-flash",
   );
+
+  // 🚀 NEW: Save the AI Processing Engine toggle
+  localStorage.setItem(
+    "repoReview_engine_mode",
+    safeGet("globalAiEngine") || "cloud",
+  );
+
   alert(
     "✅ Security Settings Saved Locally! Refresh to apply Firebase changes.",
+  );
+};
+
+window.loadSecuritySettings = function () {
+  const safeSet = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+
+  safeSet(
+    "firebaseConfigInput",
+    localStorage.getItem("repoReview_firebase_config") || "",
+  );
+  safeSet(
+    "adminGithubToken",
+    localStorage.getItem("repoReview_github_token") || "",
+  );
+  safeSet(
+    "adminGeminiKey",
+    localStorage.getItem("repoReview_gemini_token") || "",
+  );
+  safeSet(
+    "adminAiModel",
+    localStorage.getItem("repoReview_ai_model") || "gemini-3.5-flash",
+  );
+
+  // 🚀 NEW: Load the AI Processing Engine toggle
+  safeSet(
+    "globalAiEngine",
+    localStorage.getItem("repoReview_engine_mode") || "cloud",
   );
 };
 

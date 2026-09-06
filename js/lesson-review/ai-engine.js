@@ -1,4 +1,13 @@
 window.initiateGenerationFlow = async function () {
+  const engineMode = localStorage.getItem("repoReview_engine_mode") || "cloud";
+  const gemKey = localStorage.getItem("repoReview_gemini_token");
+  const model =
+    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash";
+
+  if (engineMode === "cloud" && !gemKey) {
+    return alert("Missing Gemini API Key in Global Settings.");
+  }
+
   const customInstructionsText = document
     .getElementById("lpCustomInstructions")
     .value.trim();
@@ -32,7 +41,6 @@ window.initiateGenerationFlow = async function () {
     localStorage.getItem("lessonReview_defaultSubject") || "Subject";
   window.cachedSchedule =
     localStorage.getItem("lessonReview_schedule") || "No schedule provided.";
-
   const academicTerm = document.getElementById("lpAcademicTerm").value;
   const courseWeek = document.getElementById("lpCourseWeek").value;
   const dateRange =
@@ -56,31 +64,48 @@ window.initiateGenerationFlow = async function () {
 
   window.showLoader();
 
-  try {
-    const preCheckPrompt = `
+  const preCheckPrompt = `
 You are an expert curriculum assistant. Review ONLY the Custom Instructions. 
 - Do NOT ask for grade level or subject topics, as those are handled automatically.
-- If the custom instructions are clear and actionable (like noting suspensions, exams, or holidays), respond with EXACTLY the word: "READY".
+- If the custom instructions are clear and actionable (like noting suspensions or exams), respond with EXACTLY the word: "READY".
 - If the instructions are ambiguous, ask a concise clarifying question.
 
 Target Grade & Scope: ${window.currentTargetGrade}, ${window.cachedScope}
-Custom Instructions: ${window.cachedCustomInstructions}
-    `;
+Custom Instructions: ${window.cachedCustomInstructions}`;
 
-    // 🚀 NEW: Route to Local Backend Proxy (Creative Task)
-    const response = await fetch("http://localhost:3000/api/generate-lesson", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: preCheckPrompt,
-        taskType: "creative", // Hits llama3.2:3b without JSON forcing
-      }),
-    });
+  try {
+    let aiReply = "";
 
-    if (!response.ok) throw new Error(`Pre-check failed (${response.status})`);
-
-    const result = await response.json();
-    const aiReply = result.result.trim();
+    if (engineMode === "cloud") {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: preCheckPrompt }] }],
+          }),
+        },
+      );
+      if (!response.ok) throw new Error("Gemini Pre-check failed");
+      const result = await response.json();
+      aiReply = result.candidates[0].content.parts[0].text.trim();
+    } else {
+      const response = await fetch(
+        "http://localhost:3000/api/generate-lesson",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: preCheckPrompt,
+            taskType: "creative",
+          }),
+        },
+      );
+      if (!response.ok) throw new Error("Local Proxy Pre-check failed");
+      const result = await response.json();
+      aiReply = result.result.trim();
+    }
 
     if (aiReply.toUpperCase().startsWith("READY")) {
       window.executeFinalGeneration("");
@@ -113,6 +138,10 @@ window.submitClarificationAndProceed = function () {
 };
 
 window.executeFinalGeneration = async function (userClarification) {
+  const engineMode = localStorage.getItem("repoReview_engine_mode") || "cloud";
+  const gemKey = localStorage.getItem("repoReview_gemini_token");
+  const model =
+    localStorage.getItem("repoReview_ai_model") || "gemini-1.5-flash";
   const schoolYear =
     document.getElementById("lpSchoolYear").value || "2026-2027";
   const subject =
@@ -123,31 +152,20 @@ window.executeFinalGeneration = async function (userClarification) {
 
   switch (window.currentTargetGrade) {
     case "Grade 11":
-      gradeSpecificRules = `
-3. SESSIONS: Create exactly 5 sessions named: Session 1, Session 2, Session 3, Session 4-6, and Session Flex.
-4. SESSION 4-6 RULE (3-Hour Laboratory): Design these sessions as a hands-on laboratory or performance task.`;
-      scheduleRules = `
-     * RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to Session 4-6.
-     * RULE B: Map the 1-hour blocks sequentially to Session 1, Session 2, and Session 3.`;
+      gradeSpecificRules = `3. SESSIONS: Create exactly 5 sessions named: Session 1, Session 2, Session 3, Session 4-6, and Session Flex.\n4. SESSION 4-6 RULE (3-Hour Laboratory): Design these sessions as a hands-on laboratory or performance task.`;
+      scheduleRules = `* RULE A: Map any 3-hour continuous block in the schedule EXCLUSIVELY to Session 4-6.\n* RULE B: Map the 1-hour blocks sequentially to Session 1, Session 2, and Session 3.`;
       break;
-
     case "Grade 12":
-      gradeSpecificRules = `
-3. SESSIONS: Compress topics into exactly 4 sessions named: Session 1, Session 2, Session 3, and Session Flex.`;
-      scheduleRules = `
-     * RULE A: Map the schedule blocks sequentially to Session 1, Session 2, and Session 3.`;
+      gradeSpecificRules = `3. SESSIONS: Compress topics into exactly 4 sessions named: Session 1, Session 2, Session 3, and Session Flex.`;
+      scheduleRules = `* RULE A: Map the schedule blocks sequentially to Session 1, Session 2, and Session 3.`;
       break;
-
     default:
-      gradeSpecificRules = `
-3. SESSIONS: Compress topics into exactly 3 sessions named: Session 1, Session 2, and Session Flex.`;
-      scheduleRules = `
-     * RULE A: Map the schedule blocks sequentially to Session 1 and Session 2.`;
+      gradeSpecificRules = `3. SESSIONS: Compress topics into exactly 3 sessions named: Session 1, Session 2, and Session Flex.`;
+      scheduleRules = `* RULE A: Map the schedule blocks sequentially to Session 1 and Session 2.`;
       break;
   }
 
   let lookbackContext = "";
-  // 🚀 Ensure cachedPreviousPlan and its sessions exist before mapping
   if (
     window.cachedPreviousPlan &&
     Array.isArray(window.cachedPreviousPlan.sessions)
@@ -163,12 +181,9 @@ window.executeFinalGeneration = async function (userClarification) {
 7. CATCH-UP & CURRICULUM SHIFT RULE:
    - Review Last Week's Curriculum State below.
    - If any session's 'Remarks' indicate it was suspended, interrupted, or handled passively, you MUST extract those specific topics and literally regenerate them as the primary learning_activities for the early sessions of THIS week.
-   - Shift the entire week's schedule forward. Only introduce new topics after all bumped content is completely covered.
-   - If you shift bumped content into a new session, you MUST append a dynamic note to that session's 'remarks' field indicating exactly which session was missed. Example: [Note: Utilized to cover last week's suspended Session 2.]
-
-LAST WEEK'S CURRICULUM STATE:
-${safeTextState}
-        `;
+   - Shift the entire week's schedule forward.
+   - If you shift bumped content into a new session, you MUST append a dynamic note to that session's 'remarks' field indicating exactly which session was missed.
+LAST WEEK'S CURRICULUM STATE:\n${safeTextState}`;
   }
 
   const prompt = `
@@ -178,114 +193,130 @@ CRITICAL FORMATTING RULES:
 1. weekly_overview: 
    - topic: Keep short and punchy.
    - content_standard, performance_standard, and materials: MANDATORY FIELDS.
-   - MATERIALS FORMAT: Format the materials field as a heavily bulleted list using dashes (-).
 2. sessions array: Generate daily sessions.
 ${gradeSpecificRules}
-5. SESSION DETAILS (Normal): 
-   - topic: Provide a specific, concise sub-topic for THIS session. DO NOT USE DOUBLE QUOTES.
-   - competencies: Provide 1 to 2 clear learning competencies.
-   - objectives: Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy. DO NOT explicitly write the domain names.
-   - motivation and learning_activities MUST be written strictly from the Student's Point of View AND explicitly state the teaching strategy used. 
-   - LEARNING ACTIVITIES FORMAT: Heavily bulleted using dashes (-). Every bullet MUST begin with an -ing verb. DO NOT include timestamps, minute allocations, or pipes (|) in this field. Just the pure activity text.
-   - formation_standard: Extract or formulate a specific character formation goal for THIS specific session based on the uploaded Reference Text guides. DO NOT USE QUOTES.
-   - evaluation: Suggest diverse and appropriate formative or summative assessments based on the topic.
-   - values_integration: Output ONLY core value keywords, followed by a short phrase. CRITICAL ALIGNMENT: This value MUST explicitly connect this session's formation_standard to the actual topic of this specific session.
-
-   - SCHEDULE MAPPING: Map the provided Teacher Schedule slots into the remarks field based on period length, NOT chronological days:
+5. SESSION DETAILS: 
+   - topic: Provide a specific, concise sub-topic. DO NOT USE DOUBLE QUOTES.
+   - objectives: Provide strictly 3 to 4 behavioral objectives.
+   - motivation and learning_activities MUST explicitly state the teaching strategy used. 
+   - LEARNING ACTIVITIES FORMAT: Heavily bulleted using dashes (-). Every bullet MUST begin with an -ing verb.
+   - SCHEDULE MAPPING: Map the Teacher Schedule slots into the remarks field based on period length:
 ${scheduleRules}
-     * RULE C: You MUST scan the ENTIRE provided Teacher Schedule. Identify EVERY section taking EXACTLY the subject ${subject}. Match strictly by the subject name.
-     * RULE D: List the schedule for ALL matching sections for this specific session number. Separate them with a semicolon (;).
-     * RULE E: After listing all sections, append any class suspensions, holidays (e.g., First Friday Mass), or custom instructions requested by the user.
-
+     * RULE C: You MUST scan the ENTIRE Teacher Schedule. Identify EVERY section taking EXACTLY the subject ${subject}.
+     * RULE D: List the schedule for ALL matching sections. Separate them with a semicolon (;).
+     * RULE E: Append any class suspensions, holidays, or custom instructions.
 6. SESSION FLEX RULE: 
    - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted learning_activities. Set all other fields to empty strings.
-
 9. JSON SKELETON (CRITICAL):
-   You MUST return a single JSON object that PERFECTLY matches this exact structure. Do not skip any keys or arrays.
+   You MUST return a single JSON object matching this exact structure:
    {
-     "weekly_overview": {
-       "topic": "...",
-       "content_standard": "...",
-       "performance_standard": "...",
-       "materials": "..."
-     },
-     "sessions": [
-       {
-         "session_name": "...",
-         "topic": "...",
-         "competencies": "...",
-         "objectives": "...",
-         "preliminary": "...",
-         "motivation": "...",
-         "learning_activities": "...",
-         "formation_standard": "...",
-         "evaluation": "...",
-         "closing": "...",
-         "values_integration": "...",
-         "remarks": "..."
-       }
-     ]
+     "weekly_overview": { "topic": "...", "content_standard": "...", "performance_standard": "...", "materials": "..." },
+     "sessions": [ { "session_name": "...", "topic": "...", "competencies": "...", "objectives": "...", "preliminary": "...", "motivation": "...", "learning_activities": "...", "formation_standard": "...", "evaluation": "...", "closing": "...", "values_integration": "...", "remarks": "..." } ]
    }
 
 ${lookbackContext}
-
 Target Scope: ${window.cachedScope}
 School Year: ${schoolYear}
 Custom Instructions: ${window.cachedCustomInstructions}
 User Clarification: ${userClarification || "None"}
-Teacher Schedule:
-${window.cachedSchedule}
-
-Reference Text:
-${window.cachedCompiledText.substring(0, 25000)}
-    `;
+Teacher Schedule:\n${window.cachedSchedule}
+Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
 
   window.showLoader();
+  let rawJson = "";
 
   try {
-    // 🚀 NEW: Route to Local Backend Proxy (Structured JSON Task)
-    const response = await fetch("http://localhost:3000/api/generate-lesson", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: prompt,
-        taskType: "structured", // Hits qwen2.5:3b and FORCES strict JSON output
-      }),
-    });
+    if (engineMode === "cloud") {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.2,
+              maxOutputTokens: 8192,
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  weekly_overview: {
+                    type: "OBJECT",
+                    properties: {
+                      topic: { type: "STRING" },
+                      content_standard: { type: "STRING" },
+                      performance_standard: { type: "STRING" },
+                      materials: { type: "STRING" },
+                    },
+                    required: [
+                      "topic",
+                      "content_standard",
+                      "performance_standard",
+                      "materials",
+                    ],
+                  },
+                  sessions: {
+                    type: "ARRAY",
+                    items: {
+                      type: "OBJECT",
+                      properties: {
+                        session_name: { type: "STRING" },
+                        topic: { type: "STRING" },
+                        competencies: { type: "STRING" },
+                        objectives: { type: "STRING" },
+                        preliminary: { type: "STRING" },
+                        motivation: { type: "STRING" },
+                        learning_activities: { type: "STRING" },
+                        formation_standard: { type: "STRING" },
+                        evaluation: { type: "STRING" },
+                        closing: { type: "STRING" },
+                        values_integration: { type: "STRING" },
+                        remarks: { type: "STRING" },
+                      },
+                      required: [
+                        "session_name",
+                        "topic",
+                        "learning_activities",
+                      ],
+                    },
+                  },
+                },
+                required: ["weekly_overview", "sessions"],
+              },
+            },
+          }),
+        },
+      );
 
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`Proxy Error (${response.status}): ${errBody}`);
+      if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
+      const result = await response.json();
+      rawJson = result.candidates[0].content.parts[0].text;
+    } else {
+      const response = await fetch(
+        "http://localhost:3000/api/generate-lesson",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: prompt, taskType: "structured" }),
+        },
+      );
+      if (!response.ok) throw new Error("Local Proxy Error");
+      const result = await response.json();
+      rawJson = result.result;
     }
 
-    const aiResult = await response.json();
-    let rawText = aiResult.result;
-
-    // Safety net: Extract exactly what is between the JSON brackets
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    let rawJson = jsonMatch ? jsonMatch[0] : rawText;
-
-    // Erase lingering physical control characters
+    const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+    if (jsonMatch) rawJson = jsonMatch[0];
     rawJson = rawJson.replace(/[\u0000-\u0009\u000B-\u001F]+/g, "");
 
-    let planData;
-    try {
-      planData = JSON.parse(rawJson);
-    } catch (parseError) {
-      console.error("CRASH REPORT - Raw AI Output Below:");
-      console.error(rawJson);
-      throw new Error(
-        "The local AI failed to format the JSON properly. Check backend logs.",
-      );
-    }
-
+    const planData = JSON.parse(rawJson);
     const defaultPrelim =
       localStorage.getItem("lessonReview_defaultPrelim") ||
       "Opening Prayer\nAttendance Checking\nTECHNOTES";
     const defaultClosing =
       localStorage.getItem("lessonReview_defaultClosing") ||
       "Summary of the Lesson\nClosing Prayer";
-    // 🚀 SAFE MAPPING WITH FALLBACK ARRAYS
     const sessionsArray = planData.sessions || [];
 
     window.currentPlan = sessionsArray.map((session) => {
@@ -300,22 +331,20 @@ ${window.cachedCompiledText.substring(0, 25000)}
       return session;
     });
 
-    window.currentWeeklyOverview = planData.weekly_overview;
-
+    window.currentWeeklyOverview = planData.weekly_overview || {};
     window.renderOverview();
     window.renderOutput();
-  } catch (e) {
-    alert("Generation failed: " + e.message);
+  } catch (error) {
+    console.error("Generation Crash:", error);
+    alert("Generation failed. Check console for details.");
   } finally {
     window.hideLoader();
   }
 };
 
-// 🚀 NEW: Manual Blank Planner Function
 window.generateBlankPlan = function () {
   window.currentTargetGrade =
     document.getElementById("lpGradeLevel")?.value || "Grade 11";
-
   window.currentWeeklyOverview = {
     topic: "",
     content_standard: "",
