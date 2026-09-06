@@ -12,26 +12,77 @@ const safeGet = (id) =>
   document.getElementById(id) ? document.getElementById(id).value.trim() : "";
 
 window.saveSecuritySettings = async function () {
-  localStorage.setItem(
-    "repoReview_firebase_config",
-    safeGet("firebaseConfigInput"),
-  );
-  localStorage.setItem("repoReview_github_token", safeGet("adminGithubToken"));
-  localStorage.setItem("repoReview_gemini_token", safeGet("adminGeminiKey"));
-  localStorage.setItem(
-    "repoReview_ai_model",
-    safeGet("adminAiModel") || "gemini-3.5-flash",
-  );
+  const fbConfigStr = safeGet("firebaseConfigInput");
+  const githubToken = safeGet("adminGithubToken");
+  const geminiKey = safeGet("adminGeminiKey");
+  const aiModel = safeGet("adminAiModel") || "gemini-1.5-flash";
+  const engineMode = safeGet("globalAiEngine") || "cloud";
 
-  // Save the AI Processing Engine toggle
-  localStorage.setItem(
-    "repoReview_engine_mode",
-    safeGet("globalAiEngine") || "cloud",
-  );
+  const originalBtnText = document.getElementById("saveSettingsBtn")
+    ? document.getElementById("saveSettingsBtn").innerText
+    : "Save";
+  if (document.getElementById("saveSettingsBtn")) {
+    document.getElementById("saveSettingsBtn").innerText =
+      "Verifying Connections...";
+  }
 
-  alert(
-    "✅ Security Settings Saved Locally! Refresh to apply Firebase changes.",
-  );
+  try {
+    // 🚀 1. FIREBASE VALIDATION
+    if (fbConfigStr) {
+      try {
+        const fbJson = JSON.parse(fbConfigStr);
+        if (!fbJson.projectId || !fbJson.apiKey) {
+          throw new Error(
+            "Missing required Firebase properties (projectId or apiKey).",
+          );
+        }
+      } catch (e) {
+        throw new Error("Invalid Firebase Configuration: " + e.message);
+      }
+    }
+
+    // 🚀 2. GEMINI API LIVE CONNECTION TEST
+    if (geminiKey) {
+      const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${encodeURIComponent(geminiKey)}`;
+      const testResponse = await fetch(testUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: "Connection test." }] }],
+        }),
+      });
+
+      if (!testResponse.ok) {
+        if (testResponse.status === 400)
+          throw new Error("Gemini API Key is invalid.");
+        if (testResponse.status === 404)
+          throw new Error(`AI Model '${aiModel}' not found.`);
+        if (testResponse.status === 503)
+          console.warn(
+            "Gemini is currently overloaded, but the credentials appear structurally valid.",
+          );
+        else
+          throw new Error(`Gemini API returned status ${testResponse.status}`);
+      }
+    }
+
+    // 🚀 3. SAVE IF VALIDATIONS PASS
+    localStorage.setItem("repoReview_firebase_config", fbConfigStr);
+    localStorage.setItem("repoReview_github_token", githubToken);
+    localStorage.setItem("repoReview_gemini_token", geminiKey);
+    localStorage.setItem("repoReview_ai_model", aiModel);
+    localStorage.setItem("repoReview_engine_mode", engineMode);
+
+    alert(
+      "✅ Connections Verified & Settings Saved! Refresh the page to apply changes.",
+    );
+  } catch (error) {
+    alert("❌ Save Aborted: " + error.message);
+  } finally {
+    if (document.getElementById("saveSettingsBtn")) {
+      document.getElementById("saveSettingsBtn").innerText = originalBtnText;
+    }
+  }
 };
 
 window.loadSecuritySettings = function () {
