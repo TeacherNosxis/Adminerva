@@ -190,23 +190,38 @@ LAST WEEK'S CURRICULUM STATE:\n${safeTextState}`;
 You are an expert curriculum developer. Based on the Reference Text, Target Scope, and Custom Instructions, generate a highly structured JSON lesson plan.
 
 CRITICAL FORMATTING RULES:
-1. weekly_overview: 
-   - topic: Keep short and punchy.
-   - content_standard, performance_standard, and materials: MANDATORY FIELDS.
-2. sessions array: Generate daily sessions.
+1. 'weekly_overview': 
+   - 'topic': Keep short and punchy.
+   - 'content_standard', 'performance_standard', and 'materials': MANDATORY FIELDS. Professionally infer them based on the text if needed.
+   - MATERIALS FORMAT: You MUST format the 'materials' field as a heavily bulleted list using dashes (-). You MUST use the exact escaped sequence '\\n' to ensure each item is on its own line.
+   - FALLBACK KNOWLEDGE: If no Reference Text is provided, or if this is a Tech-Voc/TVL subject, you MUST utilize standard DepEd and TESDA curriculum guides to formulate standards and content accurately.
+2. 'sessions' array: Generate daily sessions.
 ${gradeSpecificRules}
-5. SESSION DETAILS: 
-   - topic: Provide a specific, concise sub-topic. DO NOT USE DOUBLE QUOTES.
-   - objectives: Provide strictly 3 to 4 behavioral objectives.
-   - motivation and learning_activities MUST explicitly state the teaching strategy used. 
-   - LEARNING ACTIVITIES FORMAT: Heavily bulleted using dashes (-). Every bullet MUST begin with an -ing verb.
+5. SESSION DETAILS (Normal): 
+   - 'topic': Provide a specific, concise sub-topic for THIS session. DO NOT USE DOUBLE QUOTES.
+   - 'competencies': Provide 1 to 2 clear learning competencies.
+   - 'objectives': Provide strictly 3 to 4 detailed behavioral objectives based on Bloom’s Taxonomy. DO NOT explicitly write the domain names.
+   - 'preliminary' MUST always start with: 'Opening Prayer\\nAttendance Checking\\nTECHNOTES'.
+   - 🚀 MOTIVATION RULE: Format exactly as: 'Strategy: [Strategy Name]\\n[Description]'. The description MUST be written from the Student's Point of View (e.g., 'The students will...').
+   - 🚀 LEARNING ACTIVITIES RULE: Format exactly as: 'Strategy: [Strategy Name]\\n- [Action 1]\\n- [Action 2]'. 
+     * CRITICAL: You MUST use the escaped sequence '\\n' before EVERY dash (-) to create actual line breaks in the UI. Do NOT bunch them into one paragraph.
+     * CRITICAL: Every bullet MUST begin with an '-ing' verb.
+     * ABSOLUTELY NO TIMESTAMPS. Do NOT include minute allocations (e.g., NEVER write '110 mins' or '60 mins') anywhere in this field.
+   - 'formation_standard': State a specific character formation goal for this session (e.g., 'Integrity in coding'). DO NOT USE QUOTES.
+   - 'evaluation': Suggest diverse and appropriate formative or summative assessments. Do NOT default to a Quipper quiz.
+   - 🚀 VALUES INTEGRATION RULE: Format exactly as: '[Core Value Keyword] - [Short phrase connecting the formation standard to the topic]'.
    - SCHEDULE MAPPING: Map the Teacher Schedule slots into the remarks field based on period length:
 ${scheduleRules}
-     * RULE C: You MUST scan the ENTIRE Teacher Schedule. Identify EVERY section taking EXACTLY the subject ${subject}.
+     * RULE C: Scan the ENTIRE Teacher Schedule. Identify EVERY section taking EXACTLY the subject '${subject}'.
      * RULE D: List the schedule for ALL matching sections. Separate them with a semicolon (;).
-     * RULE E: Append any class suspensions, holidays, or custom instructions.
+     * RULE E: Format the schedule strictly using pipes (|) for line breaks. Example: [Section A] | [Full Date] | [Time Slot]
+     * RULE F: After listing all sections, append any class suspensions, holidays, or custom instructions requested by the user.
 6. SESSION FLEX RULE: 
-   - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted learning_activities. Set all other fields to empty strings.
+   - OFFLINE/ASYNCHRONOUS. Provide ONLY bulleted 'learning_activities'. Set all other fields to empty strings.
+8. STRICT JSON ESCAPING (CRITICAL): 
+   - Your output MUST be completely valid JSON. 
+   - NEVER use double quotes (") INSIDE your text/string values. If you need to quote something inside a paragraph, use single quotes (') instead to prevent JSON parsing crashes.
+   - Do NOT use raw physical line breaks inside string values. You MUST use the exact escaped sequence "\\n" to denote a new line.
 9. JSON SKELETON (CRITICAL):
    You MUST return a single JSON object matching this exact structure:
    {
