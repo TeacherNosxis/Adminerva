@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     centerLinks = `
             <a href="lesson-planner.html" class="${getStyle("planner")}">AI Planner</a>
+            <a href="presentation.html" class="${getStyle("presentation")}">Slide Editor</a>
             <a href="schedule.html" class="${getStyle("schedule")}">Teacher's Schedule</a>
             <a href="library.html" class="${getStyle("library")}">Reference Library</a>
         `;

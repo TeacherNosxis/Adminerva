@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adminerva - Presentation Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Quill.js placeholder for Phase 2 Rich Text integration -->
+    <link
+      href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-950 font-sans min-h-screen flex flex-col text-gray-200">
+    <!-- GLOBAL NAVIGATION INJECTION -->
+    <div id="adminerva-nav" data-module="lesson" data-page="presentation"></div>
+    <script src="js/core/adminerva-nav.js"></script>
+
+    <!-- Main Workspace -->
+    <div
+      class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col lg:flex-row gap-6"
+    >
+      <!-- LEFT COLUMN: Slide Block Navigation -->
+      <div
+        class="w-full lg:w-1/4 bg-gray-900 p-4 rounded-lg shadow-lg border border-cyan-900/50 flex flex-col"
+      >
+        <div
+          class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4"
+        >
+          <h2 class="text-lg font-bold text-cyan-400 tracking-wider">
+            SLIDE BLOCKS
+          </h2>
+          <button
+            class="bg-cyan-600/20 text-cyan-400 border border-cyan-500/50 px-2 py-1 rounded text-xs font-bold hover:bg-cyan-600 hover:text-white transition"
+          >
+            + Add
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-2" id="slideBlockList">
+          <!-- Active Block -->
+          <div
+            class="p-3 bg-cyan-900/30 border-l-4 border-cyan-400 rounded cursor-pointer transition"
+          >
+            <div class="text-xs font-bold text-cyan-300 uppercase">Slide 1</div>
+            <div class="text-sm font-semibold text-white">Title Slide</div>
+          </div>
+          <!-- Inactive Block -->
+          <div
+            class="p-3 bg-gray-800 border-l-4 border-transparent hover:border-gray-500 rounded cursor-pointer transition"
+          >
+            <div class="text-xs font-bold text-gray-500 uppercase">Slide 2</div>
+            <div class="text-sm font-semibold text-gray-300">🎯 Objectives</div>
+          </div>
+        </div>
+
+        <button
+          class="w-full mt-4 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded shadow-[0_0_10px_rgba(6,182,212,0.4)] transition"
+        >
+          Export to PPTX
+        </button>
+      </div>
+
+      <!-- RIGHT COLUMN: 16:9 Editor Canvas -->
+      <div
+        class="w-full lg:w-3/4 bg-gray-900 rounded-lg shadow-lg border border-cyan-900/50 flex flex-col items-center justify-center p-6 relative"
+      >
+        <!-- Toolbar Area -->
+        <div
+          class="w-full flex justify-between items-center mb-4 text-sm max-w-4xl"
+        >
+          <span class="font-bold text-gray-400 uppercase tracking-wider"
+            >Live Preview</span
+          >
+          <span
+            class="text-amber-400 font-bold hidden bg-amber-900/30 px-3 py-1 rounded"
+            id="overflowWarning"
+            >⚠️ Screen Overflow Detected</span
+          >
+        </div>
+
+        <!-- 16:9 Aspect Ratio Container (The Physical Slide) -->
+        <div
+          class="w-full max-w-4xl aspect-[16/9] bg-[#0b1120] border-2 border-gray-700 relative overflow-hidden flex flex-col group shadow-2xl"
+        >
+          <!-- 12% Top Ribbon -->
+          <div
+            class="h-[12%] w-full bg-cyan-950/40 border-b border-cyan-900/50 flex items-center px-6 justify-between z-20"
+          >
+            <div class="flex items-center gap-3">
+              <img
+                src="assets/New Adminerva logo.png"
+                class="h-8 opacity-80 mix-blend-lighten"
+                alt="Logo"
+              />
+              <div class="flex flex-col">
+                <span
+                  class="text-xs font-bold text-cyan-400 uppercase tracking-wide leading-none"
+                  >Main Lesson Title</span
+                >
+                <span class="text-[9px] text-gray-400 leading-none mt-1"
+                  >Subtopic Context</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide Content Area -->
+          <div class="flex-1 p-8 relative z-20">
+            <textarea
+              class="w-full h-full bg-transparent text-gray-200 resize-none outline-none text-2xl leading-relaxed placeholder-gray-600"
+              placeholder="Click to edit slide content..."
+            ></textarea>
+          </div>
+
+          <!-- Background Graphic (40% Opacity Owl) -->
+          <div
+            class="absolute right-[-10%] bottom-0 w-[60%] h-[120%] opacity-40 pointer-events-none bg-[url('assets/New\ Adminerva\ logo.png')] bg-contain bg-no-repeat bg-right-bottom mix-blend-lighten z-10"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
