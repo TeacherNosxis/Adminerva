@@ -53,7 +53,7 @@ async function loadLibrary() {
     });
 
     libraryData.sort((a, b) => a.name.localeCompare(b.name));
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
 
     renderFolders();
     if (activeFolderId && libraryData.find((f) => f.id === activeFolderId)) {
@@ -84,7 +84,7 @@ window.createFolder = async function () {
       documents: [],
     });
     libraryData.sort((a, b) => a.name.localeCompare(b.name));
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
 
     input.value = "";
     renderFolders();
@@ -107,7 +107,7 @@ window.renameFolder = async function (e, folderId) {
     });
     folder.name = newName.trim();
     libraryData.sort((a, b) => a.name.localeCompare(b.name));
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
     renderFolders();
     if (activeFolderId === folderId) selectFolder(folderId);
   } catch (error) {
@@ -125,7 +125,7 @@ window.deleteFolder = async function (e, folderId) {
   try {
     await deleteDoc(doc(db, "reference_folders", folderId));
     libraryData = libraryData.filter((f) => f.id !== folderId);
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
 
     if (activeFolderId === folderId) {
       activeFolderId = null;
@@ -217,7 +217,7 @@ window.renameDocument = async function (docIndex) {
       documents: updatedDocs,
     });
     folder.documents = updatedDocs;
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
     renderDocuments(folder.documents);
   } catch (e) {
     alert("Error renaming document: " + e.message);
@@ -236,7 +236,7 @@ window.deleteDocument = async function (docIndex) {
       documents: updatedDocs,
     });
     folder.documents = updatedDocs;
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
     renderDocuments(folder.documents);
   } catch (e) {
     alert("Error deleting document: " + e.message);
@@ -385,7 +385,7 @@ window.extractPDF = async function () {
     });
 
     folder.documents = updatedDocs;
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
   } catch (error) {
     alert("Bulk extraction stopped. Error: " + error.message);
   } finally {

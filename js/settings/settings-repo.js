@@ -181,12 +181,12 @@ const DEFAULT_TEMPLATES = [
 ];
 
 window.initRubrics = function () {
-  const stored = localStorage.getItem("repoReview_grading_templates");
+  const stored = localStorage.getItem("Adminerva_grading_templates");
   window.templates = stored
     ? JSON.parse(stored)
     : JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
   window.activeTemplateId =
-    localStorage.getItem("repoReview_active_template_id") ||
+    localStorage.getItem("Adminerva_active_template_id") ||
     window.templates[0].id;
   window.editingTemplate = JSON.parse(
     JSON.stringify(
@@ -288,7 +288,7 @@ window.saveRubrics = function () {
   if (idx >= 0) window.templates[idx] = window.editingTemplate;
   else window.templates.push(window.editingTemplate);
   localStorage.setItem(
-    "repoReview_grading_templates",
+    "Adminerva_grading_templates",
     JSON.stringify(window.templates),
   );
   window.renderTemplateDropdown();

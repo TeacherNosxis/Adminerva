@@ -40,7 +40,8 @@ window.loadLibraryFolders = async function () {
     const libraryData = [];
     snap.forEach((d) => libraryData.push({ id: d.id, ...d.data() }));
 
-    localStorage.setItem("lessonReview_library", JSON.stringify(libraryData));
+    // 🚀 THE FIX: Shifted to Adminerva_ namespace
+    localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
 
     container.innerHTML = "";
     if (libraryData.length === 0) {
@@ -66,7 +67,6 @@ window.loadLibraryFolders = async function () {
   }
 };
 
-// 🚀 LOOKS BACK USING THE NEW COURSE WEEK INSTEAD OF MONTH
 window.fetchPreviousPlan = async function (
   grade,
   subject,
@@ -100,6 +100,11 @@ window.fetchPreviousPlan = async function (
 };
 
 window.saveLessonPlan = async function () {
+  // Optional Safety: If you have a function that scrapes your HTML textareas to update window.currentPlan, call it here!
+  if (typeof window.syncOutputToData === "function") {
+    window.syncOutputToData();
+  }
+
   if (
     !window.currentPlan ||
     window.currentPlan.length === 0 ||
@@ -113,11 +118,10 @@ window.saveLessonPlan = async function () {
     return false;
   }
 
-  // 🚀 READS DATA FROM THE NEW 5-COLUMN UI AND GLOBAL SETTINGS
-  const subject =
-    localStorage.getItem("lessonReview_defaultSubject") || "Subject";
+  // 🚀 THE FIX: Shifted to Adminerva_ namespace
+  const subject = localStorage.getItem("Adminerva_defaultSubject") || "Subject";
   const teacher =
-    localStorage.getItem("lessonReview_defaultTeacher") || "Unassigned";
+    localStorage.getItem("Adminerva_defaultTeacher") || "Unassigned";
   const grade = window.currentTargetGrade || "Grade";
 
   const academicTerm = document.getElementById("lpAcademicTerm").value;
@@ -131,6 +135,7 @@ window.saveLessonPlan = async function () {
       : academicTerm.includes("FOURTH QUARTER")
         ? "Q4"
         : "Q1";
+
   const safeDocId = `${grade}_${subject}_${qtrStr}_${courseWeek}`.replace(
     /[^a-zA-Z0-9_]/g,
     "",
@@ -153,7 +158,8 @@ window.saveLessonPlan = async function () {
       custom_instructions: document
         .getElementById("lpCustomInstructions")
         .value.trim(),
-      schedule: localStorage.getItem("lessonReview_schedule") || "",
+      // 🚀 THE FIX: Shifted to Adminerva_ namespace
+      schedule: localStorage.getItem("Adminerva_schedule") || "",
       reference_folders: Array.from(
         document.querySelectorAll(".folder-checkbox:checked"),
       ).map((cb) => cb.value),
@@ -204,8 +210,6 @@ window.openLoadPlanModal = async function () {
 
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-
-      // 🚀 PHASE 2: Actively hide archived files from the UI
       if (data.is_archived) return;
 
       const sy = data.school_year || "2026-2027";
@@ -356,7 +360,6 @@ window.openLoadPlanModal = async function () {
 };
 
 window.deleteLessonPlan = async function (docId) {
-  // 🚀 PHASE 1: Soft-Delete Execution
   if (
     !confirm(
       "Move this lesson plan to the Archive? It will be permanently deleted in 14 days.",
@@ -387,9 +390,7 @@ window.deleteLessonPlan = async function (docId) {
     window.hideLoader();
   }
 };
-// ==========================================
-// 🚀 GLOBAL RECYCLE BIN & AUTO-PURGER
-// ==========================================
+
 window.openArchiveManager = async function () {
   if (!window.db) return alert("Firebase is not connected.");
 
@@ -502,9 +503,9 @@ window.restoreDocument = async function (collectionName, docId) {
       { merge: true },
     );
 
-    window.openArchiveManager(); // Refresh UI
+    window.openArchiveManager();
     if (typeof window.openLoadPlanModal === "function")
-      window.openLoadPlanModal(); // Refresh planner list
+      window.openLoadPlanModal();
   } catch (e) {
     alert("Failed to restore: " + e.message);
   }
@@ -531,7 +532,6 @@ window.hardDeleteDocument = async function (collectionName, docId) {
   }
 };
 
-// 🚀 SILENT 14-DAY AUTO-PURGER (Fires 5 seconds after boot)
 setTimeout(async () => {
   if (!window.db) return;
   try {
