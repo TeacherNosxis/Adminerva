@@ -406,12 +406,17 @@ window.closePrefabModal = function () {
 window.injectPrefab = function (icon, text, hexColor) {
   if (!window.activeQuillInstance) return;
 
-  // Get the current cursor position
   let range = window.activeQuillInstance.getSelection(true);
   if (!range) range = { index: 0 };
 
-  // Inject as an H2 (so PPTX exporter catches it) and apply the custom color
-  const htmlSnippet = `<h2><strong style="color: ${hexColor};">${icon} ${text}</strong></h2><p><br></p>`;
+  // Inject as a native Quill Blockquote. The CSS currentColor applies the hexColor to the borders!
+  const htmlSnippet = `
+        <blockquote style="color: ${hexColor};">
+            <strong style="font-size: 20px;">${icon} ${text}</strong><br>
+            <span style="color: #475569; font-size: 16px;">(Type your content inside this box...)</span>
+        </blockquote>
+        <p><br></p>
+    `;
 
   window.activeQuillInstance.clipboard.dangerouslyPasteHTML(
     range.index,
