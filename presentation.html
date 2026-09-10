@@ -50,9 +50,10 @@
               class="flex-1 p-1.5 border border-gray-300 rounded text-xs bg-gray-50 focus:ring-blue-500"
             >
               <option value="default">Default Template</option>
-              <!-- Dynamic templates from settings will load here -->
             </select>
+            <!-- 🚀 FIX: Added onclick command -->
             <button
+              onclick="addNewSlide()"
               class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition"
             >
               + Add
@@ -61,121 +62,210 @@
         </div>
 
         <div class="flex-1 overflow-y-auto space-y-2" id="slideBlockList">
-          <!-- Active Block -->
-          <div
-            class="p-3 bg-blue-50 border-l-4 border-blue-600 rounded cursor-pointer transition"
-          >
-            <div class="text-xs font-bold text-blue-800 uppercase">Slide 1</div>
-            <div class="text-sm font-semibold text-gray-900">Title Slide</div>
-          </div>
-          <!-- Inactive Block -->
-          <div
-            class="p-3 bg-white border border-gray-100 hover:border-gray-300 rounded cursor-pointer transition"
-          >
-            <div class="text-xs font-bold text-gray-500 uppercase">Slide 2</div>
-            <div class="text-sm font-semibold text-gray-700">🎯 Objectives</div>
-          </div>
+          <!-- Dynamic Blocks -->
         </div>
 
+        <!-- 🚀 FIX: Added onclick command for the final step -->
         <button
-          class="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 rounded transition"
+          onclick="exportToPPTX()"
+          class="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 rounded transition shadow-md"
         >
           Export to PPTX
         </button>
       </div>
 
       <!-- RIGHT COLUMN: Editor Workspace -->
-      <div class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative">
-        
-        <!-- Layout Switcher & Toolbar Header -->
-        <div class="w-full max-w-4xl flex justify-between items-end mb-2">
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Slide Layout</label>
-                <select id="slideLayoutSelector" onchange="changeSlideLayout(this.value)" class="p-1 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900">
-                    <option value="standard">Standard (1 Column)</option>
-                    <option value="split">Split (2 Columns)</option>
-                    <option value="media">Full Media (Image)</option>
-                </select>
-            </div>
-            <span id="overflowWarning" class="hidden text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-200">
-                ⚠️ Slide Height Limit Reached
-            </span>
-        </div>
-
-        <!-- Custom Formatting Toolbar (Shared by all editors) -->
-        <div class="w-full max-w-4xl mb-4 bg-gray-50 border border-gray-300 rounded-t-lg relative z-50 transition-opacity duration-200" id="presentation-toolbar">
-          <span class="ql-formats">
-            <select class="ql-header">
-              <option value="1">Heading 1</option>
-              <option value="2">Heading 2</option>
-              <option selected>Normal</option>
+      <div
+        class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative"
+      >
+        <!-- Layout Switcher Header -->
+        <div class="w-full max-w-4xl flex justify-between items-end mb-4">
+          <div>
+            <label
+              class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+              >Slide Layout</label
+            >
+            <select
+              id="slideLayoutSelector"
+              onchange="changeSlideLayout(this.value)"
+              class="p-1.5 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900 shadow-sm"
+            >
+              <option value="standard">Standard (1 Column)</option>
+              <option value="split">Split (2 Columns)</option>
+              <option value="media">Full Media (Image)</option>
             </select>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-bold"></button>
-            <button class="ql-italic"></button>
-            <button class="ql-underline"></button>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-list" value="ordered"></button>
-            <button class="ql-list" value="bullet"></button>
-            <select class="ql-align"></select>
-          </span>
-          <span class="ql-formats">
-            <button class="ql-formula"></button>
+          </div>
+          <span
+            id="overflowWarning"
+            class="hidden text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-200"
+          >
+            ⚠️ Slide Height Limit Reached
           </span>
         </div>
 
         <!-- 16:9 Aspect Ratio Canvas -->
-        <div class="w-full max-w-4xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md" id="slide-canvas" style="background-color: #f8fafc;">
-          
-          <!-- 12% Top Ribbon (Hidden in Media View) -->
-          <div id="slide-ribbon" class="h-[12%] w-full bg-blue-50/80 backdrop-blur-sm border-b border-blue-100 flex items-center px-6 justify-between z-20 transition-all">
+        <div
+          class="w-full max-w-4xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md"
+          id="slide-canvas"
+          style="background-color: #f8fafc"
+        >
+          <!-- 12% Top Ribbon -->
+          <div
+            id="slide-ribbon"
+            class="h-[12%] w-full bg-blue-50/80 backdrop-blur-sm border-b border-blue-100 flex items-center px-6 justify-between z-20 transition-all"
+          >
             <div class="flex items-center gap-3">
-              <img src="assets/New Adminerva logo.png" class="h-8 opacity-80" alt="Logo" />
+              <img
+                src="assets/New Adminerva logo.png"
+                class="h-8 opacity-80"
+                alt="Logo"
+              />
               <div class="flex flex-col">
-                <span class="text-xs font-bold text-blue-900 uppercase tracking-wide leading-none">Main Lesson Title</span>
-                <span class="text-[9px] text-gray-500 leading-none mt-1">Subtopic Context</span>
+                <span
+                  class="text-xs font-bold text-blue-900 uppercase tracking-wide leading-none"
+                  >Main Lesson Title</span
+                >
+                <span class="text-[9px] text-gray-500 leading-none mt-1"
+                  >Subtopic Context</span
+                >
               </div>
             </div>
           </div>
 
-          <!-- LAYOUT 1: Standard (1 Column) -->
-          <div id="layout-standard" class="flex-1 p-8 relative z-20 bg-white/40 backdrop-blur-[2px]">
-            <div id="editor-container" class="h-full w-full text-2xl leading-relaxed text-gray-900 border-none outline-none"></div>
+          <!-- 🚀 LAYOUT 1: Standard (Embedded Toolbar) -->
+          <div
+            id="layout-standard"
+            class="flex-1 flex flex-col relative z-20 bg-white/40 backdrop-blur-[2px]"
+          >
+            <div
+              id="toolbar-standard"
+              class="w-full bg-gray-50/90 border-b border-gray-300 z-50"
+            >
+              <span class="ql-formats"
+                ><select class="ql-header">
+                  <option value="1"></option>
+                  <option value="2"></option>
+                  <option selected></option></select
+              ></span>
+              <span class="ql-formats"
+                ><button class="ql-bold"></button
+                ><button class="ql-italic"></button
+                ><button class="ql-underline"></button
+              ></span>
+              <span class="ql-formats"
+                ><button class="ql-list" value="ordered"></button
+                ><button class="ql-list" value="bullet"></button
+              ></span>
+              <span class="ql-formats"
+                ><button class="ql-formula"></button
+              ></span>
+            </div>
+            <div class="flex-1 p-8">
+              <div
+                id="editor-container"
+                class="h-full w-full text-2xl leading-relaxed text-gray-900 border-none outline-none"
+              ></div>
+            </div>
           </div>
 
-          <!-- LAYOUT 2: Split (2 Columns) -->
-          <div id="layout-split" class="hidden flex-1 p-8 relative z-20 bg-white/40 backdrop-blur-[2px] flex gap-6">
-            <div class="flex-1 border-r border-gray-300/50 pr-4">
-                <div id="editor-left" class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"></div>
-            </div>
-            <div class="flex-1 pl-2">
-                <div id="editor-right" class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"></div>
-            </div>
-          </div>
-
-          <!-- LAYOUT 3: Full Media -->
-          <div id="layout-media" class="hidden absolute inset-0 z-30 bg-black/90 flex flex-col items-center justify-center group">
-              <img id="media-preview-img" src="" class="hidden max-w-full max-h-full object-contain">
-              
-              <div id="media-upload-ui" class="text-center p-6 bg-white/10 backdrop-blur rounded-xl border border-white/20">
-                  <span class="block text-4xl mb-3">🖼️</span>
-                  <p class="text-white font-bold text-lg mb-4">Media Slide</p>
-                  <button onclick="document.getElementById('mediaFileInput').click()" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-bold shadow hover:bg-blue-700 transition">Upload Image</button>
-                  <p class="text-[10px] text-gray-400 mt-3">JPEG/PNG Max 800KB</p>
-                  <input type="file" id="mediaFileInput" accept="image/*" class="hidden" onchange="handleMediaUpload(event)">
+          <!-- 🚀 LAYOUT 2: Split (Embedded Mini-Toolbars) -->
+          <div
+            id="layout-split"
+            class="hidden flex-1 relative z-20 bg-white/40 backdrop-blur-[2px]"
+          >
+            <div class="flex h-full w-full">
+              <!-- Left Column -->
+              <div class="flex-1 flex flex-col border-r border-gray-300/50">
+                <div
+                  id="toolbar-left"
+                  class="w-full bg-gray-50/90 border-b border-gray-300 z-50 py-1 px-2"
+                >
+                  <span class="ql-formats"
+                    ><button class="ql-bold"></button
+                    ><button class="ql-italic"></button
+                    ><button class="ql-list" value="bullet"></button
+                  ></span>
+                </div>
+                <div class="flex-1 p-5">
+                  <div
+                    id="editor-left"
+                    class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"
+                  ></div>
+                </div>
               </div>
-
-              <button onclick="clearMediaSlide()" class="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hidden group-hover:block transition shadow">✖ Remove Image</button>
+              <!-- Right Column -->
+              <div class="flex-1 flex flex-col">
+                <div
+                  id="toolbar-right"
+                  class="w-full bg-gray-50/90 border-b border-gray-300 z-50 py-1 px-2"
+                >
+                  <span class="ql-formats"
+                    ><button class="ql-bold"></button
+                    ><button class="ql-italic"></button
+                    ><button class="ql-list" value="bullet"></button
+                  ></span>
+                </div>
+                <div class="flex-1 p-5">
+                  <div
+                    id="editor-right"
+                    class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"
+                  ></div>
+                </div>
+              </div>
+            </div>
           </div>
 
+          <!-- 🚀 LAYOUT 3: Full Media -->
+          <div
+            id="layout-media"
+            class="hidden absolute inset-0 z-30 bg-black/90 flex-col items-center justify-center group"
+          >
+            <img
+              id="media-preview-img"
+              src=""
+              class="hidden max-w-full max-h-full object-contain"
+            />
+            <div
+              id="media-upload-ui"
+              class="text-center p-6 bg-white/10 backdrop-blur rounded-xl border border-white/20"
+            >
+              <span class="block text-4xl mb-3">🖼️</span>
+              <p class="text-white font-bold text-lg mb-4">Media Slide</p>
+              <button
+                onclick="document.getElementById('mediaFileInput').click()"
+                class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-bold shadow hover:bg-blue-700 transition"
+              >
+                Upload Image
+              </button>
+              <p class="text-[10px] text-gray-400 mt-3">JPEG/PNG Max 800KB</p>
+              <input
+                type="file"
+                id="mediaFileInput"
+                accept="image/*"
+                class="hidden"
+                onchange="handleMediaUpload(event)"
+              />
+            </div>
+            <button
+              onclick="clearMediaSlide()"
+              class="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hidden group-hover:block transition shadow"
+            >
+              ✖ Remove
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    </script>
-    <script src="js/presentation-review/presentation-ui.js?v=4"></script>
-    <script type="module" src="js/presentation-review/presentation-firebase.js?v=4"></script>
-    <script type="module" src="js/presentation-review/presentation-ai.js?v=4"></script>
+    <!-- 🚀 FIXED SCRIPTS (No Stray Tags) -->
+    <script src="js/presentation-review/presentation-ui.js?v=5"></script>
+    <script
+      type="module"
+      src="js/presentation-review/presentation-firebase.js?v=5"
+    ></script>
+    <script
+      type="module"
+      src="js/presentation-review/presentation-ai.js?v=5"
+    ></script>
+  </body>
 </html>

@@ -1,8 +1,9 @@
+window.currentPresentationDeck = [];
+window.activeSlideIndex = -1;
+
 let quillStandard = null;
 let quillLeft = null;
 let quillRight = null;
-let currentPresentationDeck = [];
-let activeSlideIndex = -1;
 
 document.addEventListener("DOMContentLoaded", () => {
   initEditors();
@@ -14,31 +15,36 @@ document.addEventListener("DOMContentLoaded", () => {
 // 1. MULTI-EDITOR INITIALIZATION
 // ==========================================
 function initEditors() {
-  const config = {
-    modules: { formula: true, toolbar: "#presentation-toolbar" },
-    theme: "snow",
-  };
-
+  // Each editor gets its OWN distinct toolbar element to avoid Quill bugs
   if (document.getElementById("editor-container"))
-    quillStandard = new Quill("#editor-container", config);
+    quillStandard = new Quill("#editor-container", {
+      theme: "snow",
+      modules: { formula: true, toolbar: "#toolbar-standard" },
+    });
   if (document.getElementById("editor-left"))
-    quillLeft = new Quill("#editor-left", config);
+    quillLeft = new Quill("#editor-left", {
+      theme: "snow",
+      modules: { formula: true, toolbar: "#toolbar-left" },
+    });
   if (document.getElementById("editor-right"))
-    quillRight = new Quill("#editor-right", config);
+    quillRight = new Quill("#editor-right", {
+      theme: "snow",
+      modules: { formula: true, toolbar: "#toolbar-right" },
+    });
 
   const checkAndSave = (source, editorObj, key) => {
-    if (source !== "user" || activeSlideIndex < 0) return;
+    if (source !== "user" || window.activeSlideIndex < 0) return;
 
-    // Overflow Blocker
     const canvas = document.getElementById("slide-canvas");
     const editorRoot = editorObj.root;
     const maxSafeHeight = canvas.clientHeight * 0.85;
 
     if (editorRoot.scrollHeight > maxSafeHeight) {
-      editorObj.history.undo(); // Instant revert
+      editorObj.history.undo();
       flashWarning();
     } else {
-      currentPresentationDeck[activeSlideIndex][key] = editorRoot.innerHTML;
+      window.currentPresentationDeck[window.activeSlideIndex][key] =
+        editorRoot.innerHTML;
     }
   };
 
@@ -68,8 +74,8 @@ function flashWarning() {
 // 2. LAYOUT SWITCHER ENGINE
 // ==========================================
 window.changeSlideLayout = function (layout) {
-  if (activeSlideIndex < 0) return;
-  currentPresentationDeck[activeSlideIndex].layout = layout;
+  if (window.activeSlideIndex < 0) return;
+  window.currentPresentationDeck[window.activeSlideIndex].layout = layout;
   applyLayoutView(layout);
 };
 
@@ -78,29 +84,28 @@ function applyLayoutView(layout) {
   const layoutSplit = document.getElementById("layout-split");
   const layoutMedia = document.getElementById("layout-media");
   const ribbon = document.getElementById("slide-ribbon");
-  const toolbar = document.getElementById("presentation-toolbar");
 
-  // Hide all
-  layoutStandard.classList.add("hidden");
-  layoutSplit.classList.add("hidden");
-  layoutMedia.classList.add("hidden");
+  // 🚀 Safely Clear All Classes
+  layoutStandard.classList.remove("flex", "hidden");
+  layoutSplit.classList.remove("flex", "hidden");
+  layoutMedia.classList.remove("flex", "hidden");
 
-  // Reset UI Overlays
   ribbon.classList.remove("hidden");
-  toolbar.style.opacity = "1";
-  toolbar.style.pointerEvents = "auto";
 
   if (layout === "split") {
-    layoutSplit.classList.remove("hidden");
+    layoutStandard.classList.add("hidden");
     layoutSplit.classList.add("flex");
+    layoutMedia.classList.add("hidden");
   } else if (layout === "media") {
-    layoutMedia.classList.remove("hidden");
-    ribbon.classList.add("hidden"); // Maximize canvas
-    toolbar.style.opacity = "0.3"; // Disable text tools
-    toolbar.style.pointerEvents = "none";
+    layoutStandard.classList.add("hidden");
+    layoutSplit.classList.add("hidden");
+    layoutMedia.classList.add("flex");
+    ribbon.classList.add("hidden");
     renderMediaPreview();
   } else {
-    layoutStandard.classList.remove("hidden");
+    layoutStandard.classList.add("flex");
+    layoutSplit.classList.add("hidden");
+    layoutMedia.classList.add("hidden");
   }
 }
 
@@ -112,24 +117,23 @@ window.handleMediaUpload = function (event) {
   if (!file) return;
 
   if (file.size > 800 * 1024) {
-    alert(
-      "🚨 IMAGE TOO LARGE! Please compress your image to under 800KB before uploading to prevent database crashes.",
-    );
+    alert("🚨 IMAGE TOO LARGE! Compress to under 800KB.");
     event.target.value = "";
     return;
   }
 
   const reader = new FileReader();
   reader.onload = function (e) {
-    currentPresentationDeck[activeSlideIndex].mediaUrl = e.target.result;
+    window.currentPresentationDeck[window.activeSlideIndex].mediaUrl =
+      e.target.result;
     renderMediaPreview();
   };
   reader.readAsDataURL(file);
 };
 
 function renderMediaPreview() {
-  if (activeSlideIndex < 0) return;
-  const slide = currentPresentationDeck[activeSlideIndex];
+  if (window.activeSlideIndex < 0) return;
+  const slide = window.currentPresentationDeck[window.activeSlideIndex];
   const previewImg = document.getElementById("media-preview-img");
   const uploadUi = document.getElementById("media-upload-ui");
 
@@ -145,8 +149,8 @@ function renderMediaPreview() {
 }
 
 window.clearMediaSlide = function () {
-  if (activeSlideIndex < 0) return;
-  currentPresentationDeck[activeSlideIndex].mediaUrl = "";
+  if (window.activeSlideIndex < 0) return;
+  window.currentPresentationDeck[window.activeSlideIndex].mediaUrl = "";
   document.getElementById("mediaFileInput").value = "";
   renderMediaPreview();
 };
@@ -155,85 +159,79 @@ window.clearMediaSlide = function () {
 // 4. SLIDE BLOCK NAVIGATION
 // ==========================================
 function initPresentationDeck() {
-  if (currentPresentationDeck.length === 0) {
-    currentPresentationDeck = [
+  if (window.currentPresentationDeck.length === 0) {
+    window.currentPresentationDeck = [
       {
         layout: "standard",
         type: "title",
         label: "Title Slide",
-        content: "<h1>Main Lesson Title</h1><p>Subtopic goes here...</p>",
+        content: "<h1>Main Lesson Title</h1>",
       },
       {
         layout: "standard",
         type: "objectives",
         label: "Objectives",
-        content: "<ul><li>Objective 1</li><li>Objective 2</li></ul>",
+        content: "<ul><li>Objective 1</li></ul>",
       },
     ];
   }
   renderSlideBlocks();
-  selectSlide(0);
+  window.selectSlide(0);
 }
 
 function renderSlideBlocks() {
   const listContainer = document.getElementById("slideBlockList");
   if (!listContainer) return;
-
   listContainer.innerHTML = "";
 
-  currentPresentationDeck.forEach((slide, index) => {
-    const isActive = index === activeSlideIndex;
+  window.currentPresentationDeck.forEach((slide, index) => {
+    const isActive = index === window.activeSlideIndex;
     const activeStyles = "bg-blue-50 border-l-4 border-blue-600";
     const inactiveStyles =
       "bg-white border border-gray-100 hover:border-gray-300";
-    const activeTextLabel = "text-blue-800";
-    const inactiveTextLabel = "text-gray-500";
-    const activeTitle = "text-gray-900";
-    const inactiveTitle = "text-gray-700";
 
     let layoutIcon = "📄";
     if (slide.layout === "split") layoutIcon = "🪟";
     if (slide.layout === "media") layoutIcon = "🖼️";
 
     const html = `
-            <div onclick="selectSlide(${index})" class="p-3 rounded cursor-pointer transition flex items-center justify-between ${isActive ? activeStyles : inactiveStyles}">
-                <div>
-                    <div class="text-xs font-bold uppercase ${isActive ? activeTextLabel : inactiveTextLabel}">Slide ${index + 1}</div>
-                    <div class="text-sm font-semibold ${isActive ? activeTitle : inactiveTitle}">${slide.label}</div>
-                </div>
-                <div class="text-gray-400 text-lg opacity-50">${layoutIcon}</div>
-            </div>
-        `;
+      <div onclick="selectSlide(${index})" class="p-3 rounded cursor-pointer transition flex items-center justify-between ${isActive ? activeStyles : inactiveStyles}">
+          <div>
+              <div class="text-xs font-bold uppercase ${isActive ? "text-blue-800" : "text-gray-500"}">Slide ${index + 1}</div>
+              <div class="text-sm font-semibold ${isActive ? "text-gray-900" : "text-gray-700"}">${slide.label}</div>
+          </div>
+          <div class="text-gray-400 text-lg opacity-50">${layoutIcon}</div>
+      </div>
+    `;
     listContainer.insertAdjacentHTML("beforeend", html);
   });
 }
 
 window.selectSlide = function (index) {
-  if (index < 0 || index >= currentPresentationDeck.length) return;
-  activeSlideIndex = index;
+  if (index < 0 || index >= window.currentPresentationDeck.length) return;
+  window.activeSlideIndex = index;
   renderSlideBlocks();
 
-  const slide = currentPresentationDeck[index];
+  const slide = window.currentPresentationDeck[index];
   const layout = slide.layout || "standard";
 
   document.getElementById("slideLayoutSelector").value = layout;
   applyLayoutView(layout);
 
-  // Silently inject text without triggering overflow alarms
   if (quillStandard) quillStandard.root.innerHTML = slide.content || "";
   if (quillLeft) quillLeft.root.innerHTML = slide.contentLeft || "";
   if (quillRight) quillRight.root.innerHTML = slide.contentRight || "";
 };
 
 window.addNewSlide = function () {
-  currentPresentationDeck.push({
+  window.currentPresentationDeck.push({
     layout: "standard",
     type: "blank",
     label: "Blank Slide",
     content: "",
   });
   renderSlideBlocks();
-  selectSlide(currentPresentationDeck.length - 1);
+  window.selectSlide(window.currentPresentationDeck.length - 1);
 };
 
 // ==========================================
