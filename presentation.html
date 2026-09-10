@@ -25,15 +25,35 @@
         overflow-wrap: break-word !important;
       }
       
-      /* 🚀 Native Expanding Curved Box */
+      /* 🚀 1. Base Box (Fuses the middle if multiple lines are typed) */
       .ql-editor blockquote {
-        border: 3px solid currentColor;
-        background-color: transparent;
-        padding: 20px 24px;
-        border-radius: 20px;
-        font-style: normal;
-        margin: 4px 0 24px 0;
+        border-left: 3px solid currentColor !important;
+        border-right: 3px solid currentColor !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        border-radius: 0 !important;
+        background-color: transparent !important;
+        padding: 4px 24px !important;
+        margin: 0 !important;
+        font-style: normal !important;
         display: block;
+      }
+      
+      /* 🚀 2. Top Curve (Only applies to the VERY FIRST line) */
+      .ql-editor blockquote:not(blockquote + blockquote) {
+        border-top: 3px solid currentColor !important;
+        border-top-left-radius: 20px !important;
+        border-top-right-radius: 20px !important;
+        padding-top: 16px !important;
+      }
+
+      /* 🚀 3. Bottom Curve (Only applies to the VERY LAST line) */
+      .ql-editor blockquote:not(:has(+ blockquote)) {
+        border-bottom: 3px solid currentColor !important;
+        border-bottom-left-radius: 20px !important;
+        border-bottom-right-radius: 20px !important;
+        padding-bottom: 16px !important;
+        margin-bottom: 24px !important;
       }
     </style>
 
@@ -102,33 +122,30 @@
         </div>
 
         <!-- UNIFIED TOOLBAR AREA -->
-        <div id="master-toolbar-container" class="w-full max-w-5xl mb-4 bg-gray-50 border border-gray-300 rounded-lg relative z-50 h-10 transition-opacity duration-200">
+        <div id="master-toolbar-container" class="w-full max-w-5xl mb-4 bg-gray-50 border border-gray-300 rounded-lg relative z-50 transition-opacity duration-200 min-h-[48px]">
             <!-- Standard Toolbar -->
-            <div id="toolbar-standard" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full">
+            <div id="toolbar-standard" class="flex flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
                 <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
                 <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                <!-- 🚀 PREFAB HEADING BUTTON -->
-                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded shadow-sm transition border border-blue-200 ml-2">✨ Insert Heading</button>
+                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap">✨ Insert Heading</button>
             </div>
             <!-- Left Toolbar -->
-            <div id="toolbar-left" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden">
+            <div id="toolbar-left" class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
                 <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
                 <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                <!-- 🚀 PREFAB HEADING BUTTON -->
-                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded shadow-sm transition border border-blue-200 ml-2">✨ Insert Heading</button>
+                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap">✨ Insert Heading</button>
             </div>
             <!-- Right Toolbar -->
-            <div id="toolbar-right" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden">
+            <div id="toolbar-right" class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
                 <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
                 <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                <!-- 🚀 PREFAB HEADING BUTTON -->
-                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded shadow-sm transition border border-blue-200 ml-2">✨ Insert Heading</button>
+                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap">✨ Insert Heading</button>
             </div>
         </div>
 
