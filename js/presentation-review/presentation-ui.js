@@ -356,3 +356,66 @@ async function applyPresentationTheme() {
     if (attempts > 20) clearInterval(checkDb);
   }, 100);
 }
+// ==========================================
+// 🚀 PREFAB HEADING ENGINE
+// ==========================================
+window.activeQuillInstance = null; // Tracks which editor was clicked last
+
+// Update the tracker whenever a teacher clicks inside an editor
+function attachFocusTrackers() {
+  if (quillStandard)
+    quillStandard.root.addEventListener(
+      "focus",
+      () => (window.activeQuillInstance = quillStandard),
+    );
+  if (quillLeft)
+    quillLeft.root.addEventListener(
+      "focus",
+      () => (window.activeQuillInstance = quillLeft),
+    );
+  if (quillRight)
+    quillRight.root.addEventListener(
+      "focus",
+      () => (window.activeQuillInstance = quillRight),
+    );
+}
+
+// Call this once on load
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(attachFocusTrackers, 500);
+});
+
+window.openPrefabModal = function () {
+  if (!window.activeQuillInstance) {
+    alert(
+      "Please click inside a text box first so I know where to insert the heading.",
+    );
+    return;
+  }
+  document
+    .getElementById("prefabHeadingModal")
+    .classList.replace("hidden", "flex");
+};
+
+window.closePrefabModal = function () {
+  document
+    .getElementById("prefabHeadingModal")
+    .classList.replace("flex", "hidden");
+};
+
+window.injectPrefab = function (icon, text, hexColor) {
+  if (!window.activeQuillInstance) return;
+
+  // Get the current cursor position
+  let range = window.activeQuillInstance.getSelection(true);
+  if (!range) range = { index: 0 };
+
+  // Inject as an H2 (so PPTX exporter catches it) and apply the custom color
+  const htmlSnippet = `<h2><strong style="color: ${hexColor};">${icon} ${text}</strong></h2><p><br></p>`;
+
+  window.activeQuillInstance.clipboard.dangerouslyPasteHTML(
+    range.index,
+    htmlSnippet,
+  );
+  window.closePrefabModal();
+};

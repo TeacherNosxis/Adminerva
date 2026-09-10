@@ -96,22 +96,28 @@
             <div id="toolbar-standard" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button><select class="ql-align"></select></span>
-                <span class="ql-formats"><button class="ql-formula"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
+                <!-- 🚀 PREFAB HEADING BUTTON -->
+                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded shadow-sm transition border border-blue-200 ml-2">✨ Insert Heading</button>
             </div>
             <!-- Left Toolbar -->
             <div id="toolbar-left" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button><select class="ql-align"></select></span>
-                <span class="ql-formats"><button class="ql-formula"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
+                <!-- 🚀 PREFAB HEADING BUTTON -->
+                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded shadow-sm transition border border-blue-200 ml-2">✨ Insert Heading</button>
             </div>
             <!-- Right Toolbar -->
             <div id="toolbar-right" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button><select class="ql-align"></select></span>
-                <span class="ql-formats"><button class="ql-formula"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
+                <!-- 🚀 PREFAB HEADING BUTTON -->
+                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded shadow-sm transition border border-blue-200 ml-2">✨ Insert Heading</button>
             </div>
         </div>
 
@@ -204,8 +210,59 @@
             </div>
         </div>
     </div>
+    
     </div>
-
+    
+<!-- 🚀 PREFAB HEADING MODAL -->
+    <div id="prefabHeadingModal" class="hidden fixed inset-0 bg-gray-900/80 z-[100] items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 relative">
+            <button onclick="closePrefabModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">✖</button>
+            <h3 class="text-xl font-black text-blue-900 mb-6 border-b pb-3">Select heading</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="injectPrefab('💡', 'Do you understand?', '#eab308')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-xl shadow-sm border border-yellow-200 group-hover:scale-110 transition">💡</div>
+                    <span class="font-bold text-gray-800 text-sm">Do you understand?</span>
+                </button>
+                <button onclick="injectPrefab('🔑', 'Keypoints', '#ef4444')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-red-50 hover:border-red-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-xl shadow-sm border border-red-200 group-hover:scale-110 transition">🔑</div>
+                    <span class="font-bold text-gray-800 text-sm">Keypoints</span>
+                </button>
+                <button onclick="injectPrefab('📖', 'Learn about it!', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">📖</div>
+                    <span class="font-bold text-gray-800 text-sm">Learn about it!</span>
+                </button>
+                <button onclick="injectPrefab('💭', 'Let&apos;s think!', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
+    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">💭</div>
+    <span class="font-bold text-gray-800 text-sm">Let's think!</span>
+</button>
+                <button onclick="injectPrefab('🎯', 'Objectives', '#0284c7')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl shadow-sm border border-blue-200 group-hover:scale-110 transition">🎯</div>
+                    <span class="font-bold text-gray-800 text-sm">Objectives</span>
+                </button>
+                <button onclick="injectPrefab('👁️', 'See it!', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">👁️</div>
+                    <span class="font-bold text-gray-800 text-sm">See it!</span>
+                </button>
+                <button onclick="injectPrefab('🧩', 'Solve it another way!', '#d946ef')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-fuchsia-50 hover:border-fuchsia-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-fuchsia-100 flex items-center justify-center text-xl shadow-sm border border-fuchsia-200 group-hover:scale-110 transition">🧩</div>
+                    <span class="font-bold text-gray-800 text-sm">Solve it another way!</span>
+                </button>
+                <button onclick="injectPrefab('📌', 'Tips', '#eab308')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-xl shadow-sm border border-yellow-200 group-hover:scale-110 transition">📌</div>
+                    <span class="font-bold text-gray-800 text-sm">Tips</span>
+                </button>
+                <button onclick="injectPrefab('⚙️', 'Try it!', '#d946ef')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-fuchsia-50 hover:border-fuchsia-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-fuchsia-100 flex items-center justify-center text-xl shadow-sm border border-fuchsia-200 group-hover:scale-110 transition">⚙️</div>
+                    <span class="font-bold text-gray-800 text-sm">Try it!</span>
+                </button>
+                <button onclick="injectPrefab('🤔', 'What do you think?', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
+                    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">🤔</div>
+                    <span class="font-bold text-gray-800 text-sm">What do you think?</span>
+                </button>
+            </div>
+        </div>
+    </div>
     <!-- 🚀 FIXED SCRIPTS (No Stray Tags) -->
     <script src="js/presentation-review/presentation-ui.js?v=5"></script>
     <script
