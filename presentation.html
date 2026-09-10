@@ -3,15 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Adminerva - Presentation Editor</title>
+    <title>Adminerva - Slide Editor</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Quill.js placeholder for Phase 2 Rich Text integration -->
+
+    <!-- Quill.js for Rich Text & Toolbar -->
     <link
       href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
       rel="stylesheet"
     />
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+    <!-- KaTeX for Math Equations -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
   </head>
-  <body class="bg-gray-950 font-sans min-h-screen flex flex-col text-gray-200">
+  <body class="bg-gray-50 font-sans min-h-screen flex flex-col text-gray-800">
     <!-- GLOBAL NAVIGATION INJECTION -->
     <div id="adminerva-nav" data-module="lesson" data-page="presentation"></div>
     <script src="js/core/adminerva-nav.js"></script>
@@ -22,103 +31,139 @@
     >
       <!-- LEFT COLUMN: Slide Block Navigation -->
       <div
-        class="w-full lg:w-1/4 bg-gray-900 p-4 rounded-lg shadow-lg border border-cyan-900/50 flex flex-col"
+        class="w-full lg:w-1/4 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col"
       >
-        <div
-          class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4"
-        >
-          <h2 class="text-lg font-bold text-cyan-400 tracking-wider">
-            SLIDE BLOCKS
-          </h2>
-          <button
-            class="bg-cyan-600/20 text-cyan-400 border border-cyan-500/50 px-2 py-1 rounded text-xs font-bold hover:bg-cyan-600 hover:text-white transition"
-          >
-            + Add
-          </button>
+        <div class="border-b border-gray-200 pb-3 mb-4">
+          <h2 class="text-lg font-bold text-gray-800">SLIDE BLOCKS</h2>
+          <div class="flex gap-2 mt-2">
+            <select
+              id="slideTemplateSelect"
+              class="flex-1 p-1.5 border border-gray-300 rounded text-xs bg-gray-50 focus:ring-blue-500"
+            >
+              <option value="default">Default Template</option>
+              <!-- Dynamic templates from settings will load here -->
+            </select>
+            <button
+              class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition"
+            >
+              + Add
+            </button>
+          </div>
         </div>
 
         <div class="flex-1 overflow-y-auto space-y-2" id="slideBlockList">
           <!-- Active Block -->
           <div
-            class="p-3 bg-cyan-900/30 border-l-4 border-cyan-400 rounded cursor-pointer transition"
+            class="p-3 bg-blue-50 border-l-4 border-blue-600 rounded cursor-pointer transition"
           >
-            <div class="text-xs font-bold text-cyan-300 uppercase">Slide 1</div>
-            <div class="text-sm font-semibold text-white">Title Slide</div>
+            <div class="text-xs font-bold text-blue-800 uppercase">Slide 1</div>
+            <div class="text-sm font-semibold text-gray-900">Title Slide</div>
           </div>
           <!-- Inactive Block -->
           <div
-            class="p-3 bg-gray-800 border-l-4 border-transparent hover:border-gray-500 rounded cursor-pointer transition"
+            class="p-3 bg-white border border-gray-100 hover:border-gray-300 rounded cursor-pointer transition"
           >
             <div class="text-xs font-bold text-gray-500 uppercase">Slide 2</div>
-            <div class="text-sm font-semibold text-gray-300">🎯 Objectives</div>
+            <div class="text-sm font-semibold text-gray-700">🎯 Objectives</div>
           </div>
         </div>
 
         <button
-          class="w-full mt-4 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded shadow-[0_0_10px_rgba(6,182,212,0.4)] transition"
+          class="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 rounded transition"
         >
           Export to PPTX
         </button>
       </div>
 
-      <!-- RIGHT COLUMN: 16:9 Editor Canvas -->
+      <!-- RIGHT COLUMN: Editor Workspace -->
       <div
-        class="w-full lg:w-3/4 bg-gray-900 rounded-lg shadow-lg border border-cyan-900/50 flex flex-col items-center justify-center p-6 relative"
+        class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative"
       >
-        <!-- Toolbar Area -->
+        <!-- Custom Formatting Toolbar (Quill Container) -->
         <div
-          class="w-full flex justify-between items-center mb-4 text-sm max-w-4xl"
+          class="w-full max-w-4xl mb-4 bg-gray-50 border border-gray-300 rounded-t-lg"
+          id="presentation-toolbar"
         >
-          <span class="font-bold text-gray-400 uppercase tracking-wider"
-            >Live Preview</span
-          >
-          <span
-            class="text-amber-400 font-bold hidden bg-amber-900/30 px-3 py-1 rounded"
-            id="overflowWarning"
-            >⚠️ Screen Overflow Detected</span
-          >
+          <span class="ql-formats">
+            <select class="ql-header">
+              <option value="1">Heading 1</option>
+              <option value="2">Heading 2</option>
+              <option selected>Normal</option>
+            </select>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-bold"></button>
+            <button class="ql-italic"></button>
+            <button class="ql-underline"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-list" value="ordered"></button>
+            <button class="ql-list" value="bullet"></button>
+            <select class="ql-align"></select>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-link"></button>
+            <button class="ql-image"></button>
+            <button class="ql-video"></button>
+            <button class="ql-formula"></button>
+          </span>
         </div>
 
-        <!-- 16:9 Aspect Ratio Container (The Physical Slide) -->
+        <!-- 16:9 Aspect Ratio Canvas -->
         <div
-          class="w-full max-w-4xl aspect-[16/9] bg-[#0b1120] border-2 border-gray-700 relative overflow-hidden flex flex-col group shadow-2xl"
+          class="w-full max-w-4xl aspect-[16/9] bg-white border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md"
+          id="slide-canvas"
         >
           <!-- 12% Top Ribbon -->
           <div
-            class="h-[12%] w-full bg-cyan-950/40 border-b border-cyan-900/50 flex items-center px-6 justify-between z-20"
+            class="h-[12%] w-full bg-blue-50 border-b border-blue-100 flex items-center px-6 justify-between z-20"
           >
             <div class="flex items-center gap-3">
               <img
                 src="assets/New Adminerva logo.png"
-                class="h-8 opacity-80 mix-blend-lighten"
+                class="h-8 opacity-80"
                 alt="Logo"
               />
               <div class="flex flex-col">
                 <span
-                  class="text-xs font-bold text-cyan-400 uppercase tracking-wide leading-none"
+                  class="text-xs font-bold text-blue-900 uppercase tracking-wide leading-none"
                   >Main Lesson Title</span
                 >
-                <span class="text-[9px] text-gray-400 leading-none mt-1"
+                <span class="text-[9px] text-gray-500 leading-none mt-1"
                   >Subtopic Context</span
                 >
               </div>
             </div>
           </div>
 
-          <!-- Slide Content Area -->
+          <!-- Quill Editor Target Area -->
           <div class="flex-1 p-8 relative z-20">
-            <textarea
-              class="w-full h-full bg-transparent text-gray-200 resize-none outline-none text-2xl leading-relaxed placeholder-gray-600"
-              placeholder="Click to edit slide content..."
-            ></textarea>
+            <div
+              id="editor-container"
+              class="h-full w-full text-2xl leading-relaxed text-gray-800 border-none outline-none"
+            >
+              <!-- Content goes here -->
+            </div>
           </div>
-
-          <!-- Background Graphic (40% Opacity Owl) -->
-          <div
-            class="absolute right-[-10%] bottom-0 w-[60%] h-[120%] opacity-40 pointer-events-none bg-[url('assets/New\ Adminerva\ logo.png')] bg-contain bg-no-repeat bg-right-bottom mix-blend-lighten z-10"
-          ></div>
         </div>
       </div>
     </div>
+
+    <!-- Initialize Quill -->
+    <script>
+      var quill = new Quill("#editor-container", {
+        modules: {
+          formula: true,
+          toolbar: "#presentation-toolbar",
+        },
+        theme: "snow",
+      });
+    </script>
+    <script src="js/presentation/presentation-ui.js"></script>
+    <script
+      type="module"
+      src="js/presentation/presentation-firebase.js"
+    ></script>
+    <script type="module" src="js/presentation/presentation-ai.js"></script>
   </body>
 </html>
