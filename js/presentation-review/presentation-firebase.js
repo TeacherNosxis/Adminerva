@@ -3,11 +3,15 @@ import {
   getFirestore,
   collection,
   getDocs,
+  doc,
+  setDoc,
+  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 window.availablePlans = [];
 window.selectedPlanData = null;
 window.selectedSessionData = null;
+window.selectedSessionIndex = null;
 window.db = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,10 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function injectPlanSelectorUI() {
   const listContainer = document.getElementById("slideBlockList");
-  if (!listContainer || !listContainer.parentElement) {
-    console.error("[DEBUG] Could not find the left column to inject the UI.");
-    return;
-  }
+  if (!listContainer || !listContainer.parentElement) return;
 
   const selectorHTML = `
         <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200 w-full">
@@ -39,7 +40,6 @@ function injectPlanSelectorUI() {
             </button>
         </div>
     `;
-
   listContainer.insertAdjacentHTML("beforebegin", selectorHTML);
 }
 
@@ -78,11 +78,15 @@ async function fetchSavedLessonPlans() {
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
+
+      // 🚀 PHASE 2: Do not load archived plans into the dropdown
+      if (data.is_archived) return;
+
       window.availablePlans.push({ id: doc.id, ...data });
 
       const grade = data.grade_level || "N/A";
       const subject = data.subject_title || "Unknown Subject";
-      const week = data.week || "Unknown Week";
+      const week = data.course_week || data.week || "Unknown Week";
 
       const option = document.createElement("option");
       option.value = doc.id;
@@ -90,49 +94,153 @@ async function fetchSavedLessonPlans() {
       select.appendChild(option);
     });
   } catch (e) {
-    console.error("Error fetching plans:", e);
     select.innerHTML = '<option value="">Error loading plans</option>';
   }
 }
 
-window.handlePlanSelection = function () {
+window.handleSessionSelection = async function () {
   const planId = document.getElementById("presentationPlanSelect").value;
-  const sessionSelect = document.getElementById("presentationSessionSelect");
-  const btnGen = document.getElementById("btnGenerateSlides");
-
-  if (!planId) {
-    sessionSelect.innerHTML = '<option value="">Awaiting lesson...</option>';
-    sessionSelect.disabled = true;
-    btnGen.disabled = true;
-    btnGen.classList.add("opacity-50", "cursor-not-allowed");
-    return;
-  }
-
-  window.selectedPlanData = window.availablePlans.find((p) => p.id === planId);
-  sessionSelect.innerHTML = '<option value="">-- Choose a Session --</option>';
-  sessionSelect.disabled = false;
-
-  if (window.selectedPlanData && window.selectedPlanData.sessions) {
-    window.selectedPlanData.sessions.forEach((session, idx) => {
-      const option = document.createElement("option");
-      option.value = idx;
-      option.textContent = session.session_name || `Session ${idx + 1}`;
-      sessionSelect.appendChild(option);
-    });
-  }
-};
-
-window.handleSessionSelection = function () {
   const sessionIdx = document.getElementById("presentationSessionSelect").value;
   const btnGen = document.getElementById("btnGenerateSlides");
+  const btnDelete = document.getElementById("btnDeletePresentation");
+
+  if (btnDelete) btnDelete.classList.add("hidden");
 
   if (sessionIdx !== "") {
+    window.selectedSessionIndex = sessionIdx;
     window.selectedSessionData = window.selectedPlanData.sessions[sessionIdx];
     btnGen.disabled = false;
     btnGen.classList.remove("opacity-50", "cursor-not-allowed");
+
+    if (window.db) {
+      const presentationId = `${planId}_session${sessionIdx}`;
+      try {
+        const docSnap = await getDoc(
+          doc(window.db, "presentations", presentationId),
+        );
+
+        // 🚀 PHASE 2: Ignore presentations that are flagged as archived
+        if (docSnap.exists() && !docSnap.data().is_archived) {
+          if (btnDelete) btnDelete.classList.replace("hidden", "flex");
+
+          if (
+            confirm(
+              "💾 A saved presentation was found in the cloud for this session! Would you like to load it?",
+            )
+          ) {
+            window.currentPresentationDeck = docSnap.data().deck;
+            window.activeSlideIndex = 0;
+            if (typeof window.renderSlideBlocks === "function")
+              window.renderSlideBlocks();
+            if (typeof window.selectSlide === "function") window.selectSlide(0);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to check cloud for existing presentation:", e);
+      }
+    }
   } else {
     window.selectedSessionData = null;
+    window.selectedSessionIndex = null;
     btnGen.disabled = true;
     btnGen.classList.add("opacity-50", "cursor-not-allowed");
+  }
+};
+
+// 🚀 PHASE 1: Presentation Soft-Delete Execution
+window.deletePresentationFromCloud = async function () {
+  const planId = document.getElementById("presentationPlanSelect")?.value;
+  const sessionIdx = window.selectedSessionIndex;
+
+  if (!planId || sessionIdx === null || sessionIdx === undefined) return;
+  if (
+    !confirm(
+      "Move this presentation to the Archive? It will be permanently deleted in 14 days.",
+    )
+  )
+    return;
+
+  const btnDelete = document.getElementById("btnDeletePresentation");
+  const originalText = btnDelete.innerHTML;
+  btnDelete.innerHTML = "⏳ Archiving...";
+  btnDelete.disabled = true;
+
+  try {
+    const presentationId = `${planId}_session${sessionIdx}`;
+    const purgeDate = new Date(
+      Date.now() + 14 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    await setDoc(
+      doc(window.db, "presentations", presentationId),
+      {
+        is_archived: true,
+        archived_at: new Date().toISOString(),
+        purge_at: purgeDate,
+      },
+      { merge: true },
+    );
+
+    alert("🗑️ Presentation moved to Archive.");
+    btnDelete.classList.replace("flex", "hidden");
+
+    // Clear the workspace visually
+    window.currentPresentationDeck = [];
+    window.activeSlideIndex = -1;
+    if (typeof window.renderSlideBlocks === "function")
+      window.renderSlideBlocks();
+  } catch (e) {
+    console.error("Archive Error:", e);
+    alert("Failed to archive: " + e.message);
+  } finally {
+    btnDelete.innerHTML = originalText;
+    btnDelete.disabled = false;
+  }
+};
+// 🚀 CLOUD SAVE ENGINE
+window.savePresentationToCloud = async function () {
+  const planId = document.getElementById("presentationPlanSelect")?.value;
+  const sessionIdx = window.selectedSessionIndex;
+
+  if (!planId || sessionIdx === null || sessionIdx === undefined) {
+    alert("Please select a Lesson Plan and Session first.");
+    return;
+  }
+  if (
+    !window.currentPresentationDeck ||
+    window.currentPresentationDeck.length === 0
+  ) {
+    alert("No slides to save. Please add or generate slides first.");
+    return;
+  }
+  if (!window.db) {
+    alert("Firebase is not connected. Check Global Settings.");
+    return;
+  }
+
+  const saveBtn = document.getElementById("btnSavePresentation");
+  const originalText = saveBtn.innerHTML;
+  saveBtn.innerHTML = "⏳ Saving...";
+  saveBtn.disabled = true;
+
+  try {
+    const presentationId = `${planId}_session${sessionIdx}`;
+    const payload = {
+      plan_id: planId,
+      session_index: sessionIdx,
+      subject: window.selectedPlanData.subject_title || "Unknown",
+      grade: window.selectedPlanData.grade_level || "Unknown",
+      deck: window.currentPresentationDeck,
+      updated_at: new Date().toISOString(),
+    };
+
+    await setDoc(doc(window.db, "presentations", presentationId), payload);
+    alert("✅ Presentation successfully saved to Firebase!");
+  } catch (e) {
+    console.error("Save Error:", e);
+    alert("Failed to save: " + e.message);
+  } finally {
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
   }
 };

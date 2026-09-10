@@ -204,6 +204,10 @@ window.openLoadPlanModal = async function () {
 
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
+
+      // 🚀 PHASE 2: Actively hide archived files from the UI
+      if (data.is_archived) return;
+
       const sy = data.school_year || "2026-2027";
       uniqueSYs.add(sy);
 
@@ -265,7 +269,6 @@ window.openLoadPlanModal = async function () {
     allPlans.forEach((plan) => {
       const term = plan.safeTerm;
       const subjectGrade = plan.subjectGrade;
-
       if (!groupedPlans[term]) groupedPlans[term] = {};
       if (!groupedPlans[term][subjectGrade])
         groupedPlans[term][subjectGrade] = [];
@@ -282,7 +285,6 @@ window.openLoadPlanModal = async function () {
           .sort()
           .forEach((subjectGrade) => {
             const plans = groupedPlans[term][subjectGrade];
-
             plans.sort((a, b) => {
               const weekA = parseInt((a.safeWeek || "0").replace(/\D/g, ""));
               const weekB = parseInt((b.safeWeek || "0").replace(/\D/g, ""));
@@ -330,11 +332,7 @@ window.openLoadPlanModal = async function () {
                             <span class="font-bold text-sm text-gray-800">📘 ${subjectGrade}</span>
                             <span class="text-gray-400 group-open/sub:rotate-180 transition-transform">▼</span>
                         </summary>
-                        <div class="bg-white">
-                            <table class="w-full text-left">
-                                <tbody>${rowsHTML}</tbody>
-                            </table>
-                        </div>
+                        <div class="bg-white"><table class="w-full text-left"><tbody>${rowsHTML}</tbody></table></div>
                     </details>
                 `;
           });
@@ -344,15 +342,10 @@ window.openLoadPlanModal = async function () {
           `
                 <details class="group/main mb-4 bg-white border border-blue-200 rounded-lg shadow-sm" ${isTermOpen}>
                     <summary class="flex justify-between items-center font-extrabold text-blue-900 uppercase tracking-widest cursor-pointer select-none p-4 bg-blue-50 hover:bg-blue-100 transition rounded-t-lg border-b border-blue-100">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">📁</span>
-                            <span>${term}</span>
-                        </div>
+                        <div class="flex items-center gap-2"><span class="text-lg">📁</span><span>${term}</span></div>
                         <span class="text-blue-500 group-open/main:rotate-180 transition-transform">▼</span>
                     </summary>
-                    <div class="p-4 bg-white rounded-b-lg">
-                        ${subjectAccordionsHTML}
-                    </div>
+                    <div class="p-4 bg-white rounded-b-lg">${subjectAccordionsHTML}</div>
                 </details>
             `,
         );
@@ -361,18 +354,35 @@ window.openLoadPlanModal = async function () {
     container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">Error: ${e.message}</div>`;
   }
 };
+
 window.deleteLessonPlan = async function (docId) {
-  if (!confirm("Are you sure you want to delete this saved lesson plan?"))
+  // 🚀 PHASE 1: Soft-Delete Execution
+  if (
+    !confirm(
+      "Move this lesson plan to the Archive? It will be permanently deleted in 14 days.",
+    )
+  )
     return;
-  window.showLoader(
-    "Saving Lesson Plan...",
-    "Syncing securely to Firebase storage.",
-  );
+
+  window.showLoader("Archiving...", "Moving lesson plan to the Recycle Bin.");
   try {
-    await deleteDoc(doc(window.db, "lesson_plans", docId));
+    const purgeDate = new Date(
+      Date.now() + 14 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    await setDoc(
+      doc(window.db, "lesson_plans", docId),
+      {
+        is_archived: true,
+        archived_at: new Date().toISOString(),
+        purge_at: purgeDate,
+      },
+      { merge: true },
+    );
+
     window.openLoadPlanModal();
   } catch (e) {
-    alert("Failed to delete plan: " + e.message);
+    alert("Failed to archive plan: " + e.message);
   } finally {
     window.hideLoader();
   }

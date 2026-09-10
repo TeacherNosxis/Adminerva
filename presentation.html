@@ -54,7 +54,12 @@
         <!-- Dynamic Slide Blocks -->
         <div class="flex-1 overflow-y-auto space-y-3 pr-1 pb-4" id="slideBlockList"></div>
 
-        <button onclick="exportToPPTX()" class="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded transition shadow-md flex items-center justify-center gap-2">
+        <!-- 🚀 NEW: Cloud Save Button -->
+        <button onclick="savePresentationToCloud()" id="btnSavePresentation" class="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded transition shadow-md flex items-center justify-center gap-2">
+          <span>💾</span> Save to Cloud
+        </button>
+
+        <button onclick="exportToPPTX()" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded transition shadow-md flex items-center justify-center gap-2">
           <span>📥</span> Export to PPTX
         </button>
       </div>
