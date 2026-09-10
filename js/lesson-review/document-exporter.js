@@ -228,13 +228,17 @@ window.buildDocumentLayout = async function () {
       if (pIndex === 0) {
         if (isFlex) {
           // 🚀 FIX: Blank out Topic, Standards, Objectives, and Materials for Flex
-          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Topic
-          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Standards
-          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Objectives
-          rowHtml += `<td style="${timeStyle}">${part.time}</td>`;
-          rowHtml += `<td style="${contentStyle}">${part.content}</td>`;
-          rowHtml += `<td rowspan="${rowCount}"></td>`; // Blank Materials
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // 1. Blank Topic
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // 2. Blank Standards
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // 3. Blank Objectives
+          rowHtml += `<td style="${timeStyle}">${part.time}</td>`; // 4. Time
+          rowHtml += `<td style="${contentStyle}">${part.content}</td>`; // 5. Activities
+          rowHtml += `<td rowspan="${rowCount}"></td>`; // 6. Blank Materials
         } else {
+          // 🚀 FIX: Restored the missing Content/Topic column!
+          rowHtml += `<td rowspan="${rowCount}" style="font-weight: bold; text-align: center; vertical-align: middle;">
+                        ${session.topic || window.currentWeeklyOverview.topic || ""}
+                      </td>`;
           rowHtml += `<td rowspan="${rowCount}" style="vertical-align: top;">
                         <strong>Content Standard:</strong><br>${window.currentWeeklyOverview.content_standard || ""}<br><br>
                         <strong>Performance Standard:</strong><br>${window.currentWeeklyOverview.performance_standard || ""}<br><br>
