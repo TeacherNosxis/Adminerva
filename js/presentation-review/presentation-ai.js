@@ -28,49 +28,20 @@ window.generateAI_SlideDeck = async function () {
 
   const genBtn = document.getElementById("btnGenerateSlides");
   if (genBtn) {
-    genBtn.textContent = "⏳ Generating Slides...";
+    genBtn.innerHTML = "⏳ Generating Slides...";
     genBtn.disabled = true;
   }
 
+  if (typeof window.showLoader === "function") {
+    window.showLoader(
+      "Designing Slide Deck...",
+      "Converting lesson plan into structured presentation blocks.",
+    );
+  }
+
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
     const aiModelName =
       localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash";
-
-    const slideSchema = {
-      type: SchemaType.ARRAY,
-      description:
-        "An array of slide objects representing the presentation deck.",
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          type: {
-            type: SchemaType.STRING,
-            description: "The slide type (e.g., 'title', 'core', 'evaluation')",
-          },
-          label: {
-            type: SchemaType.STRING,
-            description: "The title of the slide block for the UI navigation",
-          },
-          content: {
-            type: SchemaType.STRING,
-            description:
-              "The actual HTML content of the slide formatted for Quill.js. Use h1, h2, p, ul, li, and format math as KaTeX formulas inline. Strictly limit text length to prevent 16:9 overflow.",
-          },
-        },
-        required: ["type", "label", "content"],
-      },
-    };
-
-    const model = genAI.getGenerativeModel({
-      model: aiModelName,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: slideSchema,
-        temperature: 0.2,
-      },
-    });
-
     const prompt = `
             Act as an expert instructional designer. Convert the provided lesson plan session into a presentation slide deck.
             
@@ -87,15 +58,50 @@ window.generateAI_SlideDeck = async function () {
             
             Instructions:
             1. Return a JSON array where each object matches the requested sequence.
-            2. The 'content' field must contain valid HTML (<h1>, <p>, <ul>). 
+            2. The 'content' field must contain valid HTML (<h1>, <h2>, <p>, <ul>, <li>). 
             3. Do NOT overload the 'content' field. If a core concept is too long, split it into two bullet points or summarize it. 
             4. Use KaTeX format (e.g., $E=mc^2$) for any mathematical equations.
         `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${aiModelName}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.2,
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  type: { type: "STRING" },
+                  label: { type: "STRING" },
+                  content: { type: "STRING" },
+                },
+                required: ["type", "label", "content"],
+              },
+            },
+          },
+        }),
+      },
+    );
 
-    window.currentPresentationDeck = JSON.parse(responseText);
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Google API Error (${response.status}): ${errBody}`);
+    }
+
+    const aiResult = await response.json();
+    let rawJson = aiResult.candidates[0].content.parts[0].text
+      .replace(/^```json\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    window.currentPresentationDeck = JSON.parse(rawJson);
     window.activeSlideIndex = 0;
 
     if (typeof window.renderSlideBlocks === "function") {
@@ -107,8 +113,9 @@ window.generateAI_SlideDeck = async function () {
     alert(`Generation Failed: ${e.message}`);
   } finally {
     if (genBtn) {
-      genBtn.textContent = "✨ Generate AI Slides";
+      genBtn.innerHTML = "✨ Generate AI Slides";
       genBtn.disabled = false;
     }
+    if (typeof window.hideLoader === "function") window.hideLoader();
   }
 };

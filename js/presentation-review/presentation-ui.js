@@ -16,19 +16,43 @@ function initEditor() {
   if (!editorEl) return;
 
   quillEditor = new Quill("#editor-container", {
-    modules: {
-      formula: true, // Requires KaTeX to be loaded in the HTML
-      toolbar: "#presentation-toolbar",
-    },
+    modules: { formula: true, toolbar: "#presentation-toolbar" },
     theme: "snow",
   });
 
-  quillEditor.on("text-change", () => {
-    if (activeSlideIndex >= 0) {
-      currentPresentationDeck[activeSlideIndex].content =
-        quillEditor.root.innerHTML;
+  quillEditor.on("text-change", (delta, oldDelta, source) => {
+    if (source !== "user") return;
+
+    const canvas = document.getElementById("slide-canvas");
+    const editorRoot = document.querySelector(".ql-editor");
+    const warning = document.getElementById("overflowWarning");
+
+    if (!canvas || !editorRoot) return;
+    const maxSafeHeight = canvas.clientHeight * 0.85;
+
+    // 🚀 THE BLOCKER: Revert keystroke if too tall
+    if (editorRoot.scrollHeight > maxSafeHeight) {
+      quillEditor.setContents(oldDelta);
+
+      if (warning) {
+        warning.classList.remove("hidden");
+        warning.classList.add("flex", "text-red-600", "font-bold");
+        setTimeout(
+          () => warning.classList.remove("text-red-600", "font-bold"),
+          1500,
+        );
+      }
+    } else {
+      // Save valid content
+      if (activeSlideIndex >= 0) {
+        currentPresentationDeck[activeSlideIndex].content =
+          quillEditor.root.innerHTML;
+      }
+      if (warning) {
+        warning.classList.add("hidden");
+        warning.classList.remove("flex");
+      }
     }
-    checkOverflow();
   });
 }
 
