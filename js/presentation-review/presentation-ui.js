@@ -127,11 +127,10 @@ window.addNewSlide = function () {
   selectSlide(currentPresentationDeck.length - 1);
 };
 function applyPresentationTheme() {
-  // We are keeping the same localStorage key so you don't have to re-upload the image in Settings
   const bgBase64 = localStorage.getItem("presentation_logo");
-  const bgDiv = document.getElementById("slide-background");
+  const canvasEl = document.getElementById("slide-canvas");
 
-  if (bgDiv && bgBase64) {
-    bgDiv.style.backgroundImage = `url('${bgBase64}')`;
+  if (canvasEl && bgBase64) {
+    canvasEl.style.backgroundImage = `url('${bgBase64}')`;
   }
 }
