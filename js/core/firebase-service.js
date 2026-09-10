@@ -387,3 +387,179 @@ window.deleteLessonPlan = async function (docId) {
     window.hideLoader();
   }
 };
+// ==========================================
+// 🚀 GLOBAL RECYCLE BIN & AUTO-PURGER
+// ==========================================
+window.openArchiveManager = async function () {
+  if (!window.db) return alert("Firebase is not connected.");
+
+  let modal = document.getElementById("archiveModal");
+  if (!modal) {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+            <div id="archiveModal" class="fixed inset-0 bg-gray-900/90 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 relative flex flex-col max-h-[85vh]">
+                    <button onclick="document.getElementById('archiveModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl font-bold">✖</button>
+                    <h3 class="text-xl font-black text-blue-900 mb-2 flex items-center gap-2"><span>🗑️</span> Cloud Recycle Bin</h3>
+                    <p class="text-sm text-gray-500 mb-4 border-b pb-4">Items here will be permanently deleted 14 days after archiving.</p>
+                    
+                    <div id="archiveListContainer" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                        <p class="text-gray-400 italic text-center py-8">Scanning for archived files...</p>
+                    </div>
+                </div>
+            </div>
+        `,
+    );
+    modal = document.getElementById("archiveModal");
+  } else {
+    modal.classList.remove("hidden");
+  }
+
+  const container = document.getElementById("archiveListContainer");
+  container.innerHTML = `<div class="animate-pulse flex space-x-4"><div class="flex-1 space-y-4 py-1"><div class="h-4 bg-gray-200 rounded w-3/4"></div></div></div>`;
+
+  try {
+    const { collection, getDocs } =
+      await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+    const [plansSnap, presSnap] = await Promise.all([
+      getDocs(collection(window.db, "lesson_plans")),
+      getDocs(collection(window.db, "presentations")),
+    ]);
+
+    let archivedItems = [];
+    const now = Date.now();
+
+    plansSnap.forEach((doc) => {
+      const d = doc.data();
+      if (d.is_archived)
+        archivedItems.push({
+          collection: "lesson_plans",
+          id: doc.id,
+          title: `Lesson Plan: ${d.grade_level} - ${d.subject_title}`,
+          ...d,
+        });
+    });
+
+    presSnap.forEach((doc) => {
+      const d = doc.data();
+      if (d.is_archived)
+        archivedItems.push({
+          collection: "presentations",
+          id: doc.id,
+          title: `Presentation Slides: ${d.grade} - ${d.subject}`,
+          ...d,
+        });
+    });
+
+    container.innerHTML = "";
+    if (archivedItems.length === 0)
+      return (container.innerHTML = `<p class="text-gray-400 font-bold text-center py-8">Recycle Bin is empty.</p>`);
+
+    archivedItems.sort(
+      (a, b) =>
+        new Date(b.archived_at).getTime() - new Date(a.archived_at).getTime(),
+    );
+
+    archivedItems.forEach((item) => {
+      const daysLeft = Math.max(
+        0,
+        Math.ceil(
+          (new Date(item.purge_at).getTime() - now) / (1000 * 60 * 60 * 24),
+        ),
+      );
+      const icon = item.collection === "lesson_plans" ? "📘" : "🖥️";
+
+      container.insertAdjacentHTML(
+        "beforeend",
+        `
+                <div class="p-3 border rounded-lg bg-gray-50 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><span>${icon}</span> ${item.title}</h4>
+                        <p class="text-[10px] ${daysLeft <= 3 ? "text-red-600" : "text-amber-600"} font-bold mt-1">Permanently deletes in ${daysLeft} days</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="restoreDocument('${item.collection}', '${item.id}')" class="px-3 py-1.5 bg-green-50 text-green-700 font-bold text-xs rounded border border-green-200 hover:bg-green-100 transition shadow-sm">♻️ Restore</button>
+                        <button onclick="hardDeleteDocument('${item.collection}', '${item.id}')" class="px-3 py-1.5 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-700 transition shadow-sm">🗑️ Eradicate</button>
+                    </div>
+                </div>
+            `,
+      );
+    });
+  } catch (e) {
+    container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error: ${e.message}</p>`;
+  }
+};
+
+window.restoreDocument = async function (collectionName, docId) {
+  if (!window.db) return;
+  try {
+    const { doc, setDoc } =
+      await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+    await setDoc(
+      doc(window.db, collectionName, docId),
+      { is_archived: false },
+      { merge: true },
+    );
+
+    window.openArchiveManager(); // Refresh UI
+    if (typeof window.openLoadPlanModal === "function")
+      window.openLoadPlanModal(); // Refresh planner list
+  } catch (e) {
+    alert("Failed to restore: " + e.message);
+  }
+};
+
+window.hardDeleteDocument = async function (collectionName, docId) {
+  if (
+    !window.db ||
+    !confirm(
+      "WARNING: This will eradicate the file permanently. Cannot be undone. Proceed?",
+    )
+  )
+    return;
+  try {
+    const { doc, deleteDoc } =
+      await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+    await deleteDoc(doc(window.db, collectionName, docId));
+
+    window.openArchiveManager();
+    if (typeof window.openLoadPlanModal === "function")
+      window.openLoadPlanModal();
+  } catch (e) {
+    alert("Failed to delete: " + e.message);
+  }
+};
+
+// 🚀 SILENT 14-DAY AUTO-PURGER (Fires 5 seconds after boot)
+setTimeout(async () => {
+  if (!window.db) return;
+  try {
+    const { collection, getDocs, doc, deleteDoc } =
+      await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+    const [plansSnap, presSnap] = await Promise.all([
+      getDocs(collection(window.db, "lesson_plans")),
+      getDocs(collection(window.db, "presentations")),
+    ]);
+
+    const now = Date.now();
+    const checkAndPurge = async (snapshot, collName) => {
+      for (let document of snapshot.docs) {
+        const data = document.data();
+        if (data.is_archived && data.purge_at) {
+          if (now > new Date(data.purge_at).getTime()) {
+            await deleteDoc(doc(window.db, collName, document.id));
+            console.log(
+              `[Auto-Purge] Eradicated expired ${collName}: ${document.id}`,
+            );
+          }
+        }
+      }
+    };
+
+    await checkAndPurge(plansSnap, "lesson_plans");
+    await checkAndPurge(presSnap, "presentations");
+  } catch (e) {
+    console.warn("Auto-Purge check failed:", e);
+  }
+}, 5000);

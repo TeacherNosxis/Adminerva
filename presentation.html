@@ -41,73 +41,82 @@
     <!-- Main Workspace -->
     <div
       class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col lg:flex-row gap-6"
-    >
-      <!-- LEFT COLUMN: Slide Management Navigation -->
-      <div class="w-full lg:w-1/4 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-        <div class="border-b border-gray-200 pb-4 mb-4">
-          <!-- 🚀 MASSIVE ADD SLIDE BUTTON -->
-          <button onclick="openAddSlideModal()" class="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-black hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
-            <span class="text-lg">➕</span> ADD NEW SLIDE
-          </button>
+    ><!-- LEFT COLUMN: Pure Slide Navigator (Scrollable) -->
+      <div class="w-full lg:w-1/5 bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
+        <div class="border-b border-gray-200 pb-2 mb-2 text-center">
+          <h2 class="text-sm font-black text-gray-800 tracking-wider">SLIDE NAVIGATOR</h2>
         </div>
-
-        <!-- Dynamic Slide Blocks -->
-        <div class="flex-1 overflow-y-auto space-y-3 pr-1 pb-4" id="slideBlockList"></div>
-
-        <!-- 🚀 NEW: Cloud Save Button -->
-        <button onclick="savePresentationToCloud()" id="btnSavePresentation" class="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded transition shadow-md flex items-center justify-center gap-2">
-          <span>💾</span> Save to Cloud
-        </button>
-
-        <button onclick="exportToPPTX()" class="w-full mt-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded transition shadow-md flex items-center justify-center gap-2">
-          <span>📥</span> Export to PPTX
-        </button>
+        
+        <!-- 🚀 Independent Scrollable Slide List -->
+        <div class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar" id="slideBlockList">
+            <!-- Dynamic Slide Blocks -->
+        </div>
       </div>
 
-      <!-- RIGHT COLUMN: Editor Workspace -->
-      <div class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative">
+      <!-- RIGHT COLUMN: Editor Workspace & Main Menu -->
+      <div class="w-full lg:w-4/5 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative h-full overflow-y-auto">
         
-        <div class="w-full max-w-4xl flex justify-between items-end mb-4">
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Slide Layout</label>
-                <select id="slideLayoutSelector" onchange="changeSlideLayout(this.value)" class="p-1.5 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900 shadow-sm">
-                    <option value="standard">Standard (1 Column)</option>
-                    <option value="split">Split (2 Columns)</option>
-                    <option value="media">Full Media (Image)</option>
-                </select>
+        <!-- 🚀 MAIN ACTION BAR (All Buttons Moved Here) -->
+        <div class="w-full max-w-5xl flex flex-wrap justify-between items-end mb-4 border-b border-gray-100 pb-4 gap-4">
+            
+            <!-- Left Side: Layout & Add -->
+            <div class="flex items-end gap-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Slide Layout</label>
+                    <select id="slideLayoutSelector" onchange="changeSlideLayout(this.value)" class="p-1.5 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900 shadow-sm">
+                        <option value="standard">Standard (1 Column)</option>
+                        <option value="split">Split (2 Columns)</option>
+                        <option value="media">Full Media (Image)</option>
+                    </select>
+                </div>
+                <button onclick="openAddSlideModal()" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-4 py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm border border-blue-200">
+                    <span>➕</span> Add Slide
+                </button>
             </div>
-            <span id="overflowWarning" class="hidden text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-200">
-                ⚠️ Slide Height Limit Reached
-            </span>
+
+            <!-- Right Side: Export & Save -->
+            <div class="flex items-center gap-3">
+                <span id="overflowWarning" class="hidden text-xs text-red-600 font-bold bg-red-50 px-2 py-1.5 rounded border border-red-200">
+                    ⚠️ Height Limit Reached
+                </span>
+                
+                <button onclick="savePresentationToCloud()" id="btnSavePresentation" class="bg-green-600 hover:bg-green-700 text-white px-5 py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm">
+                    <span>💾</span> Save
+                </button>
+
+                <button onclick="exportToPPTX()" class="bg-gray-800 hover:bg-gray-700 text-white px-5 py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm">
+                    <span>📥</span> Export
+                </button>
+            </div>
         </div>
 
-        <!-- 🚀 FIX: Removed absolute positioning and heights to allow dropdowns to escape -->
-        <div id="master-toolbar-container" class="w-full max-w-4xl mb-4 bg-gray-50 border border-gray-300 rounded-lg z-[100] transition-opacity duration-200">
+        <!-- UNIFIED TOOLBAR AREA -->
+        <div id="master-toolbar-container" class="w-full max-w-5xl mb-4 bg-gray-50 border border-gray-300 rounded-lg relative z-50 h-10 transition-opacity duration-200">
             <!-- Standard Toolbar -->
-            <div id="toolbar-standard" class="flex items-center px-2 py-1">
+            <div id="toolbar-standard" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button><select class="ql-align"></select></span>
                 <span class="ql-formats"><button class="ql-formula"></button></span>
             </div>
             <!-- Left Toolbar -->
-            <div id="toolbar-left" class="hidden items-center px-2 py-1">
+            <div id="toolbar-left" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button><select class="ql-align"></select></span>
                 <span class="ql-formats"><button class="ql-formula"></button></span>
             </div>
             <!-- Right Toolbar -->
-            <div id="toolbar-right" class="hidden items-center px-2 py-1">
+            <div id="toolbar-right" class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button><select class="ql-align"></select></span>
                 <span class="ql-formats"><button class="ql-formula"></button></span>
             </div>
         </div>
 
         <!-- 16:9 Aspect Ratio Canvas -->
-        <div class="w-full max-w-4xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md" id="slide-canvas" style="background-color: #f8fafc;">
+        <div class="w-full max-w-5xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md shrink-0" id="slide-canvas" style="background-color: #f8fafc;">
           
           <!-- 12% Top Ribbon -->
           <div id="slide-ribbon" class="h-[12%] w-full bg-blue-50/80 backdrop-blur-sm border-b border-blue-100 flex items-center px-6 justify-between z-20 transition-all">

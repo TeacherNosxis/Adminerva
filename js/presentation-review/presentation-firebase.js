@@ -6,6 +6,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 window.availablePlans = [];
@@ -24,8 +25,11 @@ function injectPlanSelectorUI() {
   if (!listContainer || !listContainer.parentElement) return;
 
   const selectorHTML = `
-        <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200 w-full">
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1">1. Select Saved Lesson</label>
+        <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200 w-full relative">
+            <button onclick="openArchiveManager()" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xs font-bold transition flex items-center gap-1" title="Recycle Bin">
+                <span>🗑️</span> Archive
+            </button>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1 mt-1">1. Select Saved Lesson</label>
             <select id="presentationPlanSelect" onchange="handlePlanSelection()" class="w-full p-1.5 mb-3 border border-gray-300 rounded text-xs bg-white focus:ring-blue-500">
                 <option value="">Loading plans...</option>
             </select>
@@ -61,13 +65,12 @@ function initFirebase() {
     window.db = getFirestore(app);
     fetchSavedLessonPlans();
   } catch (e) {
-    console.error("Firebase Initialization Failed:", e);
     if (select)
       select.innerHTML = '<option value="">Error loading Firebase</option>';
   }
 }
 
-async function fetchSavedLessonPlans() {
+window.fetchSavedLessonPlans = async function () {
   const select = document.getElementById("presentationPlanSelect");
   if (!window.db || !select) return;
 
@@ -78,9 +81,7 @@ async function fetchSavedLessonPlans() {
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-
-      // 🚀 PHASE 2: Do not load archived plans into the dropdown
-      if (data.is_archived) return;
+      if (data.is_archived) return; // Hide archived files
 
       window.availablePlans.push({ id: doc.id, ...data });
 
@@ -96,7 +97,36 @@ async function fetchSavedLessonPlans() {
   } catch (e) {
     select.innerHTML = '<option value="">Error loading plans</option>';
   }
-}
+};
+
+window.handlePlanSelection = function () {
+  const planId = document.getElementById("presentationPlanSelect").value;
+  const sessionSelect = document.getElementById("presentationSessionSelect");
+  const btnGen = document.getElementById("btnGenerateSlides");
+  const btnDelete = document.getElementById("btnDeletePresentation");
+  if (btnDelete) btnDelete.classList.replace("flex", "hidden");
+
+  if (!planId) {
+    sessionSelect.innerHTML = '<option value="">Awaiting lesson...</option>';
+    sessionSelect.disabled = true;
+    btnGen.disabled = true;
+    btnGen.classList.add("opacity-50", "cursor-not-allowed");
+    return;
+  }
+
+  window.selectedPlanData = window.availablePlans.find((p) => p.id === planId);
+  sessionSelect.innerHTML = '<option value="">-- Choose a Session --</option>';
+  sessionSelect.disabled = false;
+
+  if (window.selectedPlanData && window.selectedPlanData.sessions) {
+    window.selectedPlanData.sessions.forEach((session, idx) => {
+      const option = document.createElement("option");
+      option.value = idx;
+      option.textContent = session.session_name || `Session ${idx + 1}`;
+      sessionSelect.appendChild(option);
+    });
+  }
+};
 
 window.handleSessionSelection = async function () {
   const planId = document.getElementById("presentationPlanSelect").value;
@@ -119,7 +149,6 @@ window.handleSessionSelection = async function () {
           doc(window.db, "presentations", presentationId),
         );
 
-        // 🚀 PHASE 2: Ignore presentations that are flagged as archived
         if (docSnap.exists() && !docSnap.data().is_archived) {
           if (btnDelete) btnDelete.classList.replace("hidden", "flex");
 
@@ -135,9 +164,7 @@ window.handleSessionSelection = async function () {
             if (typeof window.selectSlide === "function") window.selectSlide(0);
           }
         }
-      } catch (e) {
-        console.warn("Failed to check cloud for existing presentation:", e);
-      }
+      } catch (e) {}
     }
   } else {
     window.selectedSessionData = null;
@@ -147,7 +174,50 @@ window.handleSessionSelection = async function () {
   }
 };
 
-// 🚀 PHASE 1: Presentation Soft-Delete Execution
+window.savePresentationToCloud = async function () {
+  const planId = document.getElementById("presentationPlanSelect")?.value;
+  const sessionIdx = window.selectedSessionIndex;
+
+  if (!planId || sessionIdx === null || sessionIdx === undefined)
+    return alert("Please select a Lesson Plan and Session first.");
+  if (
+    !window.currentPresentationDeck ||
+    window.currentPresentationDeck.length === 0
+  )
+    return alert("No slides to save.");
+  if (!window.db) return alert("Firebase is not connected.");
+
+  const saveBtn = document.getElementById("btnSavePresentation");
+  const originalText = saveBtn.innerHTML;
+  saveBtn.innerHTML = "⏳ Saving...";
+  saveBtn.disabled = true;
+
+  try {
+    const presentationId = `${planId}_session${sessionIdx}`;
+    const payload = {
+      plan_id: planId,
+      session_index: sessionIdx,
+      subject: window.selectedPlanData.subject_title || "Unknown",
+      grade: window.selectedPlanData.grade_level || "Unknown",
+      deck: window.currentPresentationDeck,
+      updated_at: new Date().toISOString(),
+      is_archived: false, // Ensure it saves as active
+    };
+
+    await setDoc(doc(window.db, "presentations", presentationId), payload);
+
+    const btnDelete = document.getElementById("btnDeletePresentation");
+    if (btnDelete) btnDelete.classList.replace("hidden", "flex");
+
+    alert("✅ Presentation successfully saved to Firebase!");
+  } catch (e) {
+    alert("Failed to save: " + e.message);
+  } finally {
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
+  }
+};
+
 window.deletePresentationFromCloud = async function () {
   const planId = document.getElementById("presentationPlanSelect")?.value;
   const sessionIdx = window.selectedSessionIndex;
@@ -184,63 +254,144 @@ window.deletePresentationFromCloud = async function () {
     alert("🗑️ Presentation moved to Archive.");
     btnDelete.classList.replace("flex", "hidden");
 
-    // Clear the workspace visually
     window.currentPresentationDeck = [];
     window.activeSlideIndex = -1;
     if (typeof window.renderSlideBlocks === "function")
       window.renderSlideBlocks();
   } catch (e) {
-    console.error("Archive Error:", e);
     alert("Failed to archive: " + e.message);
   } finally {
     btnDelete.innerHTML = originalText;
     btnDelete.disabled = false;
   }
 };
-// 🚀 CLOUD SAVE ENGINE
-window.savePresentationToCloud = async function () {
-  const planId = document.getElementById("presentationPlanSelect")?.value;
-  const sessionIdx = window.selectedSessionIndex;
 
-  if (!planId || sessionIdx === null || sessionIdx === undefined) {
-    alert("Please select a Lesson Plan and Session first.");
-    return;
-  }
-  if (
-    !window.currentPresentationDeck ||
-    window.currentPresentationDeck.length === 0
-  ) {
-    alert("No slides to save. Please add or generate slides first.");
-    return;
-  }
-  if (!window.db) {
-    alert("Firebase is not connected. Check Global Settings.");
-    return;
+// ==========================================
+// 🚀 RECYCLE BIN / ARCHIVE MANAGER
+// ==========================================
+window.openArchiveManager = async function () {
+  if (!window.db) return alert("Firebase is not connected.");
+
+  let modal = document.getElementById("archiveModal");
+  if (!modal) {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+            <div id="archiveModal" class="fixed inset-0 bg-gray-900/90 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 relative flex flex-col max-h-[85vh]">
+                    <button onclick="document.getElementById('archiveModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl font-bold">✖</button>
+                    <h3 class="text-xl font-black text-blue-900 mb-2 flex items-center gap-2"><span>🗑️</span> Cloud Recycle Bin</h3>
+                    <p class="text-sm text-gray-500 mb-4 border-b pb-4">Items here will be permanently deleted 14 days after archiving.</p>
+                    
+                    <div id="archiveListContainer" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                        <p class="text-gray-400 italic text-center py-8">Scanning for archived files...</p>
+                    </div>
+                </div>
+            </div>
+        `,
+    );
+    modal = document.getElementById("archiveModal");
+  } else {
+    modal.classList.remove("hidden");
   }
 
-  const saveBtn = document.getElementById("btnSavePresentation");
-  const originalText = saveBtn.innerHTML;
-  saveBtn.innerHTML = "⏳ Saving...";
-  saveBtn.disabled = true;
+  const container = document.getElementById("archiveListContainer");
+  container.innerHTML = `<div class="animate-pulse flex space-x-4"><div class="flex-1 space-y-4 py-1"><div class="h-4 bg-gray-200 rounded w-3/4"></div></div></div>`;
 
   try {
-    const presentationId = `${planId}_session${sessionIdx}`;
-    const payload = {
-      plan_id: planId,
-      session_index: sessionIdx,
-      subject: window.selectedPlanData.subject_title || "Unknown",
-      grade: window.selectedPlanData.grade_level || "Unknown",
-      deck: window.currentPresentationDeck,
-      updated_at: new Date().toISOString(),
-    };
+    const [plansSnap, presSnap] = await Promise.all([
+      getDocs(collection(window.db, "lesson_plans")),
+      getDocs(collection(window.db, "presentations")),
+    ]);
 
-    await setDoc(doc(window.db, "presentations", presentationId), payload);
-    alert("✅ Presentation successfully saved to Firebase!");
+    let archivedItems = [];
+
+    plansSnap.forEach((doc) => {
+      const d = doc.data();
+      if (d.is_archived)
+        archivedItems.push({
+          collection: "lesson_plans",
+          id: doc.id,
+          title: `Lesson Plan: ${d.grade_level} - ${d.subject_title} (${d.course_week || d.week})`,
+          ...d,
+        });
+    });
+
+    presSnap.forEach((doc) => {
+      const d = doc.data();
+      if (d.is_archived)
+        archivedItems.push({
+          collection: "presentations",
+          id: doc.id,
+          title: `Presentation Slides: ${d.grade} - ${d.subject} (Session ${parseInt(d.session_index) + 1})`,
+          ...d,
+        });
+    });
+
+    container.innerHTML = "";
+    if (archivedItems.length === 0)
+      return (container.innerHTML = `<p class="text-gray-400 font-bold text-center py-8">Recycle Bin is empty.</p>`);
+
+    archivedItems.sort(
+      (a, b) =>
+        new Date(b.archived_at).getTime() - new Date(a.archived_at).getTime(),
+    );
+
+    archivedItems.forEach((item) => {
+      const daysLeft = Math.ceil(
+        (new Date(item.purge_at).getTime() - Date.now()) /
+          (1000 * 60 * 60 * 24),
+      );
+      const icon = item.collection === "lesson_plans" ? "📘" : "🖥️";
+
+      container.insertAdjacentHTML(
+        "beforeend",
+        `
+                <div class="p-3 border rounded-lg bg-gray-50 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><span>${icon}</span> ${item.title}</h4>
+                        <p class="text-[10px] text-red-500 font-bold mt-1">Permanently deletes in ${daysLeft} days</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="restoreDocument('${item.collection}', '${item.id}')" class="px-3 py-1.5 bg-green-50 text-green-700 font-bold text-xs rounded border border-green-200 hover:bg-green-100 transition shadow-sm">♻️ Restore</button>
+                        <button onclick="hardDeleteDocument('${item.collection}', '${item.id}')" class="px-3 py-1.5 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-700 transition shadow-sm">🗑️ Eradicate</button>
+                    </div>
+                </div>
+            `,
+      );
+    });
   } catch (e) {
-    console.error("Save Error:", e);
-    alert("Failed to save: " + e.message);
-  } finally {
-    saveBtn.innerHTML = originalText;
-    saveBtn.disabled = false;
+    container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error: ${e.message}</p>`;
+  }
+};
+
+window.restoreDocument = async function (collectionName, docId) {
+  if (!window.db) return;
+  try {
+    await setDoc(
+      doc(window.db, collectionName, docId),
+      { is_archived: false },
+      { merge: true },
+    );
+    window.openArchiveManager(); // Refresh UI
+    window.fetchSavedLessonPlans(); // Refresh the main dropdowns
+  } catch (e) {
+    alert("Failed to restore: " + e.message);
+  }
+};
+
+window.hardDeleteDocument = async function (collectionName, docId) {
+  if (
+    !window.db ||
+    !confirm(
+      "WARNING: This will eradicate the file permanently. Cannot be undone. Proceed?",
+    )
+  )
+    return;
+  try {
+    await deleteDoc(doc(window.db, collectionName, docId));
+    window.openArchiveManager(); // Refresh UI
+  } catch (e) {
+    alert("Failed to delete: " + e.message);
   }
 };

@@ -461,12 +461,21 @@
             >
               <!-- Populated dynamically -->
             </select>
-            <button
-              onclick="closeLoadPlanModal()"
-              class="text-gray-400 hover:text-red-500 font-bold text-xl px-2"
-            >
-              ✖
-            </button>
+            <div class="flex items-center gap-3">
+              <!-- 🚀 NEW: Recycle Bin Button -->
+              <button
+                onclick="openArchiveManager()"
+                class="text-xs bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 font-bold px-3 py-1.5 rounded transition border border-gray-200 shadow-sm flex items-center gap-1"
+              >
+                <span>🗑️</span> Recycle Bin
+              </button>
+              <button
+                onclick="closeLoadPlanModal()"
+                class="text-gray-400 hover:text-red-500 font-bold text-xl"
+              >
+                ✖
+              </button>
+            </div>
           </div>
         </div>
         <div
