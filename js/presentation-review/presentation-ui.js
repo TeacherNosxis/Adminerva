@@ -127,10 +127,11 @@ window.addNewSlide = function () {
   selectSlide(currentPresentationDeck.length - 1);
 };
 function applyPresentationTheme() {
-  const logoBase64 = localStorage.getItem("presentation_logo");
-  const watermarkDiv = document.getElementById("slide-watermark");
+  // We are keeping the same localStorage key so you don't have to re-upload the image in Settings
+  const bgBase64 = localStorage.getItem("presentation_logo");
+  const bgDiv = document.getElementById("slide-background");
 
-  if (watermarkDiv && logoBase64) {
-    watermarkDiv.style.backgroundImage = `url('${logoBase64}')`;
+  if (bgDiv && bgBase64) {
+    bgDiv.style.backgroundImage = `url('${bgBase64}')`;
   }
 }
