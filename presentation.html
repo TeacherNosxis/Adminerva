@@ -24,6 +24,11 @@
         word-break: break-word !important;
         overflow-wrap: break-word !important;
       }
+      /* 🚀 Canvas-Only Text Shadow */
+      #slide-canvas .ql-editor,
+      #slide-canvas #slide-ribbon {
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15) !important;
+      }
       
       /* 🚀 1. Base Box (Fuses the middle if multiple lines are typed) */
       .ql-editor blockquote {
@@ -129,23 +134,37 @@
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
                 <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
                 <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap">✨ Insert Heading</button>
+                
+                <!-- 🚀 FIX: Swapped to <a> tag to evade Quill's 28px button height restriction -->
+                <a onclick="openPrefabModal()" class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap flex items-center gap-1">
+                    ✨ Insert Heading
+                </a>
             </div>
+            
             <!-- Left Toolbar -->
             <div id="toolbar-left" class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
                 <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
                 <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap">✨ Insert Heading</button>
+                
+                <!-- 🚀 FIX: Swapped to <a> tag -->
+                <a onclick="openPrefabModal()" class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap flex items-center gap-1">
+                    ✨ Insert Heading
+                </a>
             </div>
+            
             <!-- Right Toolbar -->
             <div id="toolbar-right" class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
                 <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
                 <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
                 <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
                 <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                <button onclick="openPrefabModal()" class="text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap">✨ Insert Heading</button>
+                
+                <!-- 🚀 FIX: Swapped to <a> tag -->
+                <a onclick="openPrefabModal()" class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap flex items-center gap-1">
+                    ✨ Insert Heading
+                </a>
             </div>
         </div>
 
