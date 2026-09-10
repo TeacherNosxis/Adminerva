@@ -409,11 +409,15 @@ window.injectPrefab = function (icon, text, hexColor) {
   let range = window.activeQuillInstance.getSelection(true);
   if (!range) range = { index: 0 };
 
-  // Inject as a native Quill Blockquote. The CSS currentColor applies the hexColor to the borders!
+  // 🚀 Injects the Giant Title and the Color-Matched Expanding Box
   const htmlSnippet = `
+        <p style="margin-bottom: 4px; line-height: 1;">
+            <strong style="color: ${hexColor}; font-size: 36px; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: -1px;">
+                ${icon} ${text}
+            </strong>
+        </p>
         <blockquote style="color: ${hexColor};">
-            <strong style="font-size: 20px;">${icon} ${text}</strong><br>
-            <span style="color: #475569; font-size: 16px;">(Type your content inside this box...)</span>
+            <span style="color: #333333; font-size: 18px;">Type your content inside this expanding box...</span>
         </blockquote>
         <p><br></p>
     `;
