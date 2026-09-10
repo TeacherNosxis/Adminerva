@@ -11,24 +11,30 @@ const safeSet = (id, val) => {
 const safeGet = (id) =>
   document.getElementById(id) ? document.getElementById(id).value.trim() : "";
 
-// Default fallback sequence if the user has never configured this before
 let slideSequence = [
   { type: "title", label: "Title Slide" },
   { type: "objectives", label: "Objectives" },
   { type: "motivation", label: "Motivation / Recall" },
-  { type: "core", label: "Core Content (Split automatically)" },
+  { type: "core", label: "Core Content" },
   { type: "evaluation", label: "Evaluation" },
 ];
 
-// ==========================================
-// 1. EVENT LISTENERS
-// ==========================================
 document.addEventListener("DOMContentLoaded", () => {
   const logoInput = document.getElementById("slideLogoFile");
   if (logoInput) {
     logoInput.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      // 🚀 CRITICAL FIX: Block massive images before they crash local storage or Firebase
+      if (file.size > 800 * 1024) {
+        alert(
+          "🚨 IMAGE TOO LARGE! Please compress your background to under 800KB. Massive files will crash the database.",
+        );
+        logoInput.value = "";
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = function (event) {
         safeSet("slideLogoBase64", event.target.result);
@@ -37,13 +43,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // We trigger load directly, assuming Firebase is initialized by settings-core
   setTimeout(loadPresentationSettings, 500);
 });
 
-// ==========================================
-// 2. DOM RENDERER FOR SLIDE BLOCKS
-// ==========================================
 function renderSlideSequence() {
   const container = document.getElementById("slideTemplateSequence");
   if (!container) return;
@@ -106,12 +108,9 @@ window.updateSlideSequence = function () {
     newSequence.push({ type: select.value, label: text });
   });
   slideSequence = newSequence;
-  renderSlideSequence(); // Re-render to fix the "Slide #" numbering
+  renderSlideSequence();
 };
 
-// ==========================================
-// 3. LOAD SETTINGS
-// ==========================================
 window.loadPresentationSettings = async function () {
   let cloudData = null;
 
@@ -147,45 +146,56 @@ window.loadPresentationSettings = async function () {
   renderSlideSequence();
 };
 
-// ==========================================
-// 4. SAVE SETTINGS
-// ==========================================
 window.savePresentationSettings = async function () {
   if (typeof window.showLoader === "function")
     window.showLoader("Saving Presentation Defaults...");
 
-  window.updateSlideSequence(); // Ensure latest DOM state is captured
+  window.updateSlideSequence();
 
   const settingsData = {
-    theme: safeGet("setSlideTheme"),
-    logo_base64: safeGet("slideLogoBase64"),
+    theme: document.getElementById("setSlideTheme")
+      ? document.getElementById("setSlideTheme").value
+      : "light",
+    logo_base64: document.getElementById("slideLogoBase64")
+      ? document.getElementById("slideLogoBase64").value
+      : "",
     slide_sequence: slideSequence,
     updated_at: new Date().toISOString(),
   };
 
-  // Save locally
-  localStorage.setItem("presentation_theme", settingsData.theme);
-  localStorage.setItem("presentation_logo", settingsData.logo_base64);
-  localStorage.setItem(
-    "presentation_slide_sequence",
-    JSON.stringify(settingsData.slide_sequence),
-  );
+  try {
+    // 🚀 Wrapped in try/catch to gracefully handle Quota limits
+    localStorage.setItem("presentation_theme", settingsData.theme);
+    localStorage.setItem("presentation_logo", settingsData.logo_base64);
+    localStorage.setItem(
+      "presentation_slide_sequence",
+      JSON.stringify(settingsData.slide_sequence),
+    );
 
-  // Save to Firebase
-  if (window.db) {
-    try {
+    if (window.db) {
       await setDoc(
         doc(window.db, "global_settings", "presentation_config"),
         settingsData,
         { merge: true },
       );
       alert("✅ Presentation settings saved locally and synced to Firebase.");
-    } catch (e) {
-      alert(`⚠️ Saved locally, but cloud sync failed: ${e.message}`);
+    } else {
+      alert("✅ Presentation settings saved locally (Firebase offline).");
     }
-  } else {
-    alert("✅ Presentation settings saved locally (Firebase offline).");
+  } catch (e) {
+    console.error("Save Error:", e);
+    if (e.name === "QuotaExceededError" || e.message.includes("quota")) {
+      alert(
+        "🚨 LOCAL STORAGE FULL! The image is too large. Upload a smaller, compressed image.",
+      );
+    } else if (e.message.toLowerCase().includes("payload")) {
+      alert(
+        "🚨 FIREBASE LIMIT EXCEEDED! Firestore has a strict 1MB limit per document. Your image is too large.",
+      );
+    } else {
+      alert(`⚠️ Error saving settings: ${e.message}`);
+    }
+  } finally {
+    if (typeof window.hideLoader === "function") window.hideLoader();
   }
-
-  if (typeof window.hideLoader === "function") window.hideLoader();
 };
