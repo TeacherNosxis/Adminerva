@@ -109,11 +109,15 @@
           </span>
         </div>
 
-        <!-- 16:9 Aspect Ratio Canvas --><!-- Full Canvas Background Image -->
-<div id="slide-background" class="absolute inset-0 w-full h-full pointer-events-none bg-cover bg-center z-0"></div>
+        <!-- 16:9 Aspect Ratio Canvas -->
+        <!-- 16:9 Aspect Ratio Canvas -->
+        <div
+          class="w-full max-w-4xl aspect-[16/9] bg-white bg-cover bg-center border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md"
+          id="slide-canvas"
+        >
           <!-- 12% Top Ribbon -->
           <div
-            class="h-[12%] w-full bg-blue-50 border-b border-blue-100 flex items-center px-6 justify-between z-20"
+            class="h-[12%] w-full bg-blue-50/90 backdrop-blur-sm border-b border-blue-100 flex items-center px-6 justify-between z-20"
           >
             <div class="flex items-center gap-3">
               <img
@@ -134,10 +138,10 @@
           </div>
 
           <!-- Quill Editor Target Area -->
-          <div class="flex-1 p-8 relative z-20">
+          <div class="flex-1 p-8 relative z-20 bg-white/40 backdrop-blur-[2px]">
             <div
               id="editor-container"
-              class="h-full w-full text-2xl leading-relaxed text-gray-800 border-none outline-none"
+              class="h-full w-full text-2xl leading-relaxed text-gray-900 border-none outline-none"
             >
               <!-- Content goes here -->
             </div>
