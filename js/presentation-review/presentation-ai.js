@@ -9,13 +9,14 @@ window.generateAI_SlideDeck = async function () {
     return;
   }
 
-  const apiKey = localStorage.getItem("repoReview_geminiKey");
+  const apiKey =
+    localStorage.getItem("Adminerva_gemini_token") ||
+    localStorage.getItem("repoReview_gemini_token");
   if (!apiKey) {
     alert("Gemini API Key missing. Please configure it in Global Settings.");
     return;
   }
 
-  // Load the slide sequence configured in Settings
   const slideSequence = JSON.parse(
     localStorage.getItem("presentation_slide_sequence"),
   ) || [
@@ -25,16 +26,17 @@ window.generateAI_SlideDeck = async function () {
     { type: "evaluation", label: "Evaluation" },
   ];
 
-  document.getElementById("btnGenerateSlides").textContent =
-    "⏳ Generating Slides...";
-  document.getElementById("btnGenerateSlides").disabled = true;
+  const genBtn = document.getElementById("btnGenerateSlides");
+  if (genBtn) {
+    genBtn.textContent = "⏳ Generating Slides...";
+    genBtn.disabled = true;
+  }
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const aiModelName =
-      localStorage.getItem("repoReview_aiModel") || "gemini-1.5-flash";
+      localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash";
 
-    // Define exact JSON Schema for output
     const slideSchema = {
       type: SchemaType.ARRAY,
       description:
@@ -65,7 +67,7 @@ window.generateAI_SlideDeck = async function () {
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: slideSchema,
-        temperature: 0.2, // Low temp for structured formatting
+        temperature: 0.2,
       },
     });
 
@@ -93,7 +95,6 @@ window.generateAI_SlideDeck = async function () {
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
 
-    // Inject into the UI controller
     window.currentPresentationDeck = JSON.parse(responseText);
     window.activeSlideIndex = 0;
 
@@ -105,8 +106,9 @@ window.generateAI_SlideDeck = async function () {
     console.error("AI Generation Failed:", e);
     alert(`Generation Failed: ${e.message}`);
   } finally {
-    document.getElementById("btnGenerateSlides").textContent =
-      "✨ Generate AI Slides";
-    document.getElementById("btnGenerateSlides").disabled = false;
+    if (genBtn) {
+      genBtn.textContent = "✨ Generate AI Slides";
+      genBtn.disabled = false;
+    }
   }
 };

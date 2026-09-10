@@ -1,4 +1,6 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
+  getFirestore,
   collection,
   getDocs,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
@@ -6,19 +8,22 @@ import {
 window.availablePlans = [];
 window.selectedPlanData = null;
 window.selectedSessionData = null;
+window.db = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   injectPlanSelectorUI();
-  // Wait for the global Firebase instance to initialize from settings-core
-  setTimeout(fetchSavedLessonPlans, 1000);
+  initFirebase();
 });
 
 function injectPlanSelectorUI() {
-  const leftColumn = document.querySelector(".lg\\:w-1\\/4");
-  if (!leftColumn) return;
+  const listContainer = document.getElementById("slideBlockList");
+  if (!listContainer || !listContainer.parentElement) {
+    console.error("[DEBUG] Could not find the left column to inject the UI.");
+    return;
+  }
 
   const selectorHTML = `
-        <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
+        <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200 w-full">
             <label class="block text-xs font-bold text-gray-600 uppercase mb-1">1. Select Saved Lesson</label>
             <select id="presentationPlanSelect" onchange="handlePlanSelection()" class="w-full p-1.5 mb-3 border border-gray-300 rounded text-xs bg-white focus:ring-blue-500">
                 <option value="">Loading plans...</option>
@@ -34,15 +39,37 @@ function injectPlanSelectorUI() {
             </button>
         </div>
     `;
-  leftColumn.insertAdjacentHTML("afterbegin", selectorHTML);
+
+  listContainer.insertAdjacentHTML("beforebegin", selectorHTML);
+}
+
+function initFirebase() {
+  const configStr =
+    localStorage.getItem("Adminerva_firebase_config") ||
+    localStorage.getItem("repoReview_firebase_config");
+  const select = document.getElementById("presentationPlanSelect");
+
+  if (!configStr) {
+    if (select)
+      select.innerHTML = '<option value="">Firebase disconnected</option>';
+    return;
+  }
+
+  try {
+    const firebaseConfig = JSON.parse(configStr);
+    const app = initializeApp(firebaseConfig);
+    window.db = getFirestore(app);
+    fetchSavedLessonPlans();
+  } catch (e) {
+    console.error("Firebase Initialization Failed:", e);
+    if (select)
+      select.innerHTML = '<option value="">Error loading Firebase</option>';
+  }
 }
 
 async function fetchSavedLessonPlans() {
   const select = document.getElementById("presentationPlanSelect");
-  if (!window.db) {
-    select.innerHTML = '<option value="">Firebase disconnected</option>';
-    return;
-  }
+  if (!window.db || !select) return;
 
   try {
     const querySnapshot = await getDocs(collection(window.db, "lesson_plans"));
