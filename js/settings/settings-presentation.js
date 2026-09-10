@@ -26,10 +26,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const file = e.target.files[0];
       if (!file) return;
 
-      // 🚀 CRITICAL FIX: Block massive images before they crash local storage or Firebase
       if (file.size > 800 * 1024) {
         alert(
-          "🚨 IMAGE TOO LARGE! Please compress your background to under 800KB. Massive files will crash the database.",
+          "🚨 IMAGE TOO LARGE! Please compress your background to under 800KB.",
         );
         logoInput.value = "";
         return;
@@ -37,7 +36,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const reader = new FileReader();
       reader.onload = function (event) {
-        safeSet("slideLogoBase64", event.target.result);
+        const b64 = event.target.result;
+        safeSet("slideLogoBase64", b64);
+
+        const previewImg = document.getElementById("slideBgPreview");
+        const placeholder = document.getElementById("slideBgPlaceholder");
+        if (previewImg && placeholder) {
+          previewImg.src = b64;
+          previewImg.classList.remove("hidden");
+          placeholder.classList.add("hidden");
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -46,17 +54,29 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(loadPresentationSettings, 500);
 });
 
+window.clearSlideBackground = function () {
+  safeSet("slideLogoBase64", "");
+  if (document.getElementById("slideLogoFile"))
+    document.getElementById("slideLogoFile").value = "";
+
+  const previewImg = document.getElementById("slideBgPreview");
+  const placeholder = document.getElementById("slideBgPlaceholder");
+  if (previewImg && placeholder) {
+    previewImg.src = "";
+    previewImg.classList.add("hidden");
+    placeholder.classList.remove("hidden");
+  }
+};
+
+// ... (Keep the renderSlideSequence, addSlideToTemplate, removeSlideFromTemplate, updateSlideSequence functions identical to before) ...
 function renderSlideSequence() {
   const container = document.getElementById("slideTemplateSequence");
   if (!container) return;
-
   container.innerHTML = "";
-
   if (slideSequence.length === 0) {
     container.innerHTML = `<div class="text-xs text-gray-500 italic text-center py-4 border rounded bg-gray-50">No slides in default stack. Click "Add Slide Block" above.</div>`;
     return;
   }
-
   slideSequence.forEach((slide, index) => {
     const slideTypes = [
       { val: "title", text: "Title Slide" },
@@ -67,45 +87,40 @@ function renderSlideSequence() {
       { val: "closing", text: "Closing & Values" },
       { val: "blank", text: "Blank Slide" },
     ];
-
     let optionsHtml = slideTypes
       .map(
         (opt) =>
           `<option value="${opt.val}" ${slide.type === opt.val ? "selected" : ""}>${opt.text}</option>`,
       )
       .join("");
-
     const html = `
             <div class="flex items-center gap-3 bg-gray-50 border border-gray-200 p-2 rounded-lg shadow-sm slide-row">
                 <div class="cursor-move text-gray-400 px-2 font-bold select-none">⋮⋮</div>
                 <div class="font-bold text-xs text-gray-500 w-16 uppercase">Slide ${index + 1}</div>
-                <select class="flex-1 p-1.5 border border-gray-300 rounded text-sm bg-white focus:ring-blue-500 slide-type-select" onchange="updateSlideSequence()">
-                    ${optionsHtml}
-                </select>
+                <select class="flex-1 p-1.5 border border-gray-300 rounded text-sm bg-white focus:ring-blue-500 slide-type-select" onchange="updateSlideSequence()">${optionsHtml}</select>
                 <button onclick="removeSlideFromTemplate(${index})" class="text-red-400 hover:text-red-600 px-2 font-bold" title="Remove Slide">✖</button>
             </div>
         `;
     container.insertAdjacentHTML("beforeend", html);
   });
 }
-
 window.addSlideToTemplate = function () {
   slideSequence.push({ type: "blank", label: "Blank Slide" });
   renderSlideSequence();
 };
-
 window.removeSlideFromTemplate = function (index) {
   slideSequence.splice(index, 1);
   renderSlideSequence();
 };
-
 window.updateSlideSequence = function () {
   const rows = document.querySelectorAll(".slide-row");
   const newSequence = [];
   rows.forEach((row) => {
     const select = row.querySelector(".slide-type-select");
-    const text = select.options[select.selectedIndex].text;
-    newSequence.push({ type: select.value, label: text });
+    newSequence.push({
+      type: select.value,
+      label: select.options[select.selectedIndex].text,
+    });
   });
   slideSequence = newSequence;
   renderSlideSequence();
@@ -139,32 +154,37 @@ window.loadPresentationSettings = async function () {
   safeSet("setSlideTheme", theme);
   safeSet("slideLogoBase64", logoBase64);
 
+  // 🔥 POPULATE PREVIEW ON LOAD
+  if (logoBase64) {
+    const previewImg = document.getElementById("slideBgPreview");
+    const placeholder = document.getElementById("slideBgPlaceholder");
+    if (previewImg && placeholder) {
+      previewImg.src = logoBase64;
+      previewImg.classList.remove("hidden");
+      placeholder.classList.add("hidden");
+    }
+    localStorage.setItem("presentation_logo", logoBase64);
+  }
+
   if (savedSequence && Array.isArray(savedSequence)) {
     slideSequence = savedSequence;
   }
-
   renderSlideSequence();
 };
 
 window.savePresentationSettings = async function () {
   if (typeof window.showLoader === "function")
     window.showLoader("Saving Presentation Defaults...");
-
   window.updateSlideSequence();
 
   const settingsData = {
-    theme: document.getElementById("setSlideTheme")
-      ? document.getElementById("setSlideTheme").value
-      : "light",
-    logo_base64: document.getElementById("slideLogoBase64")
-      ? document.getElementById("slideLogoBase64").value
-      : "",
+    theme: safeGet("setSlideTheme") || "light",
+    logo_base64: safeGet("slideLogoBase64"),
     slide_sequence: slideSequence,
     updated_at: new Date().toISOString(),
   };
 
   try {
-    // 🚀 Wrapped in try/catch to gracefully handle Quota limits
     localStorage.setItem("presentation_theme", settingsData.theme);
     localStorage.setItem("presentation_logo", settingsData.logo_base64);
     localStorage.setItem(
@@ -183,18 +203,7 @@ window.savePresentationSettings = async function () {
       alert("✅ Presentation settings saved locally (Firebase offline).");
     }
   } catch (e) {
-    console.error("Save Error:", e);
-    if (e.name === "QuotaExceededError" || e.message.includes("quota")) {
-      alert(
-        "🚨 LOCAL STORAGE FULL! The image is too large. Upload a smaller, compressed image.",
-      );
-    } else if (e.message.toLowerCase().includes("payload")) {
-      alert(
-        "🚨 FIREBASE LIMIT EXCEEDED! Firestore has a strict 1MB limit per document. Your image is too large.",
-      );
-    } else {
-      alert(`⚠️ Error saving settings: ${e.message}`);
-    }
+    alert(`⚠️ Error saving settings: ${e.message}`);
   } finally {
     if (typeof window.hideLoader === "function") window.hideLoader();
   }

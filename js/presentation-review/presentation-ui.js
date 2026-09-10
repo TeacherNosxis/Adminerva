@@ -126,15 +126,31 @@ window.addNewSlide = function () {
   renderSlideBlocks();
   selectSlide(currentPresentationDeck.length - 1);
 };
-function applyPresentationTheme() {
-  const bgBase64 = localStorage.getItem("presentation_logo");
-  const canvasEl = document.getElementById("slide-canvas");
+async function applyPresentationTheme() {
+  let bgBase64 = localStorage.getItem("presentation_logo");
 
-  // Only apply if the base64 string actually exists and isn't empty
+  // 🔥 If the image is missing locally, force a pull from Firebase
+  if (!bgBase64 || bgBase64.length < 50) {
+    if (window.db) {
+      try {
+        const { doc, getDoc } =
+          await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+        const docSnap = await getDoc(
+          doc(window.db, "global_settings", "presentation_config"),
+        );
+        if (docSnap.exists() && docSnap.data().logo_base64) {
+          bgBase64 = docSnap.data().logo_base64;
+          localStorage.setItem("presentation_logo", bgBase64);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch theme from Firebase:", e);
+      }
+    }
+  }
+
+  const canvasEl = document.getElementById("slide-canvas");
   if (canvasEl && bgBase64 && bgBase64.length > 50) {
     canvasEl.style.backgroundImage = `url('${bgBase64}')`;
-    canvasEl.style.backgroundColor = "transparent"; // Kill the fallback color
-  } else {
-    console.warn("No background image found in localStorage.");
+    canvasEl.style.backgroundColor = "transparent"; // Force transparency over the default white
   }
 }

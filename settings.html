@@ -681,6 +681,7 @@
         </div>
 
         <!-- PANEL: PRESENTATIONS -->
+        <!-- PANEL: PRESENTATIONS -->
         <div
           id="panel-presentation"
           class="settings-panel hidden p-8 h-full overflow-y-auto"
@@ -689,18 +690,65 @@
             Presentation Defaults & Templates
           </h3>
 
-          <!-- Default Brand Settings -->
+          <!-- Default Brand Settings with Preview -->
           <div class="mb-8 p-5 bg-gray-50 border rounded-lg">
             <h4
               class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4"
             >
-              Brand Identity
+              Slide Background Image
             </h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <p class="text-[11px] text-gray-500 mb-3">
+              Upload a 16:9 background for your slides (Max 800KB). It will be
+              saved securely to the cloud.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <!-- Preview Box -->
+              <div class="w-full">
+                <div
+                  class="p-2 bg-white border border-dashed border-gray-300 rounded flex items-center justify-center h-32 relative mb-3"
+                >
+                  <img
+                    id="slideBgPreview"
+                    src=""
+                    class="max-h-full max-w-full object-contain hidden z-10"
+                  />
+                  <span
+                    id="slideBgPlaceholder"
+                    class="text-xs text-gray-400 italic z-0"
+                    >No background selected</span
+                  >
+                </div>
+                <div class="flex gap-2">
+                  <input
+                    type="file"
+                    id="slideLogoFile"
+                    accept="image/*"
+                    class="hidden"
+                  />
+                  <input type="hidden" id="slideLogoBase64" />
+                  <button
+                    type="button"
+                    onclick="document.getElementById('slideLogoFile').click()"
+                    class="bg-gray-800 text-white font-bold px-4 py-2 rounded text-xs hover:bg-gray-700 transition"
+                  >
+                    📁 Select Image
+                  </button>
+                  <button
+                    type="button"
+                    onclick="clearSlideBackground()"
+                    class="bg-red-100 text-red-600 font-bold px-3 py-2 rounded text-xs hover:bg-red-200 transition"
+                  >
+                    🗑️ Remove
+                  </button>
+                </div>
+              </div>
+
+              <!-- Theme Dropdown -->
               <div>
                 <label
                   class="block text-xs font-bold text-gray-600 uppercase mb-1"
-                  >Slide Theme</label
+                  >UI Overlay Theme</label
                 >
                 <select
                   id="setSlideTheme"
@@ -709,19 +757,6 @@
                   <option value="light">Light Mode (Adminerva Standard)</option>
                   <option value="dark">Dark Cyber-Cyan</option>
                 </select>
-              </div>
-              <div>
-                <label
-                  class="block text-xs font-bold text-gray-600 uppercase mb-1"
-                  >Slide Background Image</label
-                >
-                <input
-                  type="file"
-                  id="slideLogoFile"
-                  accept="image/*"
-                  class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer"
-                />
-                <input type="hidden" id="slideLogoBase64" />
               </div>
             </div>
           </div>
