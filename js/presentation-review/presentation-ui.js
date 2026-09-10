@@ -130,7 +130,11 @@ function applyPresentationTheme() {
   const bgBase64 = localStorage.getItem("presentation_logo");
   const canvasEl = document.getElementById("slide-canvas");
 
-  if (canvasEl && bgBase64) {
+  // Only apply if the base64 string actually exists and isn't empty
+  if (canvasEl && bgBase64 && bgBase64.length > 50) {
     canvasEl.style.backgroundImage = `url('${bgBase64}')`;
+    canvasEl.style.backgroundColor = "transparent"; // Kill the fallback color
+  } else {
+    console.warn("No background image found in localStorage.");
   }
 }
