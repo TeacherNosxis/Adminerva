@@ -13,11 +13,9 @@ window.exportToPPTX = async function () {
   exportBtn.disabled = true;
 
   try {
-    // 1. Initialize 16:9 Presentation
     let pptx = new PptxGenJS();
     pptx.layout = "LAYOUT_16x9";
 
-    // 2. Fetch Global Theme Data
     const bgBase64 = localStorage.getItem("presentation_logo");
     const lessonData = window.selectedPlanData || {};
     const subjectTitle = lessonData.subject_title || "Adminerva Presentation";
@@ -25,18 +23,18 @@ window.exportToPPTX = async function () {
       ? lessonData.weekly_overview.topic
       : "Lesson Topic";
 
-    // 3. Loop through every slide in the deck
     window.currentPresentationDeck.forEach((slideData) => {
+      // 🚀 SKIP HIDDEN SLIDES
+      if (slideData.hidden) return;
+
       let slide = pptx.addSlide();
 
-      // Apply Background
       if (bgBase64 && bgBase64.length > 50) {
         slide.background = { data: bgBase64 };
       } else {
-        slide.background = { color: "F8FAFC" }; // Adminerva Gray-50 fallback
+        slide.background = { color: "F8FAFC" };
       }
 
-      // Apply Top Ribbon (Skip if it's a Media Slide)
       if (slideData.layout !== "media") {
         slide.addShape(pptx.ShapeType.rect, {
           x: 0,
@@ -66,7 +64,6 @@ window.exportToPPTX = async function () {
         });
       }
 
-      // Render Layouts
       if (slideData.layout === "standard") {
         let textElements = parseHtmlToPptx(slideData.content);
         slide.addText(textElements, {
@@ -80,7 +77,6 @@ window.exportToPPTX = async function () {
         let leftElements = parseHtmlToPptx(slideData.contentLeft);
         let rightElements = parseHtmlToPptx(slideData.contentRight);
 
-        // Left Column
         slide.addText(leftElements, {
           x: 0.5,
           y: 0.8,
@@ -88,7 +84,6 @@ window.exportToPPTX = async function () {
           h: 4.5,
           valign: "top",
         });
-        // Right Column
         slide.addText(rightElements, {
           x: 5.2,
           y: 0.8,
@@ -120,7 +115,6 @@ window.exportToPPTX = async function () {
       }
     });
 
-    // 4. Download File
     const fileName = `${subjectTitle.replace(/[^a-z0-9]/gi, "_")}_Presentation.pptx`;
     await pptx.writeFile({ fileName: fileName });
   } catch (error) {
@@ -133,7 +127,7 @@ window.exportToPPTX = async function () {
 };
 
 // ==================================================
-// HTML TO PPTX PARSER (Translates Quill formatting)
+// 🚀 BUG FIX: HTML TO PPTX PARSER (Using textContent)
 // ==================================================
 function parseHtmlToPptx(htmlString) {
   if (!htmlString) return [{ text: "" }];
@@ -143,13 +137,13 @@ function parseHtmlToPptx(htmlString) {
   let pptxTextArray = [];
 
   Array.from(tempDiv.children).forEach((node) => {
-    let text = node.innerText || "";
+    // 🚀 CRITICAL FIX: Use textContent instead of innerText for unattached DOM elements
+    let text = node.textContent || "";
     if (!text.trim() && node.nodeName !== "BR") return;
 
     let fontSize = 18;
     let isBold = false;
 
-    // Match Quill Font Sizes
     if (node.classList.contains("ql-size-huge") || node.nodeName === "H1") {
       fontSize = 32;
       isBold = true;
@@ -163,10 +157,8 @@ function parseHtmlToPptx(htmlString) {
       fontSize = 12;
     }
 
-    // Match Inline Bold
     if (node.querySelector("strong") || node.querySelector("b")) isBold = true;
 
-    // Handle Lists
     if (node.nodeName === "UL" || node.nodeName === "OL") {
       Array.from(node.children).forEach((li) => {
         let liSize = 18;
@@ -183,7 +175,7 @@ function parseHtmlToPptx(htmlString) {
         }
 
         pptxTextArray.push({
-          text: li.innerText,
+          text: li.textContent,
           options: {
             fontSize: liSize,
             bold: liBold,
@@ -194,7 +186,6 @@ function parseHtmlToPptx(htmlString) {
         });
       });
     } else {
-      // Handle Paragraphs and Headers
       pptxTextArray.push({
         text: text,
         options: {
@@ -209,7 +200,7 @@ function parseHtmlToPptx(htmlString) {
 
   if (pptxTextArray.length === 0) {
     pptxTextArray.push({
-      text: tempDiv.innerText,
+      text: tempDiv.textContent,
       options: { fontSize: 18, color: "333333" },
     });
   }

@@ -1,8 +1,3 @@
-import {
-  GoogleGenerativeAI,
-  SchemaType,
-} from "https://esm.run/@google/generative-ai";
-
 window.generateAI_SlideDeck = async function () {
   if (!window.selectedPlanData || !window.selectedSessionData) {
     alert("Please select a lesson plan and session first.");
@@ -17,25 +12,16 @@ window.generateAI_SlideDeck = async function () {
     return;
   }
 
-  const slideSequence = JSON.parse(
-    localStorage.getItem("presentation_slide_sequence"),
-  ) || [
-    { type: "title", label: "Title Slide" },
-    { type: "objectives", label: "Objectives" },
-    { type: "core", label: "Core Content" },
-    { type: "evaluation", label: "Evaluation" },
-  ];
-
   const genBtn = document.getElementById("btnGenerateSlides");
   if (genBtn) {
-    genBtn.innerHTML = "⏳ Generating Slides...";
+    genBtn.innerHTML = "⏳ Designing Slides...";
     genBtn.disabled = true;
   }
 
   if (typeof window.showLoader === "function") {
     window.showLoader(
-      "Designing Slide Deck...",
-      "Converting lesson plan into structured presentation blocks.",
+      "Architecting Presentation...",
+      "Generating 5-15 dynamic slides, incorporating examples and multi-column layouts.",
     );
   }
 
@@ -43,24 +29,27 @@ window.generateAI_SlideDeck = async function () {
     const aiModelName =
       localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash";
     const prompt = `
-            Act as an expert instructional designer. Convert the provided lesson plan session into a presentation slide deck.
+            Act as an expert Masterclass Instructional Designer. Convert this lesson session into a highly engaging presentation slide deck.
             
-            Lesson Context:
             Subject: ${window.selectedPlanData.subject_title}
             Grade: ${window.selectedPlanData.grade_level}
             Topic: ${window.selectedPlanData.weekly_overview.topic}
+            Session Context: ${JSON.stringify(window.selectedSessionData, null, 2)}
             
-            Session Details:
-            ${JSON.stringify(window.selectedSessionData, null, 2)}
+            YOUR MISSION:
+            Generate a comprehensive presentation consisting of exactly 5 to 15 slides. 
+            Do NOT just copy the lesson plan. Expand on it! Add real-world scenario examples, analogies, and detailed concept breakdowns that a teacher can use to explain the topic clearly.
             
-            Requested Slide Sequence (Map your output EXACTLY to this flow):
-            ${JSON.stringify(slideSequence, null, 2)}
+            LAYOUT OPTIONS (You MUST mix and match these):
+            1. "standard": 1 column of text. Good for titles, objectives, and simple explanations.
+            2. "split": 2 columns of text (requires 'contentLeft' and 'contentRight'). Perfect for comparing Pros/Cons, "Before & After", or pairing a concept with a scenario.
+            3. "media": A full-screen visual slide. Use this when a diagram, chart, or photo is needed. (For the 'content' field, write a brief prompt telling the teacher what image to upload).
             
-            Instructions:
-            1. Return a JSON array where each object matches the requested sequence.
-            2. The 'content' field must contain valid HTML (<h1>, <h2>, <p>, <ul>, <li>). 
-            3. Do NOT overload the 'content' field. If a core concept is too long, split it into two bullet points or summarize it. 
-            4. Use KaTeX format (e.g., $E=mc^2$) for any mathematical equations.
+            RULES:
+            1. Return a pure JSON array of objects.
+            2. Every object must have: "layout" (standard/split/media), "label" (Short slide title), and "content" (HTML string).
+            3. If layout is "split", you MUST include "contentLeft" (HTML) and "contentRight" (HTML) instead of "content".
+            4. Use native HTML (<h1>, <h2>, <p>, <ul>, <li>) for text. Keep bullets concise. Use KaTeX ($E=mc^2$) for math.
         `;
 
     const response = await fetch(
@@ -72,28 +61,13 @@ window.generateAI_SlideDeck = async function () {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: "application/json",
-            temperature: 0.2,
-            responseSchema: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  type: { type: "STRING" },
-                  label: { type: "STRING" },
-                  content: { type: "STRING" },
-                },
-                required: ["type", "label", "content"],
-              },
-            },
+            temperature: 0.4,
           },
         }),
       },
     );
 
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`Google API Error (${response.status}): ${errBody}`);
-    }
+    if (!response.ok) throw new Error(`Google API Error (${response.status})`);
 
     const aiResult = await response.json();
     let rawJson = aiResult.candidates[0].content.parts[0].text
@@ -101,7 +75,13 @@ window.generateAI_SlideDeck = async function () {
       .replace(/\s*```$/i, "")
       .trim();
 
-    window.currentPresentationDeck = JSON.parse(rawJson);
+    // Inject the generated deck and mark everything visible
+    const parsedDeck = JSON.parse(rawJson);
+    window.currentPresentationDeck = parsedDeck.map((s) => ({
+      ...s,
+      hidden: false,
+      mediaUrl: "",
+    }));
     window.activeSlideIndex = 0;
 
     if (typeof window.renderSlideBlocks === "function") {

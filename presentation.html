@@ -42,262 +42,154 @@
     <div
       class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col lg:flex-row gap-6"
     >
-      <!-- LEFT COLUMN: Slide Block Navigation -->
-      <div
-        class="w-full lg:w-1/4 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col"
-      >
-        <div class="border-b border-gray-200 pb-3 mb-4">
-          <h2 class="text-lg font-bold text-gray-800">SLIDE BLOCKS</h2>
-          <div class="flex gap-2 mt-2">
-            <select
-              id="slideTemplateSelect"
-              class="flex-1 p-1.5 border border-gray-300 rounded text-xs bg-gray-50 focus:ring-blue-500"
-            >
-              <option value="default">Default Template</option>
-            </select>
-            <!-- 🚀 FIX: Added onclick command -->
-            <button
-              onclick="addNewSlide()"
-              class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition"
-            >
-              + Add
-            </button>
-          </div>
+      <!-- LEFT COLUMN: Slide Management Navigation -->
+      <div class="w-full lg:w-1/4 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+        <div class="border-b border-gray-200 pb-4 mb-4">
+          <!-- 🚀 MASSIVE ADD SLIDE BUTTON -->
+          <button onclick="openAddSlideModal()" class="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-black hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
+            <span class="text-lg">➕</span> ADD NEW SLIDE
+          </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto space-y-2" id="slideBlockList">
-          <!-- Dynamic Blocks -->
-        </div>
+        <!-- Dynamic Slide Blocks -->
+        <div class="flex-1 overflow-y-auto space-y-3 pr-1 pb-4" id="slideBlockList"></div>
 
-        <!-- 🚀 FIX: Added onclick command for the final step -->
-        <button
-          onclick="exportToPPTX()"
-          class="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 rounded transition shadow-md"
-        >
-          Export to PPTX
+        <button onclick="exportToPPTX()" class="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded transition shadow-md flex items-center justify-center gap-2">
+          <span>📥</span> Export to PPTX
         </button>
       </div>
 
       <!-- RIGHT COLUMN: Editor Workspace -->
-      <div
-        class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative"
-      >
-        <!-- Layout Switcher Header -->
+      <div class="w-full lg:w-3/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative">
+        
         <div class="w-full max-w-4xl flex justify-between items-end mb-4">
-          <div>
-            <label
-              class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
-              >Slide Layout</label
-            >
-            <select
-              id="slideLayoutSelector"
-              onchange="changeSlideLayout(this.value)"
-              class="p-1.5 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900 shadow-sm"
-            >
-              <option value="standard">Standard (1 Column)</option>
-              <option value="split">Split (2 Columns)</option>
-              <option value="media">Full Media (Image)</option>
-            </select>
-          </div>
-          <span
-            id="overflowWarning"
-            class="hidden text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-200"
-          >
-            ⚠️ Slide Height Limit Reached
-          </span>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Slide Layout</label>
+                <select id="slideLayoutSelector" onchange="changeSlideLayout(this.value)" class="p-1.5 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900 shadow-sm">
+                    <option value="standard">Standard (1 Column)</option>
+                    <option value="split">Split (2 Columns)</option>
+                    <option value="media">Full Media (Image)</option>
+                </select>
+            </div>
+            <span id="overflowWarning" class="hidden text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-200">
+                ⚠️ Slide Height Limit Reached
+            </span>
         </div>
 
-        <!-- 🚀 UNIFIED TOOLBAR AREA (Above the Canvas) -->
-        <div
-          id="master-toolbar-container"
-          class="w-full max-w-4xl mb-4 bg-gray-50 border border-gray-300 rounded-lg relative z-50 h-10 overflow-hidden transition-opacity duration-200"
-        >
-          <!-- Standard Toolbar -->
-          <div
-            id="toolbar-standard"
-            class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full"
-          >
-            <span class="ql-formats"
-              ><select class="ql-size">
-                <option value="small"></option>
-                <option selected></option>
-                <option value="large"></option>
-                <option value="huge"></option></select
-            ></span>
-            <span class="ql-formats"
-              ><button class="ql-bold"></button
-              ><button class="ql-italic"></button
-              ><button class="ql-underline"></button
-            ></span>
-            <span class="ql-formats"
-              ><button class="ql-list" value="ordered"></button
-              ><button class="ql-list" value="bullet"></button
-              ><select class="ql-align"></select
-            ></span>
-            <span class="ql-formats"><button class="ql-formula"></button></span>
-          </div>
-          <!-- Left Toolbar (Same exact buttons) -->
-          <div
-            id="toolbar-left"
-            class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden"
-          >
-            <span class="ql-formats"
-              ><select class="ql-size">
-                <option value="small"></option>
-                <option selected></option>
-                <option value="large"></option>
-                <option value="huge"></option></select
-            ></span>
-            <span class="ql-formats"
-              ><button class="ql-bold"></button
-              ><button class="ql-italic"></button
-              ><button class="ql-underline"></button
-            ></span>
-            <span class="ql-formats"
-              ><button class="ql-list" value="ordered"></button
-              ><button class="ql-list" value="bullet"></button
-              ><select class="ql-align"></select
-            ></span>
-            <span class="ql-formats"><button class="ql-formula"></button></span>
-          </div>
-          <!-- Right Toolbar (Same exact buttons) -->
-          <div
-            id="toolbar-right"
-            class="absolute inset-0 flex items-center bg-gray-50 px-2 w-full h-full hidden"
-          >
-            <span class="ql-formats"
-              ><select class="ql-size">
-                <option value="small"></option>
-                <option selected></option>
-                <option value="large"></option>
-                <option value="huge"></option></select
-            ></span>
-            <span class="ql-formats"
-              ><button class="ql-bold"></button
-              ><button class="ql-italic"></button
-              ><button class="ql-underline"></button
-            ></span>
-            <span class="ql-formats"
-              ><button class="ql-list" value="ordered"></button
-              ><button class="ql-list" value="bullet"></button
-              ><select class="ql-align"></select
-            ></span>
-            <span class="ql-formats"><button class="ql-formula"></button></span>
-          </div>
+        <!-- 🚀 FIX: Removed absolute positioning and heights to allow dropdowns to escape -->
+        <div id="master-toolbar-container" class="w-full max-w-4xl mb-4 bg-gray-50 border border-gray-300 rounded-lg z-[100] transition-opacity duration-200">
+            <!-- Standard Toolbar -->
+            <div id="toolbar-standard" class="flex items-center px-2 py-1">
+                <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
+                <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats"><button class="ql-formula"></button></span>
+            </div>
+            <!-- Left Toolbar -->
+            <div id="toolbar-left" class="hidden items-center px-2 py-1">
+                <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
+                <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats"><button class="ql-formula"></button></span>
+            </div>
+            <!-- Right Toolbar -->
+            <div id="toolbar-right" class="hidden items-center px-2 py-1">
+                <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
+                <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
+                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+                <span class="ql-formats"><button class="ql-formula"></button></span>
+            </div>
         </div>
 
         <!-- 16:9 Aspect Ratio Canvas -->
-        <div
-          class="w-full max-w-4xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md"
-          id="slide-canvas"
-          style="background-color: #f8fafc"
-        >
+        <div class="w-full max-w-4xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md" id="slide-canvas" style="background-color: #f8fafc;">
+          
           <!-- 12% Top Ribbon -->
-          <div
-            id="slide-ribbon"
-            class="h-[12%] w-full bg-blue-50/80 backdrop-blur-sm border-b border-blue-100 flex items-center px-6 justify-between z-20 transition-all"
-          >
+          <div id="slide-ribbon" class="h-[12%] w-full bg-blue-50/80 backdrop-blur-sm border-b border-blue-100 flex items-center px-6 justify-between z-20 transition-all">
             <div class="flex items-center gap-3">
-              <img
-                src="assets/New Adminerva logo.png"
-                class="h-8 opacity-80"
-                alt="Logo"
-              />
+              <img src="assets/New Adminerva logo.png" class="h-8 opacity-80" alt="Logo" />
               <div class="flex flex-col">
-                <span
-                  id="ribbon-title"
-                  class="text-xs font-bold text-blue-900 uppercase tracking-wide leading-none"
-                  >Main Lesson Title</span
-                >
-                <span
-                  id="ribbon-subtitle"
-                  class="text-[9px] text-gray-500 leading-none mt-1 truncate w-64 md:w-96"
-                  >Subtopic Context</span
-                >
+                <span id="ribbon-title" class="text-xs font-bold text-blue-900 uppercase tracking-wide leading-none">Main Lesson Title</span>
+                <span id="ribbon-subtitle" class="text-[9px] text-gray-500 leading-none mt-1 truncate w-64 md:w-96">Subtopic Context</span>
               </div>
             </div>
           </div>
 
           <!-- LAYOUT 1: Standard -->
-          <div
-            id="layout-standard"
-            class="flex-1 flex flex-col relative z-20 bg-white/40 backdrop-blur-[2px]"
-          >
+          <div id="layout-standard" class="flex-1 flex flex-col relative z-20 bg-white/40 backdrop-blur-[2px]">
             <div class="flex-1 p-8">
-              <div
-                id="editor-container"
-                class="h-full w-full text-2xl leading-relaxed text-gray-900 border-none outline-none"
-              ></div>
+              <div id="editor-container" class="h-full w-full text-2xl leading-relaxed text-gray-900 border-none outline-none"></div>
             </div>
           </div>
 
           <!-- LAYOUT 2: Split -->
-          <div
-            id="layout-split"
-            class="hidden flex-1 relative z-20 bg-white/40 backdrop-blur-[2px]"
-          >
+          <div id="layout-split" class="hidden flex-1 relative z-20 bg-white/40 backdrop-blur-[2px]">
             <div class="flex h-full w-full">
-              <!-- Left Column -->
               <div class="flex-1 flex flex-col border-r border-gray-300/50">
-                <div class="flex-1 p-5">
-                  <div
-                    id="editor-left"
-                    class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"
-                  ></div>
-                </div>
+                <div class="flex-1 p-5"><div id="editor-left" class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"></div></div>
               </div>
-              <!-- Right Column -->
               <div class="flex-1 flex flex-col">
-                <div class="flex-1 p-5">
-                  <div
-                    id="editor-right"
-                    class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"
-                  ></div>
-                </div>
+                <div class="flex-1 p-5"><div id="editor-right" class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"></div></div>
               </div>
             </div>
           </div>
 
           <!-- LAYOUT 3: Full Media -->
-          <div
-            id="layout-media"
-            class="hidden absolute inset-0 z-30 bg-black/90 flex-col items-center justify-center group"
-          >
-            <img
-              id="media-preview-img"
-              src=""
-              class="hidden max-w-full max-h-full object-contain"
-            />
-            <div
-              id="media-upload-ui"
-              class="text-center p-6 bg-white/10 backdrop-blur rounded-xl border border-white/20"
-            >
-              <span class="block text-4xl mb-3">🖼️</span>
-              <p class="text-white font-bold text-lg mb-4">Media Slide</p>
-              <button
-                onclick="document.getElementById('mediaFileInput').click()"
-                class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-bold shadow hover:bg-blue-700 transition"
-              >
-                Upload Image
-              </button>
-              <p class="text-[10px] text-gray-400 mt-3">JPEG/PNG Max 800KB</p>
-              <input
-                type="file"
-                id="mediaFileInput"
-                accept="image/*"
-                class="hidden"
-                onchange="handleMediaUpload(event)"
-              />
-            </div>
-            <button
-              onclick="clearMediaSlide()"
-              class="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hidden group-hover:block transition shadow"
-            >
-              ✖ Remove
-            </button>
+          <div id="layout-media" class="hidden absolute inset-0 z-30 bg-black/90 flex-col items-center justify-center group">
+              <img id="media-preview-img" src="" class="hidden max-w-full max-h-full object-contain">
+              <div id="media-upload-ui" class="text-center p-6 bg-white/10 backdrop-blur rounded-xl border border-white/20">
+                  <span class="block text-4xl mb-3">🖼️</span>
+                  <p class="text-white font-bold text-lg mb-4">Media Slide</p>
+                  <button onclick="document.getElementById('mediaFileInput').click()" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-bold shadow hover:bg-blue-700 transition">Upload Image</button>
+                  <p class="text-[10px] text-gray-400 mt-3">JPEG/PNG Max 800KB</p>
+                  <input type="file" id="mediaFileInput" accept="image/*" class="hidden" onchange="handleMediaUpload(event)">
+              </div>
+              <button onclick="clearMediaSlide()" class="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hidden group-hover:block transition shadow">✖ Remove</button>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 🚀 ADD SLIDE MODAL -->
+    <div id="addSlideModal" class="hidden fixed inset-0 bg-gray-900/80 z-[100] items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative">
+            <button onclick="closeAddSlideModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">✖</button>
+            <h3 class="text-xl font-black text-blue-900 mb-2">Add New Slide</h3>
+            <p class="text-sm text-gray-500 mb-6">Select a layout template for your new slide.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Standard -->
+                <div onclick="confirmAddSlide('standard')" class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group">
+                    <div class="h-24 bg-gray-100 rounded mb-3 flex flex-col border border-gray-200">
+                        <div class="h-3 w-full bg-blue-100 rounded-t"></div>
+                        <div class="flex-1 p-2"><div class="w-full h-2 bg-gray-300 rounded mb-1"></div><div class="w-3/4 h-2 bg-gray-300 rounded"></div></div>
+                    </div>
+                    <div class="text-center font-bold text-gray-700 group-hover:text-blue-600">Standard</div>
+                    <div class="text-[10px] text-center text-gray-400 mt-1">1 Column Text</div>
+                </div>
+                <!-- Split -->
+                <div onclick="confirmAddSlide('split')" class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group">
+                    <div class="h-24 bg-gray-100 rounded mb-3 flex flex-col border border-gray-200">
+                        <div class="h-3 w-full bg-blue-100 rounded-t"></div>
+                        <div class="flex-1 flex gap-1 p-2">
+                            <div class="flex-1 border-r border-gray-300 pr-1"><div class="w-full h-2 bg-gray-300 rounded mb-1"></div><div class="w-3/4 h-2 bg-gray-300 rounded"></div></div>
+                            <div class="flex-1 pl-1"><div class="w-full h-2 bg-gray-300 rounded mb-1"></div><div class="w-1/2 h-2 bg-gray-300 rounded"></div></div>
+                        </div>
+                    </div>
+                    <div class="text-center font-bold text-gray-700 group-hover:text-blue-600">Split</div>
+                    <div class="text-[10px] text-center text-gray-400 mt-1">2 Columns Text</div>
+                </div>
+                <!-- Media -->
+                <div onclick="confirmAddSlide('media')" class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group">
+                    <div class="h-24 bg-gray-800 rounded mb-3 flex items-center justify-center border border-gray-900">
+                        <span class="text-3xl">🖼️</span>
+                    </div>
+                    <div class="text-center font-bold text-gray-700 group-hover:text-blue-600">Full Media</div>
+                    <div class="text-[10px] text-center text-gray-400 mt-1">Image / Diagram</div>
+                </div>
+            </div>
+        </div>
+    </div>
     </div>
 
     <!-- 🚀 FIXED SCRIPTS (No Stray Tags) -->

@@ -11,15 +11,10 @@ document.addEventListener("DOMContentLoaded", () => {
   applyPresentationTheme();
 });
 
-// ==========================================
-// 0. RIBBON METADATA UPDATER
-// ==========================================
 window.updateRibbon = function () {
   let subject =
     localStorage.getItem("lessonReview_defaultSubject") || "MAIN LESSON TITLE";
   let topic = "Subtopic Context";
-
-  // 🚀 Update based on the selected Firebase lesson plan
   if (window.selectedPlanData) {
     subject = window.selectedPlanData.subject_title || subject;
     if (
@@ -29,16 +24,12 @@ window.updateRibbon = function () {
       topic = window.selectedPlanData.weekly_overview.topic;
     }
   }
-
   const titleEl = document.getElementById("ribbon-title");
   const subtitleEl = document.getElementById("ribbon-subtitle");
   if (titleEl) titleEl.textContent = subject.toUpperCase();
   if (subtitleEl) subtitleEl.textContent = topic;
 };
 
-// ==========================================
-// 1. MULTI-EDITOR INITIALIZATION
-// ==========================================
 function initEditors() {
   if (document.getElementById("editor-container"))
     quillStandard = new Quill("#editor-container", {
@@ -56,8 +47,7 @@ function initEditors() {
       modules: { formula: true, toolbar: "#toolbar-right" },
     });
 
-  // 🚀 FOCUS TRACKING FOR UNIFIED TOOLBAR EFFECT
-  if (quillLeft) {
+  if (quillLeft)
     quillLeft.root.addEventListener("focus", () => {
       if (
         window.currentPresentationDeck[window.activeSlideIndex]?.layout ===
@@ -67,8 +57,7 @@ function initEditors() {
         document.getElementById("toolbar-right").classList.add("hidden");
       }
     });
-  }
-  if (quillRight) {
+  if (quillRight)
     quillRight.root.addEventListener("focus", () => {
       if (
         window.currentPresentationDeck[window.activeSlideIndex]?.layout ===
@@ -78,11 +67,9 @@ function initEditors() {
         document.getElementById("toolbar-left").classList.add("hidden");
       }
     });
-  }
 
   const checkAndSave = (source, editorObj, key) => {
     if (source !== "user" || window.activeSlideIndex < 0) return;
-
     const canvas = document.getElementById("slide-canvas");
     const editorRoot = editorObj.root;
     const maxSafeHeight = canvas.clientHeight * 0.85;
@@ -118,13 +105,11 @@ function flashWarning() {
   }
 }
 
-// ==========================================
-// 2. LAYOUT SWITCHER ENGINE
-// ==========================================
 window.changeSlideLayout = function (layout) {
   if (window.activeSlideIndex < 0) return;
   window.currentPresentationDeck[window.activeSlideIndex].layout = layout;
   applyLayoutView(layout);
+  renderSlideBlocks(); // Update icon
 };
 
 function applyLayoutView(layout) {
@@ -153,7 +138,7 @@ function applyLayoutView(layout) {
     layoutStandard.classList.add("hidden");
     layoutSplit.classList.add("flex");
     layoutMedia.classList.add("hidden");
-    tLeft.classList.remove("hidden"); // Default to left toolbar visually
+    tLeft.classList.remove("hidden");
   } else if (layout === "media") {
     layoutStandard.classList.add("hidden");
     layoutSplit.classList.add("hidden");
@@ -171,19 +156,14 @@ function applyLayoutView(layout) {
   }
 }
 
-// ==========================================
-// 3. MEDIA UPLOAD ENGINE (Images Only)
-// ==========================================
 window.handleMediaUpload = function (event) {
   const file = event.target.files[0];
   if (!file) return;
-
   if (file.size > 800 * 1024) {
     alert("🚨 IMAGE TOO LARGE! Compress to under 800KB.");
     event.target.value = "";
     return;
   }
-
   const reader = new FileReader();
   reader.onload = function (e) {
     window.currentPresentationDeck[window.activeSlideIndex].mediaUrl =
@@ -217,9 +197,6 @@ window.clearMediaSlide = function () {
   renderMediaPreview();
 };
 
-// ==========================================
-// 4. SLIDE BLOCK NAVIGATION
-// ==========================================
 function initPresentationDeck() {
   if (window.currentPresentationDeck.length === 0) {
     window.currentPresentationDeck = [
@@ -228,12 +205,7 @@ function initPresentationDeck() {
         type: "title",
         label: "Title Slide",
         content: "<h1>Main Lesson Title</h1>",
-      },
-      {
-        layout: "standard",
-        type: "objectives",
-        label: "Objectives",
-        content: "<ul><li>Objective 1</li></ul>",
+        hidden: false,
       },
     ];
   }
@@ -241,6 +213,7 @@ function initPresentationDeck() {
   window.selectSlide(0);
 }
 
+// 🚀 ENHANCED SLIDE MANAGEMENT RENDERER
 function renderSlideBlocks() {
   const listContainer = document.getElementById("slideBlockList");
   if (!listContainer) return;
@@ -248,39 +221,81 @@ function renderSlideBlocks() {
 
   window.currentPresentationDeck.forEach((slide, index) => {
     const isActive = index === window.activeSlideIndex;
-    const activeStyles = "bg-blue-50 border-l-4 border-blue-600";
+    const activeStyles = "bg-blue-50 border border-blue-500 shadow-sm";
     const inactiveStyles =
       "bg-white border border-gray-100 hover:border-gray-300";
-
-    let layoutIcon = "📄";
-    if (slide.layout === "split") layoutIcon = "🪟";
-    if (slide.layout === "media") layoutIcon = "🖼️";
+    const isHidden = slide.hidden ? "opacity-50 grayscale" : "";
 
     const html = `
-      <div onclick="selectSlide(${index})" class="p-3 rounded cursor-pointer transition flex items-center justify-between ${isActive ? activeStyles : inactiveStyles}">
-          <div>
-              <div class="text-xs font-bold uppercase ${isActive ? "text-blue-800" : "text-gray-500"}">Slide ${index + 1}</div>
-              <div class="text-sm font-semibold ${isActive ? "text-gray-900" : "text-gray-700"}">${slide.label}</div>
+      <div class="p-2 rounded transition flex flex-col gap-2 group ${isActive ? activeStyles : inactiveStyles} ${isHidden}">
+          <div onclick="selectSlide(${index})" class="flex items-center gap-3 cursor-pointer">
+              <span class="text-2xl font-black ${isActive ? "text-blue-600" : "text-gray-300"} w-6 text-center">${index + 1}</span>
+              <div class="flex-1">
+                  <div class="text-sm font-bold ${isActive ? "text-gray-900" : "text-gray-700"} ${slide.hidden ? "line-through text-red-500" : ""}">${slide.label || "Slide"}</div>
+                  <div class="text-[9px] uppercase font-bold text-gray-400 mt-0.5">${slide.layout || "Standard"}</div>
+              </div>
           </div>
-          <div class="text-gray-400 text-lg opacity-50">${layoutIcon}</div>
+          
+          <!-- Slide Controls -->
+          <div class="flex items-center justify-between border-t border-gray-100 pt-2 ${isActive ? "flex" : "hidden group-hover:flex"}">
+              <div class="flex gap-1">
+                  <button onclick="moveSlideUp(${index})" title="Move Up" class="text-gray-400 hover:text-blue-600 px-1">⬆️</button>
+                  <button onclick="moveSlideDown(${index})" title="Move Down" class="text-gray-400 hover:text-blue-600 px-1">⬇️</button>
+              </div>
+              <div class="flex gap-2">
+                  <button onclick="toggleHideSlide(${index})" title="${slide.hidden ? "Show Slide" : "Skip/Hide Slide"}" class="text-gray-400 hover:text-amber-500 px-1">${slide.hidden ? "👁️‍🗨️" : "👁️"}</button>
+                  <button onclick="duplicateSlide(${index})" title="Duplicate Slide" class="text-gray-400 hover:text-green-600 px-1">📋</button>
+                  <button onclick="deleteSlide(${index})" title="Delete Slide" class="text-gray-400 hover:text-red-600 px-1">🗑️</button>
+              </div>
+          </div>
       </div>
     `;
     listContainer.insertAdjacentHTML("beforeend", html);
   });
 }
 
+// 🚀 SLIDE MANAGEMENT ACTIONS
+window.moveSlideUp = function (i) {
+  if (i <= 0) return;
+  const temp = window.currentPresentationDeck[i - 1];
+  window.currentPresentationDeck[i - 1] = window.currentPresentationDeck[i];
+  window.currentPresentationDeck[i] = temp;
+  window.selectSlide(i - 1);
+};
+window.moveSlideDown = function (i) {
+  if (i >= window.currentPresentationDeck.length - 1) return;
+  const temp = window.currentPresentationDeck[i + 1];
+  window.currentPresentationDeck[i + 1] = window.currentPresentationDeck[i];
+  window.currentPresentationDeck[i] = temp;
+  window.selectSlide(i + 1);
+};
+window.duplicateSlide = function (i) {
+  const clone = JSON.parse(JSON.stringify(window.currentPresentationDeck[i]));
+  window.currentPresentationDeck.splice(i + 1, 0, clone);
+  window.selectSlide(i + 1);
+};
+window.deleteSlide = function (i) {
+  if (window.currentPresentationDeck.length <= 1)
+    return alert("Cannot delete the last slide.");
+  if (confirm("Delete this slide?")) {
+    window.currentPresentationDeck.splice(i, 1);
+    window.selectSlide(Math.max(0, i - 1));
+  }
+};
+window.toggleHideSlide = function (i) {
+  window.currentPresentationDeck[i].hidden =
+    !window.currentPresentationDeck[i].hidden;
+  renderSlideBlocks();
+};
+
 window.selectSlide = function (index) {
   if (index < 0 || index >= window.currentPresentationDeck.length) return;
   window.activeSlideIndex = index;
-
-  // 🚀 FORCE RIBBON UPDATE
   window.updateRibbon();
-
   renderSlideBlocks();
 
   const slide = window.currentPresentationDeck[index];
   const layout = slide.layout || "standard";
-
   document.getElementById("slideLayoutSelector").value = layout;
   applyLayoutView(layout);
 
@@ -289,24 +304,28 @@ window.selectSlide = function (index) {
   if (quillRight) quillRight.root.innerHTML = slide.contentRight || "";
 };
 
-window.addNewSlide = function () {
+// 🚀 ADD SLIDE MODAL LOGIC
+window.openAddSlideModal = function () {
+  document.getElementById("addSlideModal").classList.replace("hidden", "flex");
+};
+window.closeAddSlideModal = function () {
+  document.getElementById("addSlideModal").classList.replace("flex", "hidden");
+};
+window.confirmAddSlide = function (layoutType) {
   window.currentPresentationDeck.push({
-    layout: "standard",
+    layout: layoutType,
     type: "blank",
-    label: "Blank Slide",
+    label: "Custom Slide",
     content: "",
+    hidden: false,
   });
-  renderSlideBlocks();
+  window.closeAddSlideModal();
   window.selectSlide(window.currentPresentationDeck.length - 1);
 };
 
-// ==========================================
-// 5. BACKGROUND THEME INJECTION
-// ==========================================
 async function applyPresentationTheme() {
   let bgBase64 = localStorage.getItem("presentation_logo");
   const canvasEl = document.getElementById("slide-canvas");
-
   const applyToCanvas = (b64) => {
     if (canvasEl && b64 && b64.length > 50) {
       canvasEl.style.backgroundImage = `url('${b64}')`;
@@ -314,10 +333,7 @@ async function applyPresentationTheme() {
     }
   };
 
-  if (bgBase64 && bgBase64.length > 50) {
-    applyToCanvas(bgBase64);
-    return;
-  }
+  if (bgBase64 && bgBase64.length > 50) return applyToCanvas(bgBase64);
 
   let attempts = 0;
   const checkDb = setInterval(async () => {
@@ -334,9 +350,7 @@ async function applyPresentationTheme() {
           localStorage.setItem("presentation_logo", bgBase64);
           applyToCanvas(bgBase64);
         }
-      } catch (e) {
-        console.warn("Failed to fetch theme from Firebase:", e);
-      }
+      } catch (e) {}
     }
     attempts++;
     if (attempts > 20) clearInterval(checkDb);
