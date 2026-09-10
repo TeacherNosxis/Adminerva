@@ -81,7 +81,7 @@
       >
         <!-- Custom Formatting Toolbar (Quill Container) -->
         <div
-          class="w-full max-w-4xl mb-4 bg-gray-50 border border-gray-300 rounded-t-lg"
+          class="w-full max-w-4xl mb-4 bg-gray-50 border border-gray-300 rounded-t-lg relative z-50"
           id="presentation-toolbar"
         >
           <span class="ql-formats">
@@ -110,10 +110,9 @@
         </div>
 
         <!-- 16:9 Aspect Ratio Canvas -->
-        <div
-          class="w-full max-w-4xl aspect-[16/9] bg-white border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md"
-          id="slide-canvas"
-        >
+        <!-- Background Watermark -->
+<div id="slide-watermark" class="absolute right-[-5%] bottom-0 w-[60%] h-[110%] opacity-40 pointer-events-none bg-contain bg-no-repeat bg-right-bottom z-10 mix-blend-multiply"></div>
+
           <!-- 12% Top Ribbon -->
           <div
             class="h-[12%] w-full bg-blue-50 border-b border-blue-100 flex items-center px-6 justify-between z-20"

@@ -5,6 +5,7 @@ let activeSlideIndex = -1;
 document.addEventListener("DOMContentLoaded", () => {
   initEditor();
   initPresentationDeck();
+  applyPresentationTheme();
 });
 
 // ==========================================
@@ -125,3 +126,11 @@ window.addNewSlide = function () {
   renderSlideBlocks();
   selectSlide(currentPresentationDeck.length - 1);
 };
+function applyPresentationTheme() {
+  const logoBase64 = localStorage.getItem("presentation_logo");
+  const watermarkDiv = document.getElementById("slide-watermark");
+
+  if (watermarkDiv && logoBase64) {
+    watermarkDiv.style.backgroundImage = `url('${logoBase64}')`;
+  }
+}
