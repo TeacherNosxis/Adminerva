@@ -12,10 +12,34 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
+// 0. RIBBON METADATA UPDATER
+// ==========================================
+window.updateRibbon = function () {
+  let subject =
+    localStorage.getItem("lessonReview_defaultSubject") || "MAIN LESSON TITLE";
+  let topic = "Subtopic Context";
+
+  // 🚀 Update based on the selected Firebase lesson plan
+  if (window.selectedPlanData) {
+    subject = window.selectedPlanData.subject_title || subject;
+    if (
+      window.selectedPlanData.weekly_overview &&
+      window.selectedPlanData.weekly_overview.topic
+    ) {
+      topic = window.selectedPlanData.weekly_overview.topic;
+    }
+  }
+
+  const titleEl = document.getElementById("ribbon-title");
+  const subtitleEl = document.getElementById("ribbon-subtitle");
+  if (titleEl) titleEl.textContent = subject.toUpperCase();
+  if (subtitleEl) subtitleEl.textContent = topic;
+};
+
+// ==========================================
 // 1. MULTI-EDITOR INITIALIZATION
 // ==========================================
 function initEditors() {
-  // Each editor gets its OWN distinct toolbar element to avoid Quill bugs
   if (document.getElementById("editor-container"))
     quillStandard = new Quill("#editor-container", {
       theme: "snow",
@@ -31,6 +55,30 @@ function initEditors() {
       theme: "snow",
       modules: { formula: true, toolbar: "#toolbar-right" },
     });
+
+  // 🚀 FOCUS TRACKING FOR UNIFIED TOOLBAR EFFECT
+  if (quillLeft) {
+    quillLeft.root.addEventListener("focus", () => {
+      if (
+        window.currentPresentationDeck[window.activeSlideIndex]?.layout ===
+        "split"
+      ) {
+        document.getElementById("toolbar-left").classList.remove("hidden");
+        document.getElementById("toolbar-right").classList.add("hidden");
+      }
+    });
+  }
+  if (quillRight) {
+    quillRight.root.addEventListener("focus", () => {
+      if (
+        window.currentPresentationDeck[window.activeSlideIndex]?.layout ===
+        "split"
+      ) {
+        document.getElementById("toolbar-right").classList.remove("hidden");
+        document.getElementById("toolbar-left").classList.add("hidden");
+      }
+    });
+  }
 
   const checkAndSave = (source, editorObj, key) => {
     if (source !== "user" || window.activeSlideIndex < 0) return;
@@ -85,27 +133,41 @@ function applyLayoutView(layout) {
   const layoutMedia = document.getElementById("layout-media");
   const ribbon = document.getElementById("slide-ribbon");
 
-  // 🚀 Safely Clear All Classes
+  const masterToolbar = document.getElementById("master-toolbar-container");
+  const tStd = document.getElementById("toolbar-standard");
+  const tLeft = document.getElementById("toolbar-left");
+  const tRight = document.getElementById("toolbar-right");
+
   layoutStandard.classList.remove("flex", "hidden");
   layoutSplit.classList.remove("flex", "hidden");
   layoutMedia.classList.remove("flex", "hidden");
-
   ribbon.classList.remove("hidden");
+
+  tStd.classList.add("hidden");
+  tLeft.classList.add("hidden");
+  tRight.classList.add("hidden");
+  masterToolbar.style.opacity = "1";
+  masterToolbar.style.pointerEvents = "auto";
 
   if (layout === "split") {
     layoutStandard.classList.add("hidden");
     layoutSplit.classList.add("flex");
     layoutMedia.classList.add("hidden");
+    tLeft.classList.remove("hidden"); // Default to left toolbar visually
   } else if (layout === "media") {
     layoutStandard.classList.add("hidden");
     layoutSplit.classList.add("hidden");
     layoutMedia.classList.add("flex");
     ribbon.classList.add("hidden");
+    masterToolbar.style.opacity = "0.3";
+    masterToolbar.style.pointerEvents = "none";
+    tStd.classList.remove("hidden");
     renderMediaPreview();
   } else {
     layoutStandard.classList.add("flex");
     layoutSplit.classList.add("hidden");
     layoutMedia.classList.add("hidden");
+    tStd.classList.remove("hidden");
   }
 }
 
@@ -210,6 +272,10 @@ function renderSlideBlocks() {
 window.selectSlide = function (index) {
   if (index < 0 || index >= window.currentPresentationDeck.length) return;
   window.activeSlideIndex = index;
+
+  // 🚀 FORCE RIBBON UPDATE
+  window.updateRibbon();
+
   renderSlideBlocks();
 
   const slide = window.currentPresentationDeck[index];
