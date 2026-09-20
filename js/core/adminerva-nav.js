@@ -9,11 +9,33 @@ document.addEventListener("DOMContentLoaded", () => {
   let rightSide = "";
   let logoBlock = "";
 
-  // Reusable styling function with your signature glowing cyan effects
   const getStyle = (pageId) =>
     activePage === pageId
       ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
       : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
+
+  // 🚀 REUSABLE ADMIN LOGO & DROPDOWN
+  // Used for all Educator, Repo, Lesson, and Settings pages
+  const adminLogoBlock = `
+        <div class="relative group cursor-pointer py-1">
+            <div class="flex items-center gap-3 text-xl font-bold transition">
+                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-10 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
+                <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity">▼</span>
+            </div>
+            <div class="absolute left-0 top-full w-64 hidden group-hover:block z-[100] pt-3">
+                <div class="bg-gray-900/95 backdrop-blur-xl rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-cyan-900/50 overflow-hidden">
+                    <div class="px-4 py-2 bg-gray-800/50 border-b border-gray-700/50 text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Adminerva Modules</div>
+                    <a href="reporeviewDashboard.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 border-b border-gray-800 transition-all flex items-center gap-2">
+                        <span class="text-cyan-500">💻</span> Educator Hub
+                    </a>
+                    <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 transition-all flex items-center gap-2">
+                        <span class="text-cyan-500">📘</span> Lesson Planner
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
 
   // 1. STUDENT MODULE
   if (activeModule === "student") {
@@ -25,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4"></span>
             <button id="signOutBtn" class="text-sm px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20">Sign Out</button>
         `;
-    // Students get a clean text logo without the module dropdown
+    // Students get a clean text logo without the dropdown
     logoBlock = `
             <div class="flex items-center gap-3 text-xl font-bold">
                 <span class="text-cyan-500">❖</span>
@@ -33,10 +55,11 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
   }
-  // 2. EDUCATOR HUB
+  // 2. EDUCATOR HUB (Dashboard & Directory)
   else if (activeModule === "educator") {
     centerLinks = `
             <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Dashboard</a>
+            <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
             <a href="users.html" class="${getStyle("directory")}">Directory</a>
             <a href="settings.html" class="${getStyle("settings")}">System Settings</a>
         `;
@@ -47,29 +70,24 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 rounded hidden sm:block mr-4">Educator Mode</span>
             <button id="signOutBtn" class="text-sm px-3 py-1.5 text-gray-400 hover:text-white font-bold transition">Sign Out</button>
         `;
-    // Educators get the logo and the interactive dropdown menu
-    logoBlock = `
-            <div class="relative group cursor-pointer py-1">
-                <div class="flex items-center gap-3 text-xl font-bold transition">
-                    <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-10 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                    <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
-                    <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity">▼</span>
-                </div>
-                <div class="absolute left-0 top-full w-64 hidden group-hover:block z-[100] pt-3">
-                    <div class="bg-gray-900/95 backdrop-blur-xl rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-cyan-900/50 overflow-hidden">
-                        <div class="px-4 py-2 bg-gray-800/50 border-b border-gray-700/50 text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Adminerva Modules</div>
-                        <a href="reporeviewDashboard.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 border-b border-gray-800 transition-all flex items-center gap-2">
-                            <span class="text-cyan-500">💻</span> Educator Hub
-                        </a>
-                        <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 transition-all flex items-center gap-2">
-                            <span class="text-cyan-500">📘</span> Lesson Planner
-                        </a>
-                    </div>
-                </div>
-            </div>
-        `;
+    logoBlock = adminLogoBlock;
   }
-  // 3. LESSON PLANNER (Preserves your original structure)
+  // 3. REPO REVIEW / GRADING (Restored)
+  else if (activeModule === "repo") {
+    centerLinks = `
+            <a href="index.html" class="${getStyle("dashboard")}">Analytics</a>
+            <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
+            <a href="gradebook.html" class="${getStyle("gradebook")}">Gradebook</a>
+            <a href="users.html" class="${getStyle("admin")}">Directory</a>
+        `;
+    rightSide = `
+            <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2.5 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center" title="Global Settings">
+                <span class="text-xl leading-none">⚙️</span>
+            </a>
+        `;
+    logoBlock = adminLogoBlock;
+  }
+  // 4. LESSON PLANNER
   else if (activeModule === "lesson") {
     centerLinks = `
             <a href="lesson-planner.html" class="${getStyle("planner")}">AI Planner</a>
@@ -82,27 +100,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="text-xl leading-none">⚙️</span>
             </a>
         `;
-    // Preserves original dropdown logic
-    logoBlock = `
-            <div class="relative group cursor-pointer py-1">
-                <div class="flex items-center gap-3 text-xl font-bold transition">
-                    <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-10 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                    <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
-                    <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity">▼</span>
-                </div>
-                <div class="absolute left-0 top-full w-64 hidden group-hover:block z-[100] pt-3">
-                    <div class="bg-gray-900/95 backdrop-blur-xl rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-cyan-900/50 overflow-hidden">
-                        <div class="px-4 py-2 bg-gray-800/50 border-b border-gray-700/50 text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Adminerva Modules</div>
-                        <a href="reporeviewDashboard.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 border-b border-gray-800 transition-all flex items-center gap-2">
-                            <span class="text-cyan-500">💻</span> Educator Hub
-                        </a>
-                        <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 transition-all flex items-center gap-2">
-                            <span class="text-cyan-500">📘</span> Lesson Planner
-                        </a>
-                    </div>
-                </div>
-            </div>
-        `;
+    logoBlock = adminLogoBlock;
+  }
+  // 5. GLOBAL SETTINGS (Restored)
+  else if (activeModule === "settings") {
+    centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide">System Configuration</span>`;
+    rightSide = ``;
+    logoBlock = adminLogoBlock;
   }
 
   // Inject Unified Architecture
