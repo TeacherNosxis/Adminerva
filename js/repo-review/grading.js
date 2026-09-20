@@ -677,7 +677,7 @@ CRITICAL SYSTEM INSTRUCTIONS:
 3. CODE QUOTATION RULE: If you quote the student's code, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
 4. DO NOT REPEAT THE STUDENT'S CODE. Limit your feedback to concise, actionable sentences.
 5. You MUST provide detailed text for the feedback_criteria, additional_feedback, and optional_suggestion fields.
-6. FORMATTING: You MUST format the 'feedback_criteria' field as a bulleted list. Use a hyphen and a newline (`\n- `) to separate the feedback for each specific criterion.
+6. FORMATTING: You MUST format the 'feedback_criteria' field as a bulleted list. Use a hyphen and a newline ("\\n- ") to separate the feedback for each specific criterion.
 7. DEVELOPER INTENT: Read the provided "COMMIT MESSAGE"...
 
 Grade out of a maximum total score of ${maxScore}.
@@ -745,12 +745,13 @@ ${data.patches.substring(0, 40000)}
                       required: ["criterion", "score", "max"],
                     },
                   },
-                  feedback_criteria: { 
-        type: "STRING",
-        description: "MUST use \n- to create a bulleted list separating the feedback for each criterion."
-    },
-    additional_feedback: { type: "STRING" },
-    optional_suggestion: { type: "STRING" },
+                  feedback_criteria: {
+                    type: "STRING",
+                    description:
+                      "MUST use \n- to create a bulleted list separating the feedback for each criterion.",
+                  },
+                  additional_feedback: { type: "STRING" },
+                  optional_suggestion: { type: "STRING" },
                 },
                 required: [
                   "total_score",
