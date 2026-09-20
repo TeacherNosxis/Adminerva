@@ -11,26 +11,33 @@
     <div
       class="bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full text-center"
     >
+      <!-- Restored Custom Logo Asset -->
+      <img
+        src="assets/New Adminerva logo.png"
+        alt="Adminerva Logo"
+        class="h-16 mx-auto mb-4 object-contain mix-blend-lighten drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]"
+      />
+
       <h1 class="text-2xl text-emerald-400 font-black tracking-widest mb-2">
         DEV GATEWAY
       </h1>
       <p class="text-xs text-slate-500 mb-8 uppercase tracking-wider">
-        Bypass OAuth for UI Testing
+        Bypass OAuth & UI Testing
       </p>
 
       <div class="space-y-4">
-        <!-- Student Gateway -->
+        <!-- Student Gateway (Uses test1@g.com) -->
         <button
           id="studentBtn"
           class="w-full bg-blue-600/20 border border-blue-500/50 text-blue-400 font-bold py-3 px-4 rounded hover:bg-blue-600/40 hover:text-white transition flex justify-between items-center group"
         >
           <span>Boot Student POV</span>
           <span class="text-xs font-normal opacity-50 group-hover:opacity-100"
-            >teststudent@...</span
+            >test1@g.com</span
           >
         </button>
 
-        <!-- Teacher Gateway -->
+        <!-- Teacher Gateway (Uses testadmin@example.com) -->
         <button
           id="teacherBtn"
           class="w-full bg-amber-600/20 border border-amber-500/50 text-amber-400 font-bold py-3 px-4 rounded hover:bg-amber-600/40 hover:text-white transition flex justify-between items-center group"
@@ -49,55 +56,81 @@
     </div>
 
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+      import { auth } from "./js/core/firebase-core.js";
       import {
-        getAuth,
         signInWithEmailAndPassword,
+        onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-      const configStr = localStorage.getItem("Adminerva_firebase_config");
       const statusBox = document.getElementById("statusBox");
+      let currentUser = null;
 
-      if (!configStr) {
+      // Monitor active sessions to enable immediate "Shape-Shifting"
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        if (user) {
+          statusBox.innerHTML = `<span class="text-emerald-500 text-xs">Active Session: ${user.email}</span>`;
+        }
+      });
+
+      const executeRouting = (role, mockRole, redirectUrl) => {
+        localStorage.setItem("Adminerva_Role", role);
+        if (mockRole) {
+          localStorage.setItem("Adminerva_Mock_Role", mockRole);
+        } else {
+          localStorage.removeItem("Adminerva_Mock_Role");
+        }
         statusBox.innerHTML =
-          '<span class="text-red-500">Error: Missing API keys in local storage.</span>';
-      } else {
-        const app = initializeApp(JSON.parse(configStr));
-        const auth = getAuth(app);
+          '<span class="text-emerald-500">Access Granted. Routing...</span>';
+        setTimeout(() => (window.location.href = redirectUrl), 600);
+      };
 
-        const handleLogin = (email, password, redirectUrl) => {
-          statusBox.innerHTML =
-            '<span class="text-slate-400 animate-pulse">Authenticating...</span>';
+      const handleLogin = (email, password, role, mockRole, redirectUrl) => {
+        // If already logged in as the Super Admin, bypass authentication and just shift roles
+        if (
+          currentUser &&
+          currentUser.email.toLowerCase() === "testadmin@example.com"
+        ) {
+          executeRouting("superadmin", mockRole, redirectUrl);
+          return;
+        }
 
-          // Disable buttons during login
-          document.getElementById("studentBtn").disabled = true;
-          document.getElementById("teacherBtn").disabled = true;
+        statusBox.innerHTML =
+          '<span class="text-slate-400 animate-pulse">Authenticating...</span>';
+        document.getElementById("studentBtn").disabled = true;
+        document.getElementById("teacherBtn").disabled = true;
 
-          signInWithEmailAndPassword(auth, email, password)
-            .then(() => {
-              statusBox.innerHTML =
-                '<span class="text-emerald-500">Access Granted. Routing...</span>';
-              setTimeout(() => (window.location.href = redirectUrl), 600);
-            })
-            .catch((error) => {
-              statusBox.innerHTML = `<span class="text-red-500 text-xs">${error.message}</span>`;
-              document.getElementById("studentBtn").disabled = false;
-              document.getElementById("teacherBtn").disabled = false;
-            });
-        };
+        signInWithEmailAndPassword(auth, email, password)
+          .then(() => {
+            executeRouting(role, mockRole, redirectUrl);
+          })
+          .catch((error) => {
+            statusBox.innerHTML = `<span class="text-red-500 text-xs">${error.message.replace("Firebase:", "").trim()}</span>`;
+            document.getElementById("studentBtn").disabled = false;
+            document.getElementById("teacherBtn").disabled = false;
+          });
+      };
 
-        document.getElementById("studentBtn").addEventListener("click", () => {
-          handleLogin("test1@g.com", "admin123", "student-dashboard.html");
-        });
+      // Uses your exact Dev credentials
+      document.getElementById("studentBtn").addEventListener("click", () => {
+        handleLogin(
+          "test1@g.com",
+          "admin123",
+          "student",
+          "student",
+          "student-dashboard.html",
+        );
+      });
 
-        document.getElementById("teacherBtn").addEventListener("click", () => {
-          handleLogin(
-            "testadmin@example.com",
-            "password123",
-            "reporeviewDashboard.html",
-          );
-        });
-      }
+      document.getElementById("teacherBtn").addEventListener("click", () => {
+        handleLogin(
+          "testadmin@example.com",
+          "password123",
+          "superadmin",
+          null,
+          "reporeviewDashboard.html",
+        );
+      });
     </script>
   </body>
 </html>
