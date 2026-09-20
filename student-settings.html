@@ -10,8 +10,7 @@
     class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col hidden"
     id="pageBody"
   >
-    <!-- Replace the <nav> block with this: -->
-    <div id="adminerva-nav" data-module="student" data-page="settings"></div>
+    <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Content -->
     <main class="flex-grow max-w-2xl mx-auto w-full px-4 py-12">
@@ -79,6 +78,7 @@
     </main>
 
     <script type="module" src="js/student/settings.js"></script>
+    <script type="module" src="js/core/auth-guard.js"></script>
     <script src="js/core/adminerva-loader.js"></script>
   </body>
 </html>
