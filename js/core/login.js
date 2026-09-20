@@ -4,33 +4,21 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   GithubAuthProvider,
-  signInAnonymously,
   signInWithEmailAndPassword,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-// IMPORTANT: Paste your actual Firebase config object here!
-const configStr = localStorage.getItem("Adminerva_firebase_config");
+const adminEmail = "YOUR_TEACHER_EMAIL@example.com".toLowerCase(); // UPDATE THIS
 
-if (!configStr) {
-  const errorDiv = document.getElementById("authError");
-  if (errorDiv) {
-    errorDiv.textContent =
-      "System offline: Firebase not configured. Please set up API keys in the Admin settings.";
-    errorDiv.classList.remove("hidden");
-  }
-  throw new Error("Missing Firebase Configuration in localStorage.");
-}
-
-const firebaseConfig = JSON.parse(configStr);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// Define your teacher email here for role-based routing
-const adminEmail = "YOUR_TEACHER_EMAIL@example.com".toLowerCase();
-
-const googleProvider = new GoogleAuthProvider();
-const githubProvider = new GithubAuthProvider();
+// UI Elements
+const loginBlock = document.getElementById("loginBlock");
+const setupBlock = document.getElementById("setupBlock");
+const subtitleText = document.getElementById("subtitleText");
 const errorDiv = document.getElementById("authError");
+
+function showError(msg) {
+  errorDiv.textContent = msg;
+  errorDiv.classList.remove("hidden");
+}
 
 function routeUser(user) {
   const userEmail = user.email ? user.email.toLowerCase() : "";
@@ -41,40 +29,79 @@ function routeUser(user) {
   }
 }
 
-function showError(error) {
-  errorDiv.textContent = error.message || "Failed to sign in.";
-  errorDiv.classList.remove("hidden");
-}
+// 1. The Lockout Preventer: Check for credentials before doing anything else
+const configStr = localStorage.getItem("Adminerva_firebase_config");
 
-// Event Listeners
-document.getElementById("githubBtn")?.addEventListener("click", async () => {
-  try {
-    const result = await signInWithPopup(auth, githubProvider);
-    routeUser(result.user);
-  } catch (error) {
-    showError(error);
-  }
-});
+if (!configStr) {
+  // Keys are missing. Switch to Setup Mode.
+  loginBlock.classList.add("hidden");
+  setupBlock.classList.remove("hidden");
+  subtitleText.textContent = "First-time device setup required.";
 
-document.getElementById("googleBtn")?.addEventListener("click", async () => {
+  document.getElementById("saveConfigBtn").addEventListener("click", () => {
+    const inputStr = document
+      .getElementById("firebaseConfigInput")
+      .value.trim();
+    try {
+      // Validate it's actually JSON before saving
+      JSON.parse(inputStr);
+      localStorage.setItem("Adminerva_firebase_config", inputStr);
+      window.location.reload(); // Reload to boot up Firebase normally
+    } catch (err) {
+      showError(
+        "Invalid JSON format. Please copy the exact object from Firebase.",
+      );
+    }
+  });
+} else {
+  // Keys exist! Boot up Firebase and attach the login listeners.
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    routeUser(result.user);
-  } catch (error) {
-    showError(error);
-  }
-});
+    const firebaseConfig = JSON.parse(configStr);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-document.getElementById("anonBtn")?.addEventListener("click", async () => {
-  try {
-    // Hijacked button for dev testing with a hardcoded user
-    const result = await signInWithEmailAndPassword(
-      auth,
-      "test1@g.com",
-      "admin123",
+    const googleProvider = new GoogleAuthProvider();
+    const githubProvider = new GithubAuthProvider();
+
+    document
+      .getElementById("githubBtn")
+      ?.addEventListener("click", async () => {
+        try {
+          const result = await signInWithPopup(auth, githubProvider);
+          routeUser(result.user);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+
+    document
+      .getElementById("googleBtn")
+      ?.addEventListener("click", async () => {
+        try {
+          const result = await signInWithPopup(auth, googleProvider);
+          routeUser(result.user);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+
+    document.getElementById("anonBtn")?.addEventListener("click", async () => {
+      try {
+        const result = await signInWithEmailAndPassword(
+          auth,
+          "teststudent@example.com",
+          "password123",
+        );
+        routeUser(result.user);
+      } catch (error) {
+        showError(error.message);
+      }
+    });
+  } catch (e) {
+    // If the saved JSON is corrupted, clear it and force a setup next reload
+    localStorage.removeItem("Adminerva_firebase_config");
+    showError(
+      "Saved Firebase config was corrupted. Please refresh the page to set it up again.",
     );
-    routeUser(result.user);
-  } catch (error) {
-    showError(error);
   }
-});
+}
