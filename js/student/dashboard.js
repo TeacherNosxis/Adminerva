@@ -1,31 +1,27 @@
-// 1. Import the centralized database and auth engine!
 import { db, auth } from "../core/firebase-core.js";
 import {
   collection,
   getDocs,
   query,
   where,
-  doc,
-  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  onAuthStateChanged,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-document.addEventListener("DOMContentLoaded", () => {
-  // 2. Wait for Firebase Auth to confirm who is logged in, then load their data
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      // Update this function name to whatever your student data loading function is called
-      loadStudentData(user.email);
-    }
-  });
-});
+let userProfiles = [];
+let currentChart = null;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return (window.location.href = "login.html");
+
   document.getElementById("pageBody").classList.remove("hidden");
-  document.getElementById("userEmailDisplay").textContent = user.email;
+  const emailDisplay = document.getElementById("userEmailDisplay");
+  if (emailDisplay) emailDisplay.textContent = user.email;
 
   try {
+    // 1. Fetch ALL documents matching the student's email
     const q = query(
       collection(db, "students"),
       where("email", "==", user.email.toLowerCase()),
@@ -34,30 +30,77 @@ onAuthStateChanged(auth, async (user) => {
 
     if (snap.empty) {
       document.getElementById("repoSubtitle").innerHTML =
-        "<span class='text-red-500'>Profile incomplete. Please configure your settings.</span>";
+        "<span class='text-red-500'>Profile incomplete. Please contact your instructor.</span>";
       document.getElementById("commitListContainer").innerHTML =
-        "<p class='text-sm text-red-500 font-bold'>Missing GitHub connection.</p>";
+        "<p class='text-sm text-red-500 font-bold'>No directory record found.</p>";
       return;
     }
 
-    let studentData = null;
-    snap.forEach((d) => (studentData = d.data()));
+    userProfiles = [];
+    snap.forEach((d) => userProfiles.push(d.data()));
 
-    if (!studentData.repoUrl || !studentData.githubUsername) {
-      document.getElementById("repoSubtitle").innerHTML =
-        "<span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>";
-      document.getElementById("commitListContainer").innerHTML =
-        "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
-      return;
+    // 2. Setup the Section Selector Dropdown
+    const selector = document.getElementById("sectionSelector");
+    if (selector) {
+      if (userProfiles.length > 1) {
+        selector.classList.remove("hidden");
+        selector.innerHTML = "";
+        userProfiles.forEach((profile, index) => {
+          selector.insertAdjacentHTML(
+            "beforeend",
+            `<option value="${index}">${profile.section}</option>`,
+          );
+        });
+
+        // Listen for class/club switching
+        selector.addEventListener("change", (e) => {
+          loadDashboardProfile(userProfiles[e.target.value]);
+        });
+      } else {
+        selector.classList.add("hidden");
+      }
     }
 
-    document.getElementById("repoSubtitle").textContent =
-      `Tracking ${studentData.githubUsername} on ${studentData.repoUrl}`;
-    fetchGitHubData(studentData.repoUrl, studentData.githubUsername);
+    // 3. Load the first profile by default
+    loadDashboardProfile(userProfiles[0]);
   } catch (error) {
-    console.error(error);
+    console.error("Dashboard Load Error:", error);
   }
 });
+
+async function loadDashboardProfile(studentData) {
+  const subtitle = document.getElementById("repoSubtitle");
+  const container = document.getElementById("commitListContainer");
+
+  // Clear chart if it exists from a previous section
+  if (currentChart) {
+    currentChart.destroy();
+    currentChart = null;
+  }
+
+  if (!studentData.repoUrl || !studentData.githubUsername) {
+    subtitle.innerHTML = `<strong class="text-amber-700">${studentData.section}:</strong> <span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>`;
+    container.innerHTML =
+      "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
+    return;
+  }
+
+  subtitle.innerHTML = `<strong>${studentData.section}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${studentData.githubUsername}</span> on <a href="${studentData.repoUrl}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${studentData.repoUrl}</a>`;
+
+  // Set loading state
+  container.innerHTML = `
+        <div class="animate-pulse flex space-x-4">
+            <div class="flex-1 space-y-4 py-1">
+                <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                <div class="space-y-2">
+                    <div class="h-4 bg-slate-200 rounded"></div>
+                    <div class="h-4 bg-slate-200 rounded w-5/6"></div>
+                </div>
+            </div>
+        </div>`;
+
+  await fetchGitHubData(studentData.repoUrl, studentData.githubUsername);
+}
 
 async function fetchGitHubData(repoUrl, username) {
   const container = document.getElementById("commitListContainer");
@@ -83,7 +126,7 @@ async function fetchGitHubData(repoUrl, username) {
 
     if (commits.length === 0) {
       container.innerHTML =
-        "<p class='text-sm text-slate-500'>No commits found for your username yet.</p>";
+        "<p class='text-sm text-slate-500 font-bold'>No commits found for your username yet.</p>";
       return;
     }
 
@@ -96,14 +139,14 @@ async function fetchGitHubData(repoUrl, username) {
       container.insertAdjacentHTML(
         "beforeend",
         `
-                        <div class="p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition group">
-                            <div class="flex justify-between items-start mb-1">
-                                <a href="${c.html_url}" target="_blank" class="text-xs font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-700 transition">${c.sha.substring(0, 7)}</a>
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${date}</span>
-                            </div>
-                            <p class="text-sm font-medium text-slate-800 break-words">${c.commit.message}</p>
-                        </div>
-                    `,
+            <div class="p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition group">
+                <div class="flex justify-between items-start mb-1">
+                    <a href="${c.html_url}" target="_blank" class="text-xs font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-700 transition">${c.sha.substring(0, 7)}</a>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${date}</span>
+                </div>
+                <p class="text-sm font-medium text-slate-800 break-words">${c.commit.message}</p>
+            </div>
+        `,
       );
     });
 
@@ -129,7 +172,10 @@ function renderChart(commits) {
   const dataPoints = sortedDates.map((date) => dateCounts[date]);
 
   const ctx = document.getElementById("commitChart").getContext("2d");
-  new Chart(ctx, {
+
+  if (currentChart) currentChart.destroy();
+
+  currentChart = new Chart(ctx, {
     type: "line",
     data: {
       labels: sortedDates,
@@ -174,8 +220,8 @@ function renderChart(commits) {
     },
   });
 }
-// PASTE THIS INSTEAD:
-// Event Delegation for dynamically injected Sign Out button
+
+// Global Sign Out Logic
 document.addEventListener("click", (e) => {
   if (e.target && e.target.id === "signOutBtn") {
     signOut(auth).then(() => (window.location.href = "login.html"));

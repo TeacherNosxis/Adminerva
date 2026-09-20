@@ -45,7 +45,7 @@ if (signOutBtn) {
 }
 
 // ==========================================
-// CSV PARSING & UPLOAD
+// CSV PARSING & UPLOAD (COMPOSITE IDs)
 // ==========================================
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("csvFile");
@@ -94,15 +94,19 @@ async function processCSV(csvText) {
     return showUploadError("CSV is empty or missing headers.");
   }
 
-  // Attempt to dynamically find the email and name columns
   const headers = rows[0].toLowerCase().split(",");
   const emailIdx = headers.findIndex((h) => h.includes("email"));
   const firstIdx = headers.findIndex((h) => h.includes("first"));
   const lastIdx = headers.findIndex((h) => h.includes("last"));
-  const sectionIdx = headers.findIndex((h) => h.includes("section")); // Optional
+  const sectionIdx = headers.findIndex((h) => h.includes("section"));
 
   if (emailIdx === -1) {
     return showUploadError("CSV must contain a column named 'email'.");
+  }
+  if (sectionIdx === -1) {
+    return showUploadError(
+      "CSV must contain a column named 'section' for Multi-Section Support.",
+    );
   }
 
   uploadBtn.textContent = "Syncing to Database...";
@@ -117,23 +121,26 @@ async function processCSV(csvText) {
 
       if (!rawEmail || !rawEmail.includes("@")) continue;
 
+      const sectionName = cols[sectionIdx]?.trim() || "Unassigned";
+
       const studentData = {
         email: rawEmail,
         firstName: firstIdx !== -1 ? cols[firstIdx]?.trim() : "",
         lastName: lastIdx !== -1 ? cols[lastIdx]?.trim() : "",
-        section: sectionIdx !== -1 ? cols[sectionIdx]?.trim() : "Unassigned",
+        section: sectionName,
         role: "student",
         enrolledAt: new Date().toISOString(),
       };
 
-      // Combine names for easier display later
       studentData.name =
         `${studentData.firstName} ${studentData.lastName}`.trim();
       if (!studentData.name) studentData.name = "Unnamed Student";
 
-      // Use setDoc with { merge: true } so we don't accidentally overwrite
-      // a student's GitHub info if they already set it up.
-      const docRef = doc(db, "students", rawEmail);
+      // 🔥 COMPOSITE ID GENERATOR: email_SectionName (strips spaces for safe DB names)
+      const safeSection = sectionName.replace(/[^a-zA-Z0-9]/g, "");
+      const compositeId = `${rawEmail}_${safeSection}`;
+
+      const docRef = doc(db, "students", compositeId);
       batch.set(docRef, studentData, { merge: true });
       count++;
     }
@@ -142,13 +149,12 @@ async function processCSV(csvText) {
 
     uploadStatus.className =
       "text-xs font-bold text-center mt-3 text-emerald-600";
-    uploadStatus.textContent = `✅ Successfully imported ${count} students!`;
+    uploadStatus.textContent = `✅ Successfully imported ${count} multi-section records!`;
 
-    // Reset UI
     selectedCsvFile = null;
     dropzone.innerHTML = `<span class="text-3xl block mb-2">📥</span><p class="text-sm font-bold text-slate-700">Click or drag CSV here</p><p class="text-xs text-slate-400 mt-1">Maximum 500 records per upload</p>`;
 
-    loadDirectory(); // Refresh the table
+    loadDirectory();
   } catch (error) {
     showUploadError("Database Sync Failed: " + error.message);
   } finally {
@@ -165,7 +171,7 @@ function showUploadError(msg) {
 }
 
 // ==========================================
-// DIRECTORY READ & DELETE (CRUD)
+// DIRECTORY READ & DELETE (COMPOSITE IDs)
 // ==========================================
 async function loadDirectory() {
   const tbody = document.getElementById("userTableBody");
@@ -181,25 +187,28 @@ async function loadDirectory() {
 
     snap.forEach((documentSnapshot) => {
       const data = documentSnapshot.data();
-      // Skip the teacher/admin profiles if they somehow ended up in the student collection
       if (data.email === SUPER_ADMIN_EMAIL || data.email === TEACHER_EMAIL)
         return;
 
       recordCount++;
 
-      // Check if the student has configured their GitHub settings
       const isLinked = data.githubUsername && data.repoUrl;
       const statusHtml = isLinked
         ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">Linked</span>`
         : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">Missing Info</span>`;
 
+      // Updated UI: Shows the section directly under the student name
+      // Uses documentSnapshot.id (Composite ID) for the revoke button
       const tr = `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-                    <td class="px-6 py-4 font-medium text-slate-800">${data.name || "Unknown"}</td>
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-slate-800">${data.name || "Unknown"}</div>
+                        <div class="text-[10px] font-bold text-blue-500 uppercase tracking-wider mt-0.5">${data.section}</div>
+                    </td>
                     <td class="px-6 py-4 text-slate-500 font-mono text-xs">${data.email}</td>
                     <td class="px-6 py-4">${statusHtml}</td>
                     <td class="px-6 py-4 text-right">
-                        <button onclick="window.revokeStudent('${data.email}')" class="text-red-500 hover:text-red-700 font-medium text-xs border border-red-100 bg-red-50 px-3 py-1.5 rounded transition">Revoke</button>
+                        <button onclick="window.revokeStudent('${documentSnapshot.id}')" class="text-red-500 hover:text-red-700 font-medium text-xs border border-red-100 bg-red-50 px-3 py-1.5 rounded transition shadow-sm">Revoke</button>
                     </td>
                 </tr>
             `;
@@ -210,28 +219,27 @@ async function loadDirectory() {
       tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 font-medium">No students found. Import a CSV to begin.</td></tr>`;
     }
 
-    // Update footer record count
     const footerCount = document.querySelector(
       ".p-4.border-t.border-slate-200.bg-slate-50 span",
     );
-    if (footerCount) footerCount.textContent = `Showing ${recordCount} records`;
+    if (footerCount)
+      footerCount.textContent = `Showing ${recordCount} enrollment records`;
   } catch (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 font-bold">Error loading directory: ${error.message}</td></tr>`;
   }
 }
 
-// Bind refresh button if it exists
 const refreshBtn = document.querySelector(
   "button.text-blue-600.hover\\:underline",
 );
 if (refreshBtn) refreshBtn.addEventListener("click", loadDirectory);
 
-// Expose revoke function globally so inline HTML onclick can access it
-window.revokeStudent = async function (email) {
+// Targets the precise Composite ID so it only revokes one specific section
+window.revokeStudent = async function (compositeDocId) {
   if (
     !confirm(
-      `Are you sure you want to revoke access for ${email}? This will delete their roster profile.`,
+      `Are you sure you want to revoke this specific access? If they are in multiple sections, this only removes them from this one.`,
     )
   ) {
     return;
@@ -241,7 +249,7 @@ window.revokeStudent = async function (email) {
     window.showSubtleLoader("Revoking access...");
 
   try {
-    await deleteDoc(doc(db, "students", email.toLowerCase()));
+    await deleteDoc(doc(db, "students", compositeDocId));
     await loadDirectory();
   } catch (error) {
     alert("Failed to delete user: " + error.message);
@@ -250,7 +258,8 @@ window.revokeStudent = async function (email) {
       window.hideSubtleLoader();
   }
 };
-// Bulk Delete Entire Roster
+
+// Bulk Delete Entire Directory
 window.clearDirectory = async function () {
   const firstConfirm = confirm(
     "⚠️ DANGER: Are you absolutely sure you want to delete ALL students? This cannot be undone.",
@@ -272,14 +281,8 @@ window.clearDirectory = async function () {
 
     snap.forEach((documentSnapshot) => {
       const data = documentSnapshot.data();
-
-      // Safety measure: Do not delete your admin accounts
-      if (
-        data.email === "testadmin@example.com" ||
-        data.email === "josephsixson@mcstayuman.edu.ph"
-      ) {
+      if (data.email === SUPER_ADMIN_EMAIL || data.email === TEACHER_EMAIL)
         return;
-      }
 
       const docRef = doc(db, "students", documentSnapshot.id);
       batch.delete(docRef);
@@ -294,9 +297,11 @@ window.clearDirectory = async function () {
     }
 
     await batch.commit();
-    alert(`✅ Successfully cleared ${count} students from the database.`);
+    alert(
+      `✅ Successfully cleared ${count} student records from the database.`,
+    );
 
-    await loadDirectory(); // Refresh the table instantly
+    await loadDirectory();
   } catch (error) {
     console.error("Error clearing directory:", error);
     alert("❌ Failed to clear directory: " + error.message);

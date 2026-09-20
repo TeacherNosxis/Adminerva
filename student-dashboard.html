@@ -20,10 +20,17 @@
         class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4"
       >
         <div>
-          <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Project Workspace
-          </h1>
-          <p class="text-slate-500 mt-1 font-medium" id="repoSubtitle">
+          <div class="flex items-center gap-4 flex-wrap">
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Project Workspace
+            </h1>
+            <!-- DYNAMIC SECTION SELECTOR -->
+            <select
+              id="sectionSelector"
+              class="hidden text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold bg-blue-50 px-3 py-1.5 text-blue-700 cursor-pointer outline-none border"
+            ></select>
+          </div>
+          <p class="text-slate-500 mt-2 font-medium" id="repoSubtitle">
             Connecting to repository...
           </p>
         </div>
