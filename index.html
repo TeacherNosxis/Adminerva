@@ -3,140 +3,126 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RepoReview - Analytics Dashboard</title>
+    <title>Adminerva | AI-Powered GitHub AutoGrader</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* Custom gradient for the hero text */
+      .text-gradient {
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+    </style>
   </head>
-  <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
-    <div id="adminerva-nav" data-module="repo" data-page="dashboard"></div>
-    <script src="js/core/adminerva-nav.js"></script>
-
-    <!-- Main Workspace -->
-    <div
-      class="max-w-screen-xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col gap-6"
-    >
-      <!-- Header & Section Filter -->
-      <div
-        class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center"
-      >
-        <div>
-          <h2 class="text-2xl font-bold text-gray-800">Command Center</h2>
-          <p class="text-sm text-gray-500 mt-1">
-            High-level metrics and iterative velocity tracking.
-          </p>
-        </div>
-        <div class="flex items-center gap-3">
-          <label class="text-sm font-bold text-gray-700 uppercase"
-            >Class Section:</label
-          >
-          <select
-            id="sectionSelect"
-            onchange="loadDashboardData()"
-            class="p-2 border rounded font-semibold focus:ring-purple-500 bg-gray-50 min-w-[200px]"
-          ></select>
-        </div>
-      </div>
-
-      <!-- High-Level Stat Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div
-          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500"
-        >
-          <h3
-            class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
-          >
-            Total Students
-          </h3>
-          <div class="text-4xl font-extrabold text-gray-800" id="statStudents">
-            0
-          </div>
-        </div>
-        <div
-          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500"
-        >
-          <h3
-            class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
-          >
-            Grades Processed
-          </h3>
-          <div class="text-4xl font-extrabold text-gray-800" id="statGrades">
-            0
-          </div>
-        </div>
-        <div
-          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500"
-        >
-          <h3
-            class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
-          >
-            Comments Published
-          </h3>
-          <div class="text-4xl font-extrabold text-gray-800" id="statComments">
-            0
-          </div>
-        </div>
-      </div>
-
-      <!-- Charts & Insights -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-        <!-- Velocity Chart -->
-        <div
-          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-2 flex flex-col"
-        >
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-gray-800">
-              30-Day Commit Velocity
-            </h3>
+  <body class="bg-slate-50 font-sans text-slate-800 flex flex-col min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+          <div class="flex items-center gap-2">
             <span
-              class="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded"
-              >Workflow Tracking</span
+              class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-gradient"
+              >Adminerva</span
             >
           </div>
-          <div class="flex-1 relative min-h-[300px]">
-            <canvas id="velocityChart"></canvas>
-          </div>
-          <p class="text-[10px] text-gray-400 mt-3 text-center">
-            Spikes at the end of the month indicate cramming. A smooth curve
-            indicates consistent iterative development.
-          </p>
-        </div>
-
-        <!-- Rubric Insights -->
-        <div
-          class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col"
-        >
-          <h3 class="text-lg font-bold text-gray-800 mb-1">
-            Struggling Criteria
-          </h3>
-          <p class="text-xs text-gray-500 mb-4 pb-3 border-b">
-            Class average performance per rubric item.
-          </p>
-          <div id="criteriaList" class="space-y-4 overflow-y-auto flex-1">
-            <div class="text-center text-sm text-gray-400 italic mt-8">
-              Loading insights...
-            </div>
+          <div class="flex gap-4">
+            <a
+              href="login.html"
+              class="text-sm font-medium text-slate-600 hover:text-blue-600 transition"
+              >Sign In</a
+            >
           </div>
         </div>
       </div>
-    </div>
+    </nav>
 
-    <!-- GLOBAL LOADING OVERLAY -->
-    <div
-      id="globalLoader"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col"
+    <!-- Hero Section -->
+    <main
+      class="flex-grow flex flex-col items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-24"
     >
-      <div
-        class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"
-      ></div>
-      <p
-        class="text-white font-bold text-xl tracking-wider mb-2"
-        id="loaderMessage"
-      >
-        Aggregating Analytics...
-      </p>
-    </div>
+      <div class="max-w-3xl space-y-8">
+        <h1
+          class="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl"
+        >
+          Grade code. <br />
+          <span
+            class="bg-gradient-to-r from-blue-600 to-indigo-600 text-gradient"
+            >Track progress automatically.</span
+          >
+        </h1>
+        <p class="text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+          Adminerva isolates individual student commits in group GitHub
+          repositories, evaluates their intent, and generates structured AI
+          feedback based on your Universal Programming Standard.
+        </p>
 
-    <script type="module" src="js/repo-review/dashboard.js"></script>
+        <!-- Call to Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          <a
+            href="login.html"
+            class="inline-flex justify-center items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition"
+          >
+            Educator Login
+          </a>
+          <a
+            href="login.html"
+            class="inline-flex justify-center items-center px-8 py-3 border border-slate-300 text-base font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition"
+          >
+            Student Portal
+          </a>
+        </div>
+      </div>
+
+      <!-- Quick Feature Cards -->
+      <div
+        class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full mt-24 text-left"
+      >
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div
+            class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4 text-xl"
+          >
+            👥
+          </div>
+          <h3 class="text-lg font-bold mb-2">Individual Isolation</h3>
+          <p class="text-sm text-slate-600">
+            Fair grading for group work. Adminerva filters weekly code patches
+            by exact GitHub usernames so students are graded solely on their own
+            contributions.
+          </p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div
+            class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mb-4 text-xl"
+          >
+            🤖
+          </div>
+          <h3 class="text-lg font-bold mb-2">Intent-Driven AI</h3>
+          <p class="text-sm text-slate-600">
+            The AI reads the student's commit messages alongside their code,
+            evaluating their logic, problem-solving progress, and intent, not
+            just syntax.
+          </p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div
+            class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center mb-4 text-xl"
+          >
+            ☁️
+          </div>
+          <h3 class="text-lg font-bold mb-2">Cloud Synced</h3>
+          <p class="text-sm text-slate-600">
+            CSV roster deduplication, real-time historical grade syncing, and
+            dynamic rubric updates powered by Firebase Firestore.
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer
+      class="bg-white border-t border-slate-200 py-8 text-center text-sm text-slate-500"
+    >
+      <p>&copy; 2026 Adminerva Project. All rights reserved.</p>
+    </footer>
   </body>
 </html>
