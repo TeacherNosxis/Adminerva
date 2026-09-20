@@ -9,8 +9,64 @@ window.hideLoader = function () {
   const loader = document.getElementById("globalLoader");
   if (loader) loader.classList.replace("flex", "hidden");
 };
+window.handleCsvUpload = function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
 
-// 🚀 Vertical Sidebar Navigation
+  if (!window.db) return alert("Firebase disconnected. Check settings.");
+  window.showLoader("Importing Students...");
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: async function (results) {
+      const data = results.data;
+      let successCount = 0;
+
+      try {
+        const { collection, addDoc } =
+          await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+
+        for (const row of data) {
+          // Flexible key matching in case CSV headers vary slightly
+          const name = row.Name || row.name || row.Fullname || "";
+          const email = row.Email || row.email || "";
+          const section =
+            row.Section ||
+            row.section ||
+            document.getElementById("sectionFilterSelect")?.value ||
+            "Default";
+          const githubUsername =
+            row.GitHubUsername || row.github || row.Github || "";
+          const repoUrl = row.RepoUrl || row.repository || row.Repo || "";
+
+          if (name && githubUsername && repoUrl) {
+            await addDoc(collection(window.db, "students"), {
+              name,
+              email,
+              section,
+              githubUsername,
+              repoUrl,
+            });
+            successCount++;
+          }
+        }
+
+        event.target.value = ""; // Reset file input
+        await window.loadSectionsAndStudents();
+        alert(`✅ Successfully imported ${successCount} students.`);
+      } catch (err) {
+        alert("Import failed: " + err.message);
+      } finally {
+        window.hideLoader();
+      }
+    },
+    error: function (err) {
+      window.hideLoader();
+      alert("Failed to read CSV: " + err.message);
+    },
+  });
+};
 // 🚀 Vertical Sidebar Navigation (Dynamic Tailwind Injection)
 window.switchSettingsCategory = function (targetPanelId) {
   // 1. Hide all right-side panels
