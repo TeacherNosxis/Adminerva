@@ -185,7 +185,13 @@ window.updateDateScope = function () {
 
   document.getElementById("gradingTableBody").innerHTML =
     `<tr><td colspan="6" class="py-8 text-center text-gray-400 italic">Date changed. Please fetch commits again.</td></tr>`;
-  document.getElementById("publishAllBtn").classList.add("hidden");
+  const pubBtn = document.getElementById("publishAllBtn");
+  pubBtn.classList.add(
+    "opacity-50",
+    "cursor-not-allowed",
+    "pointer-events-none",
+  );
+  pubBtn.classList.remove("hover:bg-green-700");
 };
 
 async function loadSections() {
@@ -349,7 +355,13 @@ window.fetchSectionCommits = async function () {
     }
 
     renderGradingTable();
-    document.getElementById("publishAllBtn").classList.remove("hidden");
+    const pubBtn = document.getElementById("publishAllBtn");
+    pubBtn.classList.remove(
+      "opacity-50",
+      "cursor-not-allowed",
+      "pointer-events-none",
+    );
+    pubBtn.classList.add("hover:bg-green-700");
   } catch (e) {
     console.error(e);
     alert("Critical Error: " + e.message);
@@ -381,11 +393,14 @@ function renderGradingTable() {
         : `<span class="text-[10px] text-gray-400 font-bold block text-center">No Data</span>`;
 
     if (dbGrade) {
+      // Replaced the scrolling div with a clean button
       feedbackHtml = `
                 <div class="mb-1 flex items-center gap-2">
                     <strong class="text-purple-700 text-sm">Score: ${dbGrade.score}/${dbGrade.maxScore}</strong>
                 </div>
-                <div class="text-gray-700 text-[11px] leading-relaxed max-h-24 overflow-y-auto pr-1">${dbGrade.feedback}</div>
+                <button onclick="openFeedbackModal('${student.id}')" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold flex items-center gap-1 mt-1 transition">
+                    💬 Read Full Feedback
+                </button>
             `;
 
       if (dbGrade.publishedToGithub) {
@@ -424,6 +439,21 @@ function renderGradingTable() {
 // ==========================================
 // MODALS
 // ==========================================
+window.openFeedbackModal = function (studentId) {
+  const gradeRec = firestoreGradesMap[studentId];
+  const student = currentStudents.find((s) => s.id === studentId);
+
+  if (!gradeRec || !student) return;
+
+  document.getElementById("aiStudentName").textContent =
+    `Past feedback for: ${student.name}`;
+  document.getElementById("aiScore").textContent = gradeRec.score;
+  document.getElementById("aiScoreMax").textContent = `/${gradeRec.maxScore}`;
+  document.getElementById("aiFeedback").innerHTML = gradeRec.feedback;
+
+  document.getElementById("aiModal").classList.remove("hidden");
+};
+
 window.openDetails = function (studentId) {
   const student = currentStudents.find((s) => s.id === studentId);
   const data = commitDataMap[studentId];
