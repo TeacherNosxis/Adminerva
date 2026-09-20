@@ -136,7 +136,7 @@ async function processCSV(csvText) {
         `${studentData.firstName} ${studentData.lastName}`.trim();
       if (!studentData.name) studentData.name = "Unnamed Student";
 
-      // 🔥 COMPOSITE ID GENERATOR: email_SectionName (strips spaces for safe DB names)
+      // COMPOSITE ID GENERATOR
       const safeSection = sectionName.replace(/[^a-zA-Z0-9]/g, "");
       const compositeId = `${rawEmail}_${safeSection}`;
 
@@ -171,13 +171,15 @@ function showUploadError(msg) {
 }
 
 // ==========================================
-// DIRECTORY READ & DELETE (COMPOSITE IDs)
+// DIRECTORY READ, VERIFY & DELETE
 // ==========================================
 async function loadDirectory() {
   const tbody = document.getElementById("userTableBody");
   if (!tbody) return;
 
   tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 italic font-medium">Fetching roster from database...</td></tr>`;
+
+  const ghToken = localStorage.getItem("Adminerva_github_token");
 
   try {
     const snap = await getDocs(collection(db, "students"));
@@ -193,12 +195,15 @@ async function loadDirectory() {
       recordCount++;
 
       const isLinked = data.githubUsername && data.repoUrl;
-      const statusHtml = isLinked
-        ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">Linked</span>`
-        : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">Missing Info</span>`;
 
-      // Updated UI: Shows the section directly under the student name
-      // Uses documentSnapshot.id (Composite ID) for the revoke button
+      // Set initial state. If linked, show verifying. If not, missing info.
+      // Using a unique ID for the pill so we can dynamically update it.
+      const pillId = `status_${documentSnapshot.id.replace(/[^a-zA-Z0-9]/g, "")}`;
+
+      const statusHtml = isLinked
+        ? `<span id="${pillId}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 animate-pulse">Verifying...</span>`
+        : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600">Missing Info</span>`;
+
       const tr = `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                     <td class="px-6 py-4">
@@ -213,6 +218,11 @@ async function loadDirectory() {
                 </tr>
             `;
       tbody.insertAdjacentHTML("beforeend", tr);
+
+      // If the user is linked, fire the async GitHub verifier
+      if (isLinked) {
+        verifyRepoStatus(pillId, data.repoUrl, ghToken);
+      }
     });
 
     if (recordCount === 0) {
@@ -230,12 +240,67 @@ async function loadDirectory() {
   }
 }
 
+// NEW: Async Live Repo Health Check
+async function verifyRepoStatus(elementId, repoUrl, token) {
+  const pill = document.getElementById(elementId);
+  if (!pill) return;
+
+  if (!token) {
+    pill.className =
+      "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700";
+    pill.textContent = "Linked (No Token)";
+    return;
+  }
+
+  try {
+    let owner, repo;
+    const urlParts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
+    repo = urlParts.pop();
+    owner = urlParts.pop();
+
+    // Ask GitHub for exactly 1 commit. This tells us instantly if it exists, is empty, or is blocked.
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+        },
+      },
+    );
+
+    pill.classList.remove("animate-pulse"); // Stop the verification pulse
+
+    if (res.ok) {
+      pill.className =
+        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700";
+      pill.textContent = "Active Repo";
+    } else if (res.status === 409) {
+      pill.className =
+        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700";
+      pill.textContent = "Linked, Empty";
+    } else if (res.status === 404) {
+      pill.className =
+        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700";
+      pill.textContent = "Not Found / Private";
+    } else {
+      pill.className =
+        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700";
+      pill.textContent = "API Blocked";
+    }
+  } catch (e) {
+    pill.classList.remove("animate-pulse");
+    pill.className =
+      "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700";
+    pill.textContent = "Network Error";
+  }
+}
+
 const refreshBtn = document.querySelector(
   "button.text-blue-600.hover\\:underline",
 );
 if (refreshBtn) refreshBtn.addEventListener("click", loadDirectory);
 
-// Targets the precise Composite ID so it only revokes one specific section
 window.revokeStudent = async function (compositeDocId) {
   if (
     !confirm(
@@ -259,7 +324,6 @@ window.revokeStudent = async function (compositeDocId) {
   }
 };
 
-// Bulk Delete Entire Directory
 window.clearDirectory = async function () {
   const firstConfirm = confirm(
     "⚠️ DANGER: Are you absolutely sure you want to delete ALL students? This cannot be undone.",
