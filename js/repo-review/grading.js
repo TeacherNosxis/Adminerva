@@ -323,55 +323,81 @@ window.fetchSectionCommits = async function () {
         );
 
         if (!response.ok) {
-          commitDataMap[student.id].error =
-            response.status === 404
-              ? "Repo Not Found / Private"
-              : `HTTP ${response.status}`;
+          if (response.status === 409) {
+            commitDataMap[student.id].error = "Empty Repo";
+            commitDataMap[student.id].latestMsg =
+              "Student hasn't pushed any code yet.";
+          } else if (response.status === 404) {
+            commitDataMap[student.id].error = "Not Found / Private";
+            commitDataMap[student.id].latestMsg =
+              "Check URL or invite teacher as collaborator.";
+          } else if (response.status === 403) {
+            commitDataMap[student.id].error = "API Blocked";
+            commitDataMap[student.id].latestMsg =
+              "GitHub rate limit exceeded or bad token.";
+          } else if (response.status === 401) {
+            commitDataMap[student.id].error = "Bad Token";
+            commitDataMap[student.id].latestMsg =
+              "Your GitHub PAT is invalid or expired.";
+          } else {
+            commitDataMap[student.id].error = `Error ${response.status}`;
+            commitDataMap[student.id].latestMsg = "Unexpected API failure.";
+          }
           continue;
         }
 
         const commits = await response.json();
-        commitDataMap[student.id].count = commits.length;
-        if (commits.length > 0) {
-          commitDataMap[student.id].commitSha = commits[0].sha;
-          commitDataMap[student.id].latestMsg = commits[0].commit.message;
-          commitDataMap[student.id].allMsgs = commits.map(
-            (c) => c.commit.message,
-          );
 
-          const limit = Math.min(commits.length, 10); // Limit to first 10 commits for performance
-          for (let i = 0; i < limit; i++) {
-            const detailRes = await fetch(
-              `https://api.github.com/repos/${owner}/${repo}/commits/${commits[i].sha}`,
-              { headers: { Authorization: `Bearer ${ghToken}` } },
+        if (Array.isArray(commits)) {
+          commitDataMap[student.id].count = commits.length;
+
+          if (commits.length > 0) {
+            commitDataMap[student.id].commitSha = commits[0]?.sha || null;
+            commitDataMap[student.id].latestMsg =
+              commits[0]?.commit?.message || "No commit message";
+            commitDataMap[student.id].allMsgs = commits.map(
+              (c) => c?.commit?.message || "No commit message",
             );
-            if (detailRes.ok) {
-              const detail = await detailRes.json();
-              if (detail.stats) {
-                commitDataMap[student.id].additions += detail.stats.additions;
-                commitDataMap[student.id].deletions += detail.stats.deletions;
-              }
 
-              // NEW: Append the commit message as context for the AI
-              commitDataMap[student.id].patches +=
-                `\n\n### COMMIT MESSAGE: "${commits[i].commit.message}"\n`;
+            const limit = Math.min(commits.length, 10); // Limit to first 10 commits for performance
+            for (let i = 0; i < limit; i++) {
+              const detailRes = await fetch(
+                `https://api.github.com/repos/${owner}/${repo}/commits/${commits[i].sha}`,
+                { headers: { Authorization: `Bearer ${ghToken}` } },
+              );
+              if (detailRes.ok) {
+                const detail = await detailRes.json();
+                if (detail.stats) {
+                  commitDataMap[student.id].additions += detail.stats.additions;
+                  commitDataMap[student.id].deletions += detail.stats.deletions;
+                }
 
-              if (detail.files) {
-                detail.files.forEach((file) => {
-                  if (
-                    file.patch &&
-                    !file.filename.match(/\.(png|jpg|exe|zip|svg|lock)$/i)
-                  ) {
-                    commitDataMap[student.id].patches +=
-                      `--- ${file.filename} ---\n${file.patch}\n`;
-                  }
-                });
+                // NEW: Append the commit message as context for the AI
+                commitDataMap[student.id].patches +=
+                  `\n\n### COMMIT MESSAGE: "${commits[i]?.commit?.message || "No message"}"\n`;
+
+                if (detail.files) {
+                  detail.files.forEach((file) => {
+                    if (
+                      file.patch &&
+                      !file.filename.match(/\.(png|jpg|exe|zip|svg|lock)$/i)
+                    ) {
+                      commitDataMap[student.id].patches +=
+                        `--- ${file.filename} ---\n${file.patch}\n`;
+                    }
+                  });
+                }
               }
             }
           }
+        } else {
+          commitDataMap[student.id].error = "API Error";
+          commitDataMap[student.id].latestMsg =
+            "GitHub returned invalid data format.";
         }
       } catch (err) {
-        commitDataMap[student.id].error = err.message;
+        commitDataMap[student.id].error = "Network Error";
+        commitDataMap[student.id].latestMsg = "Failed to reach GitHub API.";
       }
     }
 
