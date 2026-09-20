@@ -577,7 +577,7 @@ window.saveEditedGrade = async function () {
 window.gradeCode = async function (studentId) {
   const gemKey = localStorage.getItem("Adminerva_gemini_token");
   const model =
-    localStorage.getItem("Adminerva_ai_model") || "gemini-3.5-flash";
+    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash";
   if (!gemKey) return alert("Missing Gemini API Key.");
 
   const student = currentStudents.find((s) => s.id === studentId);
@@ -588,14 +588,24 @@ window.gradeCode = async function (studentId) {
       "No code patches available to grade. Student may have only committed non-code files.",
     );
   }
-
   if (!activeTemplate) return alert("No active rubric equipped.");
+
+  // NEW: Idempotent Regrading Check
+  if (firestoreGradesMap[studentId]) {
+    if (
+      !confirm(
+        `An existing grade was found for ${student.name}. Regrading will overwrite the current score and consume your daily AI quota. Proceed?`,
+      )
+    ) {
+      return;
+    }
+  }
 
   const isPct = activeTemplate.scoringType === "percentage";
   const criteriaText = activeTemplate.criteria
     .map(
       (c) =>
-        `- ${c.name} (${c.weight}${isPct ? "%" : " pts"}): ${c.description}`,
+        `- ${c.name} (${c.weight}${isPct ? "\%" : " pts"}): ${c.description}`,
     )
     .join("\n");
   const maxScore = isPct
@@ -630,103 +640,112 @@ ${data.patches.substring(0, 15000)}
     "Applying strict grading rubrics.",
   );
 
-  try {
-    const currentUsage = updateQuotaDisplay();
-    if (currentUsage.count >= 1500) {
-      throw new Error(
-        "Daily AI Quota Reached (1500/1500). Please wait until tomorrow to grade more students.",
-      );
-    }
+  // NEW: Retry Loop for Gemini JSON Resilience
+  let attempt = 0;
+  const maxAttempts = 3;
+  let success = false;
+  let gradeData = null;
+  let lastError = "";
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.0,
-            topK: 1, // NEW: Clamps down on AI randomness
-            topP: 0.1, // NEW: Forces strictly deterministic text selection
-            // NEW: We explicitly mark every single field as 'required' so the AI cannot skip them
-            response_schema: {
-              type: "OBJECT",
-              properties: {
-                total_score: { type: "INTEGER" },
-                breakdown: {
-                  type: "ARRAY",
-                  items: {
-                    type: "OBJECT",
-                    properties: {
-                      criterion: { type: "STRING" },
-                      score: { type: "INTEGER" },
-                      max: { type: "INTEGER" },
-                    },
-                    required: ["criterion", "score", "max"],
-                  },
-                },
-                feedback_criteria: {
-                  type: "STRING",
-                  description:
-                    "MUST use \n- for bullet points separating each criterion.",
-                },
-                additional_feedback: { type: "STRING" },
-                optional_suggestion: { type: "STRING" },
-              },
-              required: [
-                "total_score",
-                "breakdown",
-                "feedback_criteria",
-                "additional_feedback",
-                "optional_suggestion",
-              ],
-            },
-          },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      const errMsg =
-        errData.error?.message ||
-        response.statusText ||
-        "Unknown formatting error from API.";
-      if (response.status === 429)
-        throw new Error(
-          "Rate Limit Exceeded. You are clicking too fast. Wait 60 seconds.",
-        );
-      throw new Error(errMsg);
-    }
-
-    incrementAiQuota();
-
-    const aiResult = await response.json();
-    let rawJson = aiResult.candidates[0].content.parts[0].text;
-    rawJson = rawJson
-      .replace(/^```json\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-
-    let gradeData;
+  while (attempt < maxAttempts && !success) {
+    attempt++;
     try {
-      gradeData = JSON.parse(rawJson);
-    } catch (e) {
-      throw new Error(
-        "AI returned truncated or invalid JSON. Please try clicking Regrade via AI. (" +
-          e.message +
-          ")",
+      const currentUsage = updateQuotaDisplay();
+      if (currentUsage.count >= 1500) {
+        throw new Error(
+          "Daily AI Quota Reached (1500/1500). Please wait until tomorrow.",
+        );
+      }
+
+      if (attempt > 1) {
+        window.showLoader(
+          `AI Analyzing Code for ${student.name}...`,
+          `Retry attempt ${attempt} of ${maxAttempts} (Fixing JSON format)...`,
+        );
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.0,
+              topK: 1,
+              topP: 0.1,
+              response_schema: {
+                type: "OBJECT",
+                properties: {
+                  total_score: { type: "INTEGER" },
+                  breakdown: {
+                    type: "ARRAY",
+                    items: {
+                      type: "OBJECT",
+                      properties: {
+                        criterion: { type: "STRING" },
+                        score: { type: "INTEGER" },
+                        max: { type: "INTEGER" },
+                      },
+                      required: ["criterion", "score", "max"],
+                    },
+                  },
+                  feedback_criteria: { type: "STRING" },
+                  additional_feedback: { type: "STRING" },
+                  optional_suggestion: { type: "STRING" },
+                },
+                required: [
+                  "total_score",
+                  "breakdown",
+                  "feedback_criteria",
+                  "additional_feedback",
+                  "optional_suggestion",
+                ],
+              },
+            },
+          }),
+        },
       );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          await new Promise((r) => setTimeout(r, 2000 * attempt)); // Quick backoff for 429 Rate Limit
+          throw new Error("Rate Limit Exceeded.");
+        }
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error?.message || response.statusText);
+      }
+
+      const aiResult = await response.json();
+      let rawJson = aiResult.candidates[0].content.parts[0].text;
+      rawJson = rawJson
+        .replace(/^```json\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+
+      gradeData = JSON.parse(rawJson);
+      if (!gradeData.breakdown) gradeData.breakdown = [];
+
+      // Only count towards quota if successfully parsed
+      incrementAiQuota();
+      success = true;
+    } catch (err) {
+      lastError = err.message;
+      if (err.message.includes("Daily AI Quota Reached")) break;
     }
+  }
 
-    // Safety check to prevent the 'forEach' undefined crash
-    if (!gradeData.breakdown) gradeData.breakdown = [];
+  if (!success) {
+    window.hideLoader();
+    return alert(
+      `AI Grading failed after ${maxAttempts} attempts: ` + lastError,
+    );
+  }
 
-    // Build the HTML using our new helper function
+  try {
     const formattedFeedback = buildFeedbackHtml(gradeData, maxScore);
-
     const y = parseInt(document.getElementById("yearSelect").value);
     const m = parseInt(document.getElementById("monthSelect").value);
     const w = parseInt(document.getElementById("weekSelect").value);
@@ -751,7 +770,6 @@ ${data.patches.substring(0, 15000)}
     };
 
     await setDoc(doc(db, "grades", gradeDocId), dbEntry);
-
     firestoreGradesMap[student.id] = { docId: gradeDocId, ...dbEntry };
 
     document.getElementById("aiStudentName").textContent =
@@ -763,7 +781,7 @@ ${data.patches.substring(0, 15000)}
 
     renderGradingTable();
   } catch (err) {
-    alert("AI Grading failed: " + err.message);
+    alert("Database save failed: " + err.message);
   } finally {
     window.hideLoader();
   }
@@ -971,6 +989,8 @@ async function executePublish() {
     );
 
     let successCount = 0;
+    let failCount = 0;
+
     for (let i = 0; i < pendingQueue.length; i++) {
       const student = pendingQueue[i];
       const gradeRec = firestoreGradesMap[student.id];
@@ -980,19 +1000,40 @@ async function executePublish() {
         `Target: ${student.name}`,
       );
 
-      try {
-        await postCommentToGithub(student, gradeRec);
-        successCount++;
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-      } catch (e) {
-        console.error(`Failed on ${student.name}:`, e);
+      let published = false;
+      let retries = 0;
+      const maxRetries = 3;
+
+      while (!published && retries < maxRetries) {
+        try {
+          await postCommentToGithub(student, gradeRec);
+          published = true;
+          successCount++;
+          // Base throttle to avoid hitting the rate limit initially
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        } catch (e) {
+          retries++;
+          // If we hit a rate limit error, apply exponential backoff (2s, 4s, 8s...)
+          if (e.message.includes("GitHub says:") && retries < maxRetries) {
+            const backoff = Math.pow(2, retries) * 1000;
+            window.showLoader(
+              `Rate Limit Triggered.`,
+              `Pausing for ${backoff / 1000} seconds...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, backoff));
+          } else {
+            console.error(`Hard failure on ${student.name}:`, e);
+            failCount++;
+            break; // Move to the next student if it's a permanent error (e.g., bad URL)
+          }
+        }
       }
     }
 
     window.hideLoader();
     renderGradingTable();
     alert(
-      `Batch Complete: Published ${successCount} out of ${pendingQueue.length} comments.`,
+      `Batch Complete: Published ${successCount} comments. Failed on ${failCount}.`,
     );
   }
 }
