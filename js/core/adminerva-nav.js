@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     logoBlock = `
             <div class="flex items-center gap-3 text-xl font-bold">
-                <span class="text-cyan-500">❖</span>
+                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-10 w-auto object-contain mix-blend-lighten drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
                 <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
             </div>
         `;

@@ -1,84 +1,80 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { db, auth } from "../core/firebase-core.js";
 import {
-  getAuth,
-  onAuthStateChanged,
-  signOut,
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
   doc,
+  getDoc,
+  setDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-const configStr = localStorage.getItem("Adminerva_firebase_config");
-if (!configStr) window.location.href = "login.html";
+document.addEventListener("DOMContentLoaded", () => {
+  // Wait for the centralized auth engine to confirm the user
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const email = user.email.toLowerCase();
+      const docRef = doc(db, "students", email);
 
-const app = initializeApp(JSON.parse(configStr));
-const auth = getAuth(app);
-const db = getFirestore(app);
-let currentStudentDocId = null;
-
-onAuthStateChanged(auth, async (user) => {
-  if (!user) return (window.location.href = "login.html");
-  document.getElementById("pageBody").classList.remove("hidden");
-  document.getElementById("userEmailDisplay").textContent = user.email;
-
-  try {
-    const q = query(
-      collection(db, "students"),
-      where("email", "==", user.email.toLowerCase()),
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) {
-      document.getElementById("rosterError").classList.remove("hidden");
-      document.getElementById("saveRepoBtn").disabled = true;
-      return;
+      try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          // Pre-fill the form if they already saved their GitHub info
+          if (document.getElementById("githubUsername")) {
+            document.getElementById("githubUsername").value =
+              data.githubUsername || "";
+          }
+          if (document.getElementById("repoUrl")) {
+            document.getElementById("repoUrl").value = data.repoUrl || "";
+          }
+        } else {
+          // If the student isn't in the roster you uploaded via CSV, show the error
+          const errorBox = document.getElementById("rosterError");
+          if (errorBox) errorBox.classList.remove("hidden");
+        }
+      } catch (error) {
+        console.error("Error fetching student record:", error);
+      }
     }
-    snap.forEach((d) => {
-      currentStudentDocId = d.id;
-      const data = d.data();
-      if (data.githubUsername)
-        document.getElementById("githubUsername").value = data.githubUsername;
-      if (data.repoUrl) document.getElementById("repoUrl").value = data.repoUrl;
-    });
-  } catch (error) {
-    console.error(error);
-  }
+  });
 });
 
-document.getElementById("repoForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!currentStudentDocId) return;
-  const btn = document.getElementById("saveRepoBtn");
-  const status = document.getElementById("saveStatus");
-  btn.disabled = true;
-  btn.textContent = "Saving...";
-  status.classList.add("hidden");
+// Handle saving the GitHub configuration
+const repoForm = document.getElementById("repoForm");
+if (repoForm) {
+  repoForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  try {
-    await updateDoc(doc(db, "students", currentStudentDocId), {
-      githubUsername: document.getElementById("githubUsername").value.trim(),
-      repoUrl: document.getElementById("repoUrl").value.trim(),
-    });
-    status.textContent = "✅ Settings saved successfully!";
-    status.className =
-      "text-xs font-bold text-center text-green-600 mt-2 block";
-  } catch (error) {
-    status.textContent = "❌ Error saving data.";
-    status.className = "text-xs font-bold text-center text-red-600 mt-2 block";
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Save Configuration";
-  }
-});
-// PASTE THIS INSTEAD:
-// Event Delegation for dynamically injected Sign Out button
-document.addEventListener("click", (e) => {
-  if (e.target && e.target.id === "signOutBtn") {
-    signOut(auth).then(() => (window.location.href = "login.html"));
-  }
-});
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const btn = document.getElementById("saveRepoBtn");
+    const statusBox = document.getElementById("saveStatus");
+
+    btn.disabled = true;
+    btn.textContent = "Saving to Database...";
+
+    try {
+      const docRef = doc(db, "students", user.email.toLowerCase());
+      await setDoc(
+        docRef,
+        {
+          githubUsername: document
+            .getElementById("githubUsername")
+            .value.trim(),
+          repoUrl: document.getElementById("repoUrl").value.trim(),
+        },
+        { merge: true },
+      );
+
+      statusBox.textContent = "✅ Repository Connection Saved!";
+      statusBox.className =
+        "text-xs font-bold text-center text-emerald-500 mt-2 block";
+    } catch (error) {
+      statusBox.textContent = "❌ Error saving settings: " + error.message;
+      statusBox.className =
+        "text-xs font-bold text-center text-red-500 mt-2 block";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Save Configuration";
+    }
+  });
+}
