@@ -487,3 +487,105 @@ window.saveRubrics = async function () {
     window.hideLoader();
   }
 };
+
+
+window.handleCsvUpload = function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!window.db) return alert("Firebase disconnected. Check settings.");
+  window.showLoader("Importing and Deduplicating Students...");
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: async function (results) {
+      const data = results.data;
+      const uniqueStudents = new Map();
+
+      for (const rawRow of data) {
+        // 1. NORMALIZE HEADERS: Strip spaces, colons, and weird characters, and make lowercase
+        const row = {};
+        for (const key in rawRow) {
+          const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+          row[cleanKey] = rawRow[key];
+        }
+
+        // 2. EXTRACT DATA: Target the normalized keys (e.g., "yourfirstname" instead of "Your First Name:")
+        const firstName = row.yourfirstname || row.firstname || "";
+        const lastName = row.yourlastname || row.lastname || "";
+        const name =
+          `${firstName} ${lastName}`.trim() || row.name || row.fullname || "";
+
+        const email =
+          row.emailaddress || row.githubemailaddress || row.email || "";
+
+        const section =
+          row.section ||
+          document.getElementById("sectionFilterSelect")?.value ||
+          "Default";
+
+        const githubUsername =
+          row.exactgithubusername || row.githubusername || row.github || "";
+
+        let repoUrl =
+          row.publicrepositoryurl ||
+          row.repourl ||
+          row.repositorylink ||
+          row.repository ||
+          row.repo ||
+          "";
+        repoUrl = repoUrl.replace(/[\[\]\s]/g, ""); // Cleans [https://...] to https://...
+
+        // 3. ADD TO MAP: If the core data exists, queue it for import
+        if (name && githubUsername && repoUrl) {
+          const uniqueKey = email
+            ? email.toLowerCase().trim()
+            : name.toLowerCase().trim();
+          uniqueStudents.set(uniqueKey, {
+            name,
+            email,
+            section,
+            githubUsername,
+            repoUrl,
+          });
+        } else {
+          // Logs skipped rows to the developer console for debugging
+          console.warn("Skipped row due to missing data:", rawRow);
+        }
+      }
+
+      try {
+        const { collection, addDoc } =
+          await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+        let successCount = 0;
+
+        for (const [key, studentData] of uniqueStudents.entries()) {
+          await addDoc(collection(window.db, "students"), studentData);
+          successCount++;
+        }
+
+        event.target.value = "";
+        if (window.loadSectionsAndStudents)
+          await window.loadSectionsAndStudents();
+
+        if (successCount === 0) {
+          alert(
+            "⚠️ 0 students imported. Please press F12 to check the console and see why rows were skipped.",
+          );
+        } else {
+          alert(`✅ Successfully imported ${successCount} unique students.`);
+        }
+      } catch (err) {
+        alert("Import failed: " + err.message);
+      } finally {
+        window.hideLoader();
+      }
+    },
+    error: function (err) {
+      window.hideLoader();
+      alert("Failed to read CSV: " + err.message);
+    },
+  });
+};
+
