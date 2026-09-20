@@ -2,19 +2,50 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Dev Login</title>
+    <title>Adminerva | Dev Gateway</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body
-    class="bg-slate-900 h-screen flex items-center justify-center font-mono"
+    class="bg-slate-900 h-screen flex flex-col items-center justify-center font-mono text-slate-300"
   >
-    <div class="text-center">
-      <h1 class="text-emerald-400 font-bold mb-4">
-        Initializing Test Environment...
+    <div
+      class="bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full text-center"
+    >
+      <h1 class="text-2xl text-emerald-400 font-black tracking-widest mb-2">
+        DEV GATEWAY
       </h1>
-      <div id="status" class="text-slate-400 text-sm">
-        Authenticating teststudent@example.com
+      <p class="text-xs text-slate-500 mb-8 uppercase tracking-wider">
+        Bypass OAuth for UI Testing
+      </p>
+
+      <div class="space-y-4">
+        <!-- Student Gateway -->
+        <button
+          id="studentBtn"
+          class="w-full bg-blue-600/20 border border-blue-500/50 text-blue-400 font-bold py-3 px-4 rounded hover:bg-blue-600/40 hover:text-white transition flex justify-between items-center group"
+        >
+          <span>Boot Student POV</span>
+          <span class="text-xs font-normal opacity-50 group-hover:opacity-100"
+            >teststudent@...</span
+          >
+        </button>
+
+        <!-- Teacher Gateway -->
+        <button
+          id="teacherBtn"
+          class="w-full bg-amber-600/20 border border-amber-500/50 text-amber-400 font-bold py-3 px-4 rounded hover:bg-amber-600/40 hover:text-white transition flex justify-between items-center group"
+        >
+          <span>Boot Teacher POV</span>
+          <span class="text-xs font-normal opacity-50 group-hover:opacity-100"
+            >testadmin@...</span
+          >
+        </button>
       </div>
+
+      <div
+        id="statusBox"
+        class="mt-6 h-12 flex items-center justify-center text-sm font-bold"
+      ></div>
     </div>
 
     <script type="module">
@@ -25,28 +56,47 @@
       } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
       const configStr = localStorage.getItem("Adminerva_firebase_config");
+      const statusBox = document.getElementById("statusBox");
 
       if (!configStr) {
-        document.getElementById("status").innerHTML =
-          '<span class="text-red-500">Error: Firebase keys not found in local storage. Log into the Admin Hub first.</span>';
+        statusBox.innerHTML =
+          '<span class="text-red-500">Error: Missing API keys in local storage.</span>';
       } else {
         const app = initializeApp(JSON.parse(configStr));
         const auth = getAuth(app);
 
-        // Instantly logs you in using the test credentials
-        signInWithEmailAndPassword(auth, "test1@g.com", "admin123")
-          .then(() => {
-            document.getElementById("status").innerHTML =
-              '<span class="text-emerald-500">Success. Redirecting...</span>';
-            setTimeout(
-              () => (window.location.href = "student-dashboard.html"),
-              800,
-            );
-          })
-          .catch((error) => {
-            document.getElementById("status").innerHTML =
-              `<span class="text-red-500">Error: ${error.message}</span>`;
-          });
+        const handleLogin = (email, password, redirectUrl) => {
+          statusBox.innerHTML =
+            '<span class="text-slate-400 animate-pulse">Authenticating...</span>';
+
+          // Disable buttons during login
+          document.getElementById("studentBtn").disabled = true;
+          document.getElementById("teacherBtn").disabled = true;
+
+          signInWithEmailAndPassword(auth, email, password)
+            .then(() => {
+              statusBox.innerHTML =
+                '<span class="text-emerald-500">Access Granted. Routing...</span>';
+              setTimeout(() => (window.location.href = redirectUrl), 600);
+            })
+            .catch((error) => {
+              statusBox.innerHTML = `<span class="text-red-500 text-xs">${error.message}</span>`;
+              document.getElementById("studentBtn").disabled = false;
+              document.getElementById("teacherBtn").disabled = false;
+            });
+        };
+
+        document.getElementById("studentBtn").addEventListener("click", () => {
+          handleLogin("test1@g.com", "admin123", "student-dashboard.html");
+        });
+
+        document.getElementById("teacherBtn").addEventListener("click", () => {
+          handleLogin(
+            "testadmin@example.com",
+            "password123",
+            "reporeviewDashboard.html",
+          );
+        });
       }
     </script>
   </body>
