@@ -95,10 +95,12 @@ window.closeStudentModal = () =>
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
   if (window.loadSecuritySettings) window.loadSecuritySettings();
-  if (window.initRubrics) window.initRubrics();
 
-  // Boot Firebase - will automatically fetch cloud settings once connected
+  // 1. Boot Firebase FIRST so window.db is established
   if (window.initFirebase) window.initFirebase();
+
+  // 2. Fetch cloud rubrics AFTER Firebase is connected
+  if (window.initRubrics) window.initRubrics();
 
   const csvInput = document.getElementById("csvFileInput");
   if (csvInput && window.handleCsvUpload)

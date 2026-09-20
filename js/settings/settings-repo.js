@@ -182,6 +182,36 @@ window.saveStudentForm = async function (e) {
     window.hideLoader();
   }
 };
+window.addNewSection = async function () {
+  // Matches the ID in settings.html
+  const inputEl = document.getElementById("newSectionInput");
+  if (!inputEl) return alert("Could not find the section input field.");
+
+  const sectionName = inputEl.value.trim();
+  if (!sectionName) return alert("Please enter a section name.");
+  if (!window.db) return alert("Firebase disconnected.");
+
+  window.showLoader("Adding Section to Cloud...");
+
+  try {
+    const { addDoc, collection } =
+      await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+
+    // Save to the Firestore 'sections' collection
+    await addDoc(collection(window.db, "sections"), { name: sectionName });
+
+    inputEl.value = ""; // Clear the input box
+
+    // Refresh the local arrays, dropdowns, and tables
+    if (window.loadSectionsAndStudents) {
+      await window.loadSectionsAndStudents();
+    }
+  } catch (err) {
+    alert("Failed to add section: " + err.message);
+  } finally {
+    window.hideLoader();
+  }
+};
 
 window.deleteSectionDoc = async function (id, name) {
   if (confirm(`Delete section '${name}'?`)) {
