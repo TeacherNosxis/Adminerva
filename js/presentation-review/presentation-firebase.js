@@ -191,6 +191,9 @@ window.savePresentationToCloud = async function () {
   const originalText = saveBtn.innerHTML;
   saveBtn.innerHTML = "⏳ Saving...";
   saveBtn.disabled = true;
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader("Saving presentation to cloud...");
+  }
 
   try {
     const presentationId = `${planId}_session${sessionIdx}`;
@@ -215,6 +218,9 @@ window.savePresentationToCloud = async function () {
   } finally {
     saveBtn.innerHTML = originalText;
     saveBtn.disabled = false;
+    if (typeof window.hideSubtleLoader === "function") {
+      window.hideSubtleLoader();
+    }
   }
 };
 
@@ -234,6 +240,9 @@ window.deletePresentationFromCloud = async function () {
   const originalText = btnDelete.innerHTML;
   btnDelete.innerHTML = "⏳ Archiving...";
   btnDelete.disabled = true;
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader("Moving presentation to archive...");
+  }
 
   try {
     const presentationId = `${planId}_session${sessionIdx}`;
@@ -263,6 +272,9 @@ window.deletePresentationFromCloud = async function () {
   } finally {
     btnDelete.innerHTML = originalText;
     btnDelete.disabled = false;
+    if (typeof window.hideSubtleLoader === "function") {
+      window.hideSubtleLoader();
+    }
   }
 };
 

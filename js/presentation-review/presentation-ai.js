@@ -18,11 +18,8 @@ window.generateAI_SlideDeck = async function () {
     genBtn.disabled = true;
   }
 
-  if (typeof window.showLoader === "function") {
-    window.showLoader(
-      "Architecting Presentation...",
-      "Generating 5-15 dynamic slides, incorporating examples and multi-column layouts.",
-    );
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader("Architecting Presentation Slides...");
   }
 
   try {
@@ -96,6 +93,8 @@ window.generateAI_SlideDeck = async function () {
       genBtn.innerHTML = "✨ Generate AI Slides";
       genBtn.disabled = false;
     }
-    if (typeof window.hideLoader === "function") window.hideLoader();
+    if (typeof window.hideSubtleLoader === "function") {
+      window.hideSubtleLoader();
+    }
   }
 };

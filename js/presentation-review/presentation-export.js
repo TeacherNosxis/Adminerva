@@ -12,6 +12,10 @@ window.exportToPPTX = async function () {
   exportBtn.innerText = "⏳ Compiling PPTX...";
   exportBtn.disabled = true;
 
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader("Compiling presentation file...");
+  }
+
   try {
     let pptx = new PptxGenJS();
     pptx.layout = "LAYOUT_16x9";
@@ -120,9 +124,9 @@ window.exportToPPTX = async function () {
   } catch (error) {
     console.error("PPTX Export Error:", error);
     alert("Failed to export PPTX: " + error.message);
-  } finally {
-    exportBtn.innerText = originalText;
-    exportBtn.disabled = false;
+    if (typeof window.hideSubtleLoader === "function") {
+      window.hideSubtleLoader();
+    }
   }
 };
 
