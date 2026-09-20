@@ -1,135 +1,72 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  GithubAuthProvider,
   signInWithEmailAndPassword,
+  onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-const adminEmail = "YOUR_TEACHER_EMAIL@example.com".toLowerCase(); // UPDATE THIS
+// 🚨 1. HARDCODE YOUR FIREBASE CONFIG HERE
+// This is perfectly safe to leave in client-side code.
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef",
+};
 
-// UI Elements
-const loginBlock = document.getElementById("loginBlock");
-const setupBlock = document.getElementById("setupBlock");
-const subtitleText = document.getElementById("subtitleText");
-const errorDiv = document.getElementById("authError");
+// 🚨 2. HARDCODE YOUR SUPER ADMIN EMAIL
+const SUPER_ADMIN_EMAIL = "YOUR_REAL_TEACHER_EMAIL@example.com".toLowerCase();
 
-function showError(error) {
-  let friendlyMessage = "An unexpected error occurred. Please try again.";
+// Initialize Firebase immediately for everyone
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-  // Check if Firebase returned a specific error code
-  if (error && error.code) {
-    switch (error.code) {
-      case "auth/account-exists-with-different-credential":
-        friendlyMessage =
-          "An account already exists with this email address, but it is linked to a different provider. Please use the button you originally signed up with (e.g., GitHub instead of Google).";
-        break;
-      case "auth/popup-closed-by-user":
-        friendlyMessage =
-          "The login window was closed before finishing. Please try again.";
-        break;
-      case "auth/cancelled-popup-request":
-        friendlyMessage =
-          "Multiple login attempts detected. Please wait for the current one to finish.";
-        break;
-      case "auth/network-request-failed":
-        friendlyMessage =
-          "Network connection failed. Please check your internet and try again.";
-        break;
-      case "auth/invalid-credential":
-        friendlyMessage = "Invalid login credentials provided.";
-        break;
-      default:
-        // Fallback for any other unexpected Firebase errors
-        friendlyMessage = `Authentication failed: ${error.message}`;
-    }
-  } else if (typeof error === "string") {
-    friendlyMessage = error;
+// Save the config to localStorage silently in the background
+// This ensures that all your other files that rely on pulling the config from localStorage still work perfectly without needing any rewrites!
+localStorage.setItem(
+  "Adminerva_firebase_config",
+  JSON.stringify(firebaseConfig),
+);
+
+// Redirect automatically if already logged in
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    const role = localStorage.getItem("Adminerva_Role") || "student";
+    if (role === "student") window.location.href = "student-dashboard.html";
+    else window.location.href = "reporeviewDashboard.html";
   }
+});
 
-  errorDiv.textContent = friendlyMessage;
-  errorDiv.classList.remove("hidden");
-}
+// Handle Login Form Submission
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const email = document.getElementById("emailInput").value.trim();
+  const pass = document.getElementById("passwordInput").value.trim();
+  const errBox = document.getElementById("loginError");
+  const btn = document.getElementById("loginBtn");
 
-function routeUser(user) {
-  const userEmail = user.email ? user.email.toLowerCase() : "";
-  if (userEmail === adminEmail) {
-    window.location.href = "reporeviewDashboard.html";
-  } else {
-    window.location.href = "student-dashboard.html";
-  }
-}
+  if (!email || !pass) return;
 
-// 1. The Lockout Preventer: Check for credentials before doing anything else
-const configStr = localStorage.getItem("Adminerva_firebase_config");
+  btn.textContent = "Authenticating...";
+  btn.disabled = true;
+  errBox.classList.add("hidden");
 
-if (!configStr) {
-  // Keys are missing. Switch to Setup Mode.
-  loginBlock.classList.add("hidden");
-  setupBlock.classList.remove("hidden");
-  subtitleText.textContent = "First-time device setup required.";
-
-  document.getElementById("saveConfigBtn").addEventListener("click", () => {
-    const inputStr = document
-      .getElementById("firebaseConfigInput")
-      .value.trim();
-    try {
-      // Validate it's actually JSON before saving
-      JSON.parse(inputStr);
-      localStorage.setItem("Adminerva_firebase_config", inputStr);
-      window.location.reload(); // Reload to boot up Firebase normally
-    } catch (err) {
-      showError(error);
-    }
-  });
-} else {
-  // Keys exist! Boot up Firebase and attach the login listeners.
-  try {
-    const firebaseConfig = JSON.parse(configStr);
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    const googleProvider = new GoogleAuthProvider();
-    const githubProvider = new GithubAuthProvider();
-
-    document
-      .getElementById("githubBtn")
-      ?.addEventListener("click", async () => {
-        try {
-          const result = await signInWithPopup(auth, githubProvider);
-          routeUser(result.user);
-        } catch (error) {
-          showError(error);
-        }
-      });
-
-    document
-      .getElementById("googleBtn")
-      ?.addEventListener("click", async () => {
-        try {
-          const result = await signInWithPopup(auth, googleProvider);
-          routeUser(result.user);
-        } catch (error) {
-          showError(error);
-        }
-      });
-
-    document.getElementById("anonBtn")?.addEventListener("click", async () => {
-      try {
-        const result = await signInWithEmailAndPassword(
-          auth,
-          "test1@g.com",
-          "admin123",
-        );
-        routeUser(result.user);
-      } catch (error) {
-        showError(error);
+  signInWithEmailAndPassword(auth, email, pass)
+    .then((userCredential) => {
+      // Assign RBAC Role securely upon login
+      if (email.toLowerCase() === SUPER_ADMIN_EMAIL) {
+        localStorage.setItem("Adminerva_Role", "superadmin");
+        window.location.href = "reporeviewDashboard.html";
+      } else {
+        localStorage.setItem("Adminerva_Role", "student");
+        window.location.href = "student-dashboard.html";
       }
+    })
+    .catch((error) => {
+      errBox.textContent = error.message.replace("Firebase:", "").trim();
+      errBox.classList.remove("hidden");
+      btn.textContent = "Secure Sign In";
+      btn.disabled = false;
     });
-  } catch (e) {
-    // If the saved JSON is corrupted, clear it and force a setup next reload
-    localStorage.removeItem("Adminerva_firebase_config");
-    showError(error);
-  }
-}
+});

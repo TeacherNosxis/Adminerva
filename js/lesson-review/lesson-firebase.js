@@ -40,7 +40,6 @@ window.loadLibraryFolders = async function () {
     const libraryData = [];
     snap.forEach((d) => libraryData.push({ id: d.id, ...d.data() }));
 
-    // 🚀 THE FIX: Shifted to Adminerva_ namespace
     localStorage.setItem("Adminerva_library", JSON.stringify(libraryData));
 
     container.innerHTML = "";
@@ -100,7 +99,6 @@ window.fetchPreviousPlan = async function (
 };
 
 window.saveLessonPlan = async function () {
-  // Optional Safety: If you have a function that scrapes your HTML textareas to update window.currentPlan, call it here!
   if (typeof window.syncOutputToData === "function") {
     window.syncOutputToData();
   }
@@ -118,7 +116,6 @@ window.saveLessonPlan = async function () {
     return false;
   }
 
-  // 🚀 THE FIX: Shifted to Adminerva_ namespace
   const subject = localStorage.getItem("Adminerva_defaultSubject") || "Subject";
   const teacher =
     localStorage.getItem("Adminerva_defaultTeacher") || "Unassigned";
@@ -141,10 +138,9 @@ window.saveLessonPlan = async function () {
     "",
   );
 
-  window.showLoader(
-    "Saving Lesson Plan...",
-    "Syncing securely to Firebase storage.",
-  );
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader("Syncing lesson plan securely to Firebase...");
+  }
 
   try {
     const planData = {
@@ -158,7 +154,6 @@ window.saveLessonPlan = async function () {
       custom_instructions: document
         .getElementById("lpCustomInstructions")
         .value.trim(),
-      // 🚀 THE FIX: Shifted to Adminerva_ namespace
       schedule: localStorage.getItem("Adminerva_schedule") || "",
       reference_folders: Array.from(
         document.querySelectorAll(".folder-checkbox:checked"),
@@ -176,7 +171,8 @@ window.saveLessonPlan = async function () {
     alert("Failed to save to database: " + e.message);
     return false;
   } finally {
-    window.hideLoader();
+    if (typeof window.hideSubtleLoader === "function")
+      window.hideSubtleLoader();
   }
 };
 
@@ -367,7 +363,10 @@ window.deleteLessonPlan = async function (docId) {
   )
     return;
 
-  window.showLoader("Archiving...", "Moving lesson plan to the Recycle Bin.");
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader("Archiving lesson plan to the Recycle Bin...");
+  }
+
   try {
     const purgeDate = new Date(
       Date.now() + 14 * 24 * 60 * 60 * 1000,
@@ -387,10 +386,14 @@ window.deleteLessonPlan = async function (docId) {
   } catch (e) {
     alert("Failed to archive plan: " + e.message);
   } finally {
-    window.hideLoader();
+    if (typeof window.hideSubtleLoader === "function")
+      window.hideSubtleLoader();
   }
 };
 
+// ==========================================
+// ARCHIVE MANAGER
+// ==========================================
 window.openArchiveManager = async function () {
   if (!window.db) return alert("Firebase is not connected.");
 
@@ -532,6 +535,7 @@ window.hardDeleteDocument = async function (collectionName, docId) {
   }
 };
 
+// Auto-purge routine
 setTimeout(async () => {
   if (!window.db) return;
   try {
