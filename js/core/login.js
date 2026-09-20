@@ -15,8 +15,40 @@ const setupBlock = document.getElementById("setupBlock");
 const subtitleText = document.getElementById("subtitleText");
 const errorDiv = document.getElementById("authError");
 
-function showError(msg) {
-  errorDiv.textContent = msg;
+function showError(error) {
+  let friendlyMessage = "An unexpected error occurred. Please try again.";
+
+  // Check if Firebase returned a specific error code
+  if (error && error.code) {
+    switch (error.code) {
+      case "auth/account-exists-with-different-credential":
+        friendlyMessage =
+          "An account already exists with this email address, but it is linked to a different provider. Please use the button you originally signed up with (e.g., GitHub instead of Google).";
+        break;
+      case "auth/popup-closed-by-user":
+        friendlyMessage =
+          "The login window was closed before finishing. Please try again.";
+        break;
+      case "auth/cancelled-popup-request":
+        friendlyMessage =
+          "Multiple login attempts detected. Please wait for the current one to finish.";
+        break;
+      case "auth/network-request-failed":
+        friendlyMessage =
+          "Network connection failed. Please check your internet and try again.";
+        break;
+      case "auth/invalid-credential":
+        friendlyMessage = "Invalid login credentials provided.";
+        break;
+      default:
+        // Fallback for any other unexpected Firebase errors
+        friendlyMessage = `Authentication failed: ${error.message}`;
+    }
+  } else if (typeof error === "string") {
+    friendlyMessage = error;
+  }
+
+  errorDiv.textContent = friendlyMessage;
   errorDiv.classList.remove("hidden");
 }
 
@@ -48,9 +80,7 @@ if (!configStr) {
       localStorage.setItem("Adminerva_firebase_config", inputStr);
       window.location.reload(); // Reload to boot up Firebase normally
     } catch (err) {
-      showError(
-        "Invalid JSON format. Please copy the exact object from Firebase.",
-      );
+      showError(error);
     }
   });
 } else {
@@ -70,7 +100,7 @@ if (!configStr) {
           const result = await signInWithPopup(auth, githubProvider);
           routeUser(result.user);
         } catch (error) {
-          showError(error.message);
+          showError(error);
         }
       });
 
@@ -81,7 +111,7 @@ if (!configStr) {
           const result = await signInWithPopup(auth, googleProvider);
           routeUser(result.user);
         } catch (error) {
-          showError(error.message);
+          showError(error);
         }
       });
 
@@ -94,14 +124,12 @@ if (!configStr) {
         );
         routeUser(result.user);
       } catch (error) {
-        showError(error.message);
+        showError(error);
       }
     });
   } catch (e) {
     // If the saved JSON is corrupted, clear it and force a setup next reload
     localStorage.removeItem("Adminerva_firebase_config");
-    showError(
-      "Saved Firebase config was corrupted. Please refresh the page to set it up again.",
-    );
+    showError(error);
   }
 }
