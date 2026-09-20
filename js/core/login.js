@@ -6,10 +6,9 @@ import {
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-// 🚨 HARDCODE YOUR SUPER ADMIN EMAIL
-const SUPER_ADMIN_EMAIL = "YOUR_REAL_TEACHER_EMAIL@example.com".toLowerCase();
+const SUPER_ADMIN_EMAIL = "testadmin@example.com".toLowerCase();
+const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
 
-// Redirect automatically if already logged in
 onAuthStateChanged(auth, (user) => {
   if (user) {
     const role = localStorage.getItem("Adminerva_Role") || "student";
@@ -18,25 +17,24 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// Universal handler for both Google and GitHub OAuth
 const handleOAuthLogin = (provider) => {
   const errBox = document.getElementById("loginError");
   errBox.classList.add("hidden");
 
   signInWithPopup(auth, provider)
     .then((result) => {
-      const email = result.user.email;
+      const email = result.user.email.toLowerCase();
 
-      // GitHub sometimes hides emails depending on the user's privacy settings
-      if (!email) {
+      if (!email)
         throw new Error(
-          "No email address provided by the authentication service. Please check your GitHub privacy settings.",
+          "No email address provided by the authentication service.",
         );
-      }
 
-      // Assign RBAC Role securely upon login
-      if (email.toLowerCase() === SUPER_ADMIN_EMAIL) {
+      if (email === SUPER_ADMIN_EMAIL) {
         localStorage.setItem("Adminerva_Role", "superadmin");
+        window.location.href = "reporeviewDashboard.html";
+      } else if (email === TEACHER_EMAIL) {
+        localStorage.setItem("Adminerva_Role", "teacher");
         window.location.href = "reporeviewDashboard.html";
       } else {
         localStorage.setItem("Adminerva_Role", "student");
@@ -49,10 +47,9 @@ const handleOAuthLogin = (provider) => {
     });
 };
 
-document.getElementById("googleLoginBtn").addEventListener("click", () => {
-  handleOAuthLogin(new GoogleAuthProvider());
-});
-
-document.getElementById("githubLoginBtn").addEventListener("click", () => {
-  handleOAuthLogin(new GithubAuthProvider());
-});
+document
+  .getElementById("googleLoginBtn")
+  .addEventListener("click", () => handleOAuthLogin(new GoogleAuthProvider()));
+document
+  .getElementById("githubLoginBtn")
+  .addEventListener("click", () => handleOAuthLogin(new GithubAuthProvider()));

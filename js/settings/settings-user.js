@@ -4,16 +4,19 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-// Security Check: Ensure only the teacher can view this page
+const SUPER_ADMIN_EMAIL = "testadmin@example.com".toLowerCase();
+const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
+
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     window.location.href = "login.html";
     return;
   }
 
-  const adminEmail = "testadmin@example.com".toLowerCase();
+  const email = user.email.toLowerCase();
 
-  if (user.email.toLowerCase() !== adminEmail) {
+  // Allow both Super Admin and Teacher to manage the roster
+  if (email !== SUPER_ADMIN_EMAIL && email !== TEACHER_EMAIL) {
     window.location.href = "student-dashboard.html";
   } else {
     const pageBody = document.getElementById("pageBody");

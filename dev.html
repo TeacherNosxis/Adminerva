@@ -11,7 +11,6 @@
     <div
       class="bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full text-center"
     >
-      <!-- Restored Custom Logo Asset -->
       <img
         src="assets/New Adminerva logo.png"
         alt="Adminerva Logo"
@@ -22,30 +21,74 @@
         DEV GATEWAY
       </h1>
       <p class="text-xs text-slate-500 mb-8 uppercase tracking-wider">
-        Bypass OAuth & UI Testing
+        Role Simulation & Testing
       </p>
 
-      <div class="space-y-4">
-        <!-- Student Gateway (Uses test1@g.com) -->
+      <!-- TEST LOGIN STATE -->
+      <div id="loginState" class="space-y-4">
         <button
-          id="studentBtn"
+          onclick="handleLogin('test1@g.com', 'admin123')"
           class="w-full bg-blue-600/20 border border-blue-500/50 text-blue-400 font-bold py-3 px-4 rounded hover:bg-blue-600/40 hover:text-white transition flex justify-between items-center group"
         >
-          <span>Boot Student POV</span>
+          <span>👀 Boot Student POV</span>
           <span class="text-xs font-normal opacity-50 group-hover:opacity-100"
             >test1@g.com</span
           >
         </button>
 
-        <!-- Teacher Gateway (Uses testadmin@example.com) -->
         <button
-          id="teacherBtn"
+          onclick="handleLogin('josephsixson@mcstayuman.edu.ph', 'teacher123')"
           class="w-full bg-amber-600/20 border border-amber-500/50 text-amber-400 font-bold py-3 px-4 rounded hover:bg-amber-600/40 hover:text-white transition flex justify-between items-center group"
         >
-          <span>Boot Teacher POV</span>
+          <span>🎓 Boot Teacher POV</span>
+          <span class="text-xs font-normal opacity-50 group-hover:opacity-100"
+            >josephsixson@...</span
+          >
+        </button>
+
+        <button
+          onclick="handleLogin('testadmin@example.com', 'password123')"
+          class="w-full bg-purple-600/20 border border-purple-500/50 text-purple-400 font-bold py-3 px-4 rounded hover:bg-purple-600/40 hover:text-white transition flex justify-between items-center group"
+        >
+          <span>🛡️ Boot Super Admin</span>
           <span class="text-xs font-normal opacity-50 group-hover:opacity-100"
             >testadmin@...</span
           >
+        </button>
+      </div>
+
+      <!-- SHAPE-SHIFTER STATE (If already logged in) -->
+      <div id="shifterState" class="hidden space-y-4">
+        <p class="text-xs text-emerald-400 mb-4 border-b border-slate-700 pb-2">
+          Active Session Detected. Select a role to simulate:
+        </p>
+
+        <button
+          onclick="simulateRole('student', 'student-dashboard.html')"
+          class="w-full bg-slate-700 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded transition shadow"
+        >
+          👀 Simulate Student View
+        </button>
+
+        <button
+          onclick="simulateRole('teacher', 'reporeviewDashboard.html')"
+          class="w-full bg-slate-700 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded transition shadow"
+        >
+          🎓 Simulate Teacher View
+        </button>
+
+        <button
+          onclick="simulateRole(null, 'reporeviewDashboard.html')"
+          class="w-full mt-4 bg-emerald-600/20 border border-emerald-500/50 text-emerald-400 hover:bg-emerald-600 hover:text-white font-bold py-3 px-4 rounded transition shadow"
+        >
+          ♻️ Restore Real Role
+        </button>
+
+        <button
+          id="devSignOut"
+          class="w-full mt-2 text-xs text-red-400 hover:text-red-300 py-2"
+        >
+          Sign Out Entirely
         </button>
       </div>
 
@@ -60,76 +103,53 @@
       import {
         signInWithEmailAndPassword,
         onAuthStateChanged,
+        signOut,
       } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
       const statusBox = document.getElementById("statusBox");
-      let currentUser = null;
+      const loginState = document.getElementById("loginState");
+      const shifterState = document.getElementById("shifterState");
 
-      // Monitor active sessions to enable immediate "Shape-Shifting"
       onAuthStateChanged(auth, (user) => {
-        currentUser = user;
         if (user) {
-          statusBox.innerHTML = `<span class="text-emerald-500 text-xs">Active Session: ${user.email}</span>`;
+          loginState.classList.add("hidden");
+          shifterState.classList.remove("hidden");
+          statusBox.innerHTML = `<span class="text-emerald-500 text-xs">Logged in as: ${user.email}</span>`;
+        } else {
+          loginState.classList.remove("hidden");
+          shifterState.classList.add("hidden");
         }
       });
 
-      const executeRouting = (role, mockRole, redirectUrl) => {
-        localStorage.setItem("Adminerva_Role", role);
-        if (mockRole) {
-          localStorage.setItem("Adminerva_Mock_Role", mockRole);
-        } else {
-          localStorage.removeItem("Adminerva_Mock_Role");
-        }
-        statusBox.innerHTML =
-          '<span class="text-emerald-500">Access Granted. Routing...</span>';
-        setTimeout(() => (window.location.href = redirectUrl), 600);
-      };
-
-      const handleLogin = (email, password, role, mockRole, redirectUrl) => {
-        // If already logged in as the Super Admin, bypass authentication and just shift roles
-        if (
-          currentUser &&
-          currentUser.email.toLowerCase() === "testadmin@example.com"
-        ) {
-          executeRouting("superadmin", mockRole, redirectUrl);
-          return;
-        }
-
+      window.handleLogin = (email, password) => {
         statusBox.innerHTML =
           '<span class="text-slate-400 animate-pulse">Authenticating...</span>';
-        document.getElementById("studentBtn").disabled = true;
-        document.getElementById("teacherBtn").disabled = true;
-
         signInWithEmailAndPassword(auth, email, password)
           .then(() => {
-            executeRouting(role, mockRole, redirectUrl);
+            statusBox.innerHTML =
+              '<span class="text-emerald-500">Access Granted. Routing...</span>';
+            setTimeout(
+              () => (window.location.href = "reporeviewDashboard.html"),
+              600,
+            );
           })
           .catch((error) => {
-            statusBox.innerHTML = `<span class="text-red-500 text-xs">${error.message.replace("Firebase:", "").trim()}</span>`;
-            document.getElementById("studentBtn").disabled = false;
-            document.getElementById("teacherBtn").disabled = false;
+            statusBox.innerHTML = `<span class="text-red-500 text-[10px] leading-tight">${error.message.replace("Firebase:", "").trim()}</span>`;
           });
       };
 
-      // Uses your exact Dev credentials
-      document.getElementById("studentBtn").addEventListener("click", () => {
-        handleLogin(
-          "test1@g.com",
-          "admin123",
-          "student",
-          "student",
-          "student-dashboard.html",
-        );
-      });
+      window.simulateRole = (mockRole, redirectUrl) => {
+        if (mockRole) localStorage.setItem("Adminerva_Mock_Role", mockRole);
+        else localStorage.removeItem("Adminerva_Mock_Role");
+        window.location.href = redirectUrl;
+      };
 
-      document.getElementById("teacherBtn").addEventListener("click", () => {
-        handleLogin(
-          "testadmin@example.com",
-          "password123",
-          "superadmin",
-          null,
-          "reporeviewDashboard.html",
-        );
+      document.getElementById("devSignOut").addEventListener("click", () => {
+        signOut(auth).then(() => {
+          localStorage.removeItem("Adminerva_Role");
+          localStorage.removeItem("Adminerva_Mock_Role");
+          window.location.reload();
+        });
       });
     </script>
   </body>

@@ -1,4 +1,3 @@
-// js/core/auth-guard.js
 import { auth } from "./firebase-core.js";
 import {
   onAuthStateChanged,
@@ -9,8 +8,11 @@ const currentPath = window.location.pathname.toLowerCase();
 const isLoginPage =
   currentPath.includes("login.html") || currentPath.includes("dev.html");
 
-// 🚨 THE VAULT KEY: Hardcode your real Super Admin email here
-const SUPER_ADMIN_EMAIL = "YOUR_REAL_TEACHER_EMAIL@example.com".toLowerCase();
+// 🚨 TIER 1: The Master Key (Can access system API settings)
+const SUPER_ADMIN_EMAIL = "testadmin@example.com".toLowerCase();
+
+// 🚨 TIER 2: The Instructor (Can access grading and rosters)
+const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
@@ -20,22 +22,40 @@ onAuthStateChanged(auth, (user) => {
 
   const userEmail = user.email.toLowerCase();
 
-  let role = localStorage.getItem("Adminerva_Role") || "student";
-  if (userEmail === SUPER_ADMIN_EMAIL) {
-    role = "superadmin";
-    localStorage.setItem("Adminerva_Role", "superadmin");
+  // Determine their actual hardware role
+  let actualRole = "student";
+  if (userEmail === SUPER_ADMIN_EMAIL) actualRole = "superadmin";
+  else if (userEmail === TEACHER_EMAIL) actualRole = "teacher";
+
+  let activeRole = localStorage.getItem("Adminerva_Role") || actualRole;
+
+  // --- THE SHAPE-SHIFTER FIX ---
+  // Allow both Super Admins and Teachers to simulate lower roles
+  if (actualRole === "superadmin" || actualRole === "teacher") {
+    const mockRole = localStorage.getItem("Adminerva_Mock_Role");
+    if (mockRole) {
+      activeRole = mockRole;
+    } else {
+      activeRole = actualRole;
+    }
+    localStorage.setItem("Adminerva_Role", activeRole);
   }
 
   // --- ROLE-BASED ROUTING ENFORCEMENT ---
-  if (role === "student" && !currentPath.includes("student-") && !isLoginPage) {
+  if (
+    activeRole === "student" &&
+    !currentPath.includes("student-") &&
+    !isLoginPage
+  ) {
     window.location.href = "student-dashboard.html";
   } else if (
-    role === "teacher" &&
-    (currentPath.includes("student-") ||
-      currentPath.includes("users.html") ||
-      currentPath.includes("settings.html"))
+    activeRole === "teacher" &&
+    currentPath.includes("settings.html")
   ) {
-    alert("Unauthorized: Administrator privileges required.");
+    // Block teachers from the system API keys page, but let them into the roster directory
+    alert(
+      "Unauthorized: Super Administrator privileges required for Global Settings.",
+    );
     window.location.href = "reporeviewDashboard.html";
   }
 
@@ -43,8 +63,14 @@ onAuthStateChanged(auth, (user) => {
   const pageBody = document.getElementById("pageBody");
   if (pageBody) pageBody.classList.remove("hidden");
 
+  // Display email and indicate if a simulation is active
   const emailDisplay = document.getElementById("userEmailDisplay");
-  if (emailDisplay) emailDisplay.textContent = userEmail;
+  if (emailDisplay) {
+    const mockNotice = localStorage.getItem("Adminerva_Mock_Role")
+      ? ` (Simulating: ${activeRole})`
+      : "";
+    emailDisplay.textContent = userEmail + mockNotice;
+  }
 });
 
 // Centralized Sign Out
@@ -52,6 +78,7 @@ document.addEventListener("click", (e) => {
   if (e.target && e.target.id === "signOutBtn") {
     signOut(auth).then(() => {
       localStorage.removeItem("Adminerva_Role");
+      localStorage.removeItem("Adminerva_Mock_Role");
       window.location.href = "login.html";
     });
   }
