@@ -89,8 +89,8 @@ if (!configStr) {
       try {
         const result = await signInWithEmailAndPassword(
           auth,
-          "teststudent@example.com",
-          "password123",
+          "test1@g.com",
+          "admin123",
         );
         routeUser(result.user);
       } catch (error) {
