@@ -40,6 +40,8 @@ window.loadSectionsAndStudents = async function () {
 
 window.populateSectionDropdowns = function () {
   const filterSelect = document.getElementById("sectionFilterSelect");
+  const modalSelect = document.getElementById("modalStudentSection");
+
   if (filterSelect) {
     filterSelect.innerHTML = `<option value="ALL">All Sections</option>`;
     window.allSections.forEach((sec) => {
@@ -49,6 +51,22 @@ window.populateSectionDropdowns = function () {
       );
     });
   }
+
+  // NEW: Populate the Add/Edit Student Modal dropdown
+  if (modalSelect) {
+    modalSelect.innerHTML = "";
+    if (window.allSections.length === 0) {
+      modalSelect.innerHTML = `<option value="" disabled>No sections available. Add one first.</option>`;
+    } else {
+      window.allSections.forEach((sec) => {
+        modalSelect.insertAdjacentHTML(
+          "beforeend",
+          `<option value="${sec.name}">${sec.name}</option>`,
+        );
+      });
+    }
+  }
+
   if (window.renderSectionsManagerTable) window.renderSectionsManagerTable();
 };
 
@@ -109,9 +127,18 @@ window.openAddStudentModal = function () {
   document.getElementById("modalStudentEmail").value = "";
   document.getElementById("modalStudentGithub").value = "";
   document.getElementById("modalStudentRepo").value = "";
+
+  // NEW: Reset the section selection to the first available option
+  if (
+    document.getElementById("modalStudentSection") &&
+    window.allSections.length > 0
+  ) {
+    document.getElementById("modalStudentSection").value =
+      window.allSections[0].name;
+  }
+
   document.getElementById("studentModal").classList.replace("hidden", "flex");
 };
-
 window.editStudent = function (id) {
   const s = window.allStudents.find((x) => x.id === id);
   if (!s) return;
@@ -120,6 +147,12 @@ window.editStudent = function (id) {
   document.getElementById("modalStudentEmail").value = s.email;
   document.getElementById("modalStudentGithub").value = s.githubUsername;
   document.getElementById("modalStudentRepo").value = s.repoUrl;
+
+  // NEW: Pull the student's assigned section into the dropdown
+  if (document.getElementById("modalStudentSection")) {
+    document.getElementById("modalStudentSection").value = s.section || "";
+  }
+
   document.getElementById("studentModal").classList.replace("hidden", "flex");
 };
 
