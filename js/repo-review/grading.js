@@ -1,6 +1,5 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { db } from "../core/firebase-core.js";
 import {
-  getFirestore,
   collection,
   getDocs,
   doc,
@@ -14,7 +13,6 @@ import {
 // ==========================================
 // GLOBAL STATE
 // ==========================================
-let db = null;
 let activeTemplate = null;
 let currentStudents = [];
 let commitDataMap = {}; // Maps studentId -> github fetch results
@@ -28,7 +26,6 @@ let activeEndDateStr = "";
 // ==========================================
 window.showLoader = function (msg, subMsg = "") {
   if (typeof window.showSubtleLoader === "function") {
-    // Combine the main message and sub-message cleanly for the single-line subtle loader
     const combinedMsg = subMsg ? `${msg} - ${subMsg}` : msg;
     window.showSubtleLoader(combinedMsg);
   }
@@ -47,6 +44,7 @@ function getQuarter(monthStr) {
   if (m >= 1 && m <= 3) return "Q3";
   return "Q4";
 }
+
 function buildFeedbackHtml(gradeData, maxScore) {
   let html = `<div class="space-y-1">`;
   html += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} / ${maxScore}</div>`;
@@ -60,6 +58,40 @@ function buildFeedbackHtml(gradeData, maxScore) {
   html += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Optional Suggestion:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${(gradeData.optional_suggestion || "None").replace(/\n/g, "<br>")}</span></div>`;
   html += `</div>`;
   return html;
+}
+
+function initFirebase() {
+  if (!db) {
+    document.getElementById("gradingTableBody").innerHTML =
+      `<tr><td colspan="6" class="py-8 text-center text-red-500 font-bold">Firebase not configured. Please check core configuration.</td></tr>`;
+    return;
+  }
+  loadSections();
+}
+
+async function initRubric() {
+  const activeId = localStorage.getItem("Adminerva_active_template_id");
+  const rubricLabel = document.getElementById("activeRubricLabel");
+
+  const setNoRubricWarning = () => {
+    rubricLabel.textContent = "WARNING: No Rubric Found!";
+    rubricLabel.classList.replace("text-purple-600", "text-red-600");
+  };
+
+  if (!activeId || !db) return setNoRubricWarning();
+
+  try {
+    const docSnap = await getDoc(doc(db, "templates", activeId));
+    if (docSnap.exists()) {
+      activeTemplate = { id: docSnap.id, ...docSnap.data() };
+      rubricLabel.textContent = activeTemplate.name;
+    } else {
+      setNoRubricWarning();
+    }
+  } catch (e) {
+    console.error("Failed to fetch active rubric:", e);
+    setNoRubricWarning();
+  }
 }
 
 async function updateQuotaDisplay() {

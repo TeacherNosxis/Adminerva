@@ -1,13 +1,11 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { db } from "../core/firebase-core.js";
 import {
-  getFirestore,
   collection,
   getDocs,
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-let db = null;
 let currentStudents = [];
 let gradeMatrix = {}; // Maps studentId -> { 1: score, 2: score, 3: score, 4: score, avg: value }
 
@@ -28,13 +26,11 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initFirebase() {
-  const configStr = localStorage.getItem("Adminerva_firebase_config");
-  if (!configStr) {
+  if (!db) {
     document.getElementById("gradebookTableBody").innerHTML =
-      `<tr><td colspan="6" class="py-8 text-center text-red-500 font-bold">Firebase not configured. Please visit the Admin Hub.</td></tr>`;
+      `<tr><td colspan="6" class="py-8 text-center text-red-500 font-bold">Firebase not configured. Please check core configuration.</td></tr>`;
     return;
   }
-  db = getFirestore(initializeApp(JSON.parse(configStr)));
   loadSections();
 }
 

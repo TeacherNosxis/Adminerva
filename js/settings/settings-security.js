@@ -1,7 +1,19 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { db } from "../core/firebase-core.js";
+import {
+  doc,
+  getDoc,
+  setDoc,
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-window.db = null;
+window.initFirebase = function () {
+  // Use centralized db directly
+  window.db = db;
+
+  // Trigger database pulls
+  if (window.loadSectionsAndStudents) window.loadSectionsAndStudents();
+  if (window.loadLessonReviewSettings) window.loadLessonReviewSettings();
+};
+window.db = db;
 
 const safeSet = (id, val) => {
   if (document.getElementById(id))
@@ -98,36 +110,12 @@ window.loadSecuritySettings = function () {
     "adminGeminiKey",
     localStorage.getItem("Adminerva_gemini_token") || "",
   );
-  // Restored stable fallback model
   safeSet(
     "adminAiModel",
     localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash",
   );
-
-  // Load the AI Processing Engine toggle
   safeSet(
     "globalAiEngine",
     localStorage.getItem("Adminerva_engine_mode") || "cloud",
   );
-};
-
-window.initFirebase = function () {
-  const configStr = localStorage.getItem("Adminerva_firebase_config");
-
-  if (!configStr) {
-    if (window.loadLessonReviewSettings) window.loadLessonReviewSettings();
-    return;
-  }
-
-  try {
-    const app = initializeApp(JSON.parse(configStr));
-    window.db = getFirestore(app);
-
-    // Trigger database pulls
-    if (window.loadSectionsAndStudents) window.loadSectionsAndStudents();
-    if (window.loadLessonReviewSettings) window.loadLessonReviewSettings();
-  } catch (e) {
-    console.error("Firebase Init Failed:", e);
-    if (window.loadLessonReviewSettings) window.loadLessonReviewSettings();
-  }
 };

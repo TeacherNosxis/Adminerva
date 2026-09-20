@@ -1,6 +1,5 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { db } from "../core/firebase-core.js";
 import {
-  getFirestore,
   collection,
   getDocs,
   doc,
@@ -13,12 +12,30 @@ window.availablePlans = [];
 window.selectedPlanData = null;
 window.selectedSessionData = null;
 window.selectedSessionIndex = null;
-window.db = null;
+window.db = db;
 
 document.addEventListener("DOMContentLoaded", () => {
   injectPlanSelectorUI();
   initFirebase();
 });
+
+function initFirebase() {
+  const select = document.getElementById("presentationPlanSelect");
+
+  if (!db) {
+    if (select)
+      select.innerHTML = '<option value="">Firebase disconnected</option>';
+    return;
+  }
+
+  try {
+    window.db = db;
+    fetchSavedLessonPlans();
+  } catch (e) {
+    if (select)
+      select.innerHTML = '<option value="">Error loading Firebase</option>';
+  }
+}
 
 function injectPlanSelectorUI() {
   const listContainer = document.getElementById("slideBlockList");
@@ -45,29 +62,6 @@ function injectPlanSelectorUI() {
         </div>
     `;
   listContainer.insertAdjacentHTML("beforebegin", selectorHTML);
-}
-
-function initFirebase() {
-  const configStr =
-    localStorage.getItem("Adminerva_firebase_config") ||
-    localStorage.getItem("repoReview_firebase_config");
-  const select = document.getElementById("presentationPlanSelect");
-
-  if (!configStr) {
-    if (select)
-      select.innerHTML = '<option value="">Firebase disconnected</option>';
-    return;
-  }
-
-  try {
-    const firebaseConfig = JSON.parse(configStr);
-    const app = initializeApp(firebaseConfig);
-    window.db = getFirestore(app);
-    fetchSavedLessonPlans();
-  } catch (e) {
-    if (select)
-      select.innerHTML = '<option value="">Error loading Firebase</option>';
-  }
 }
 
 window.fetchSavedLessonPlans = async function () {

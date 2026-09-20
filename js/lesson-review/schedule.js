@@ -1,38 +1,18 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { db } from "../core/firebase-core.js";
 import {
-  getFirestore,
   doc,
   getDoc,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-let db = null;
 let mySections = [];
 let mySubjects = [];
 let myEvents = [];
 let isEditing = false;
 
-// --- CLOUD SYNC HELPERS (Subtle Loader Adapter) ---
-window.showLoader = function (msg = "Syncing schedule...") {
-  if (typeof window.showSubtleLoader === "function") {
-    window.showSubtleLoader(msg);
-  }
-};
-window.hideLoader = function () {
-  if (typeof window.hideSubtleLoader === "function") {
-    window.hideSubtleLoader();
-  }
-};
-
-document.addEventListener("DOMContentLoaded", async () => {
-  loadConfig();
-  initFirebase();
-});
-
 // --- FIREBASE INITIALIZATION & FETCH ---
 async function initFirebase() {
-  const configStr = localStorage.getItem("Adminerva_firebase_config");
-  if (!configStr) {
+  if (!db) {
     alert(
       "Firebase is not configured! Please configure it in Global Settings.",
     );
@@ -41,10 +21,6 @@ async function initFirebase() {
   }
 
   try {
-    const firebaseConfig = JSON.parse(configStr);
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-
     await fetchScheduleFromCloud();
   } catch (e) {
     console.error("Firebase Initialization Failed:", e);
@@ -72,7 +48,22 @@ async function fetchScheduleFromCloud() {
     renderTable();
   }
 }
+// --- CLOUD SYNC HELPERS (Subtle Loader Adapter) ---
+window.showLoader = function (msg = "Syncing schedule...") {
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader(msg);
+  }
+};
+window.hideLoader = function () {
+  if (typeof window.hideSubtleLoader === "function") {
+    window.hideSubtleLoader();
+  }
+};
 
+document.addEventListener("DOMContentLoaded", async () => {
+  loadConfig();
+  initFirebase();
+});
 // --- MODAL & CONFIG LOGIC ---
 window.openSettingsModal = function () {
   document.getElementById("configSections").value =
