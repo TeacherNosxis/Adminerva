@@ -1,37 +1,26 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+// 1. Import the centralized database!
+import { db } from "../core/firebase-core.js";
 import {
-  getFirestore,
   collection,
   getDocs,
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-let db = null;
 let velocityChartInstance = null;
 
 window.showLoader = function (msg = "Processing...") {
-  if (typeof window.showSubtleLoader === "function") {
+  if (typeof window.showSubtleLoader === "function")
     window.showSubtleLoader(msg);
-  }
 };
 window.hideLoader = function () {
-  if (typeof window.hideSubtleLoader === "function") {
-    window.hideSubtleLoader();
-  }
+  if (typeof window.hideSubtleLoader === "function") window.hideSubtleLoader();
 };
+
 document.addEventListener("DOMContentLoaded", () => {
-  initFirebase();
-});
-
-function initFirebase() {
-  const configStr = localStorage.getItem("Adminerva_firebase_config");
-  if (!configStr)
-    return alert("Firebase not configured. Please visit the Admin Hub.");
-
-  db = getFirestore(initializeApp(JSON.parse(configStr)));
+  // 2. Delete initFirebase() and go straight to loading data
   loadSections();
-}
+});
 
 async function loadSections() {
   try {

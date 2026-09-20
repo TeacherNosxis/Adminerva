@@ -1,23 +1,24 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+// 1. Import the centralized database and auth engine!
+import { db, auth } from "../core/firebase-core.js";
 import {
-  getAuth,
-  onAuthStateChanged,
-  signOut,
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import {
-  getFirestore,
   collection,
+  getDocs,
   query,
   where,
-  getDocs,
+  doc,
+  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-const configStr = localStorage.getItem("Adminerva_firebase_config");
-if (!configStr) window.location.href = "login.html";
-
-const app = initializeApp(JSON.parse(configStr));
-const auth = getAuth(app);
-const db = getFirestore(app);
+document.addEventListener("DOMContentLoaded", () => {
+  // 2. Wait for Firebase Auth to confirm who is logged in, then load their data
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // Update this function name to whatever your student data loading function is called
+      loadStudentData(user.email);
+    }
+  });
+});
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return (window.location.href = "login.html");

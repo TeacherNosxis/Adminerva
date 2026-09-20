@@ -11,9 +11,8 @@
     class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col hidden"
     id="pageBody"
   >
-    <!-- Replace the <nav> block with this: -->
-    <script src="js/core/adminerva-nav.js"></script>
-    <script src="js/core/adminerva-loader.js"></script>
+    <!-- Unified Navigation -->
+    <div id="adminerva-nav" data-module="student" data-page="dashboard"></div>
 
     <!-- Main Content -->
     <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
@@ -39,7 +38,6 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column: Analytics & Commits -->
         <div class="lg:col-span-2 space-y-6">
-          <!-- Chart Section -->
           <div
             class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
           >
@@ -53,7 +51,6 @@
             </div>
           </div>
 
-          <!-- Recent Commits Section -->
           <div
             class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
           >
@@ -81,15 +78,12 @@
 
         <!-- Right Column: Humanized Feedback -->
         <div class="space-y-6">
-          <!-- Project Snapshot -->
           <div
             class="bg-slate-800 p-6 rounded-xl shadow-md text-white border border-slate-700 relative overflow-hidden"
           >
-            <!-- Decorative accent -->
             <div
               class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"
             ></div>
-
             <h3
               class="text-lg font-bold mb-2 flex items-center gap-2 relative z-10"
             >
@@ -110,7 +104,6 @@
             </div>
           </div>
 
-          <!-- Weekly Grade Feedback -->
           <div
             class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
           >
@@ -124,12 +117,11 @@
             >
               Latest Instructor Evaluation
             </p>
-
             <div id="latestGradeContainer">
               <div
                 class="p-5 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center"
               >
-                <span class="text-2xl block mb-2 opacity-50">📭</span>
+                <span class="text-2xl block mb-2 opacity-50">📬</span>
                 <p class="text-sm text-slate-500 font-medium">
                   No evaluations have been published for this repository yet.
                 </p>
@@ -140,7 +132,12 @@
       </div>
     </main>
 
-    <script type="module" src="js/student/dashboard.js"></script>
+    <!-- Core Scripts -->
+    <script src="js/core/adminerva-nav.js"></script>
+    <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/core/auth-guard.js"></script>
+
+    <!-- Page Specific Logic -->
+    <script type="module" src="js/student/dashboard.js"></script>
   </body>
 </html>
