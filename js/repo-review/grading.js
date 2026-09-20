@@ -171,22 +171,17 @@ window.updateDateScope = function () {
     endDay = new Date(y, m + 1, 0).getDate();
   }
 
-  const sDate = new Date(y, m, startDay);
-  const eDate = new Date(y, m, endDay);
+  // Set explicit local times: start at 00:00:00, end at 23:59:59
+  const sDate = new Date(y, m, startDay, 0, 0, 0);
+  const eDate = new Date(y, m, endDay, 23, 59, 59);
 
-  const offsetStart = sDate.getTimezoneOffset() * 60000;
-  const offsetEnd = eDate.getTimezoneOffset() * 60000;
-
-  activeStartDateStr = new Date(sDate.getTime() - offsetStart)
-    .toISOString()
-    .split("T")[0];
-  activeEndDateStr = new Date(eDate.getTime() - offsetEnd)
-    .toISOString()
-    .split("T")[0];
+  // toISOString() automatically handles the conversion to UTC for GitHub
+  activeStartDateStr = sDate.toISOString();
+  activeEndDateStr = eDate.toISOString();
 
   const opts = { month: "short", day: "numeric", year: "numeric" };
   document.getElementById("dateScopeDisplay").textContent =
-    `${sDate.toLocaleDateString("en-US", opts)} - ${eDate.toLocaleDateString("en-US", opts)}`;
+    `${sDate.toLocaleDateString("en-US", opts)} - ${new Date(y, m, endDay).toLocaleDateString("en-US", opts)}`;
 
   document.getElementById("gradingTableBody").innerHTML =
     `<tr><td colspan="6" class="py-8 text-center text-gray-400 italic">Date changed. Please fetch commits again.</td></tr>`;
@@ -291,8 +286,8 @@ window.fetchSectionCommits = async function () {
         repo = urlParts.pop();
         owner = urlParts.pop();
 
-        const since = new Date(activeStartDateStr + "T00:00:00Z").toISOString();
-        const until = new Date(activeEndDateStr + "T23:59:59Z").toISOString();
+        const since = activeStartDateStr;
+        const until = activeEndDateStr;
 
         const response = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}`,
@@ -825,19 +820,12 @@ async function postCommentToGithub(student, gradeRec) {
 
   let commentBody = `### ${targetMonthName} ${targetWeek}\n\n`;
 
-  // Construct the Markdown exactly as requested
   if (gradeRec.rawAiData) {
     const ai = gradeRec.rawAiData;
-
-    // 1. Total First
     commentBody += `**Total: ${ai.total_score} / ${gradeRec.maxScore}**\n`;
-
-    // 2. Breakdown Second
     ai.breakdown.forEach((b) => {
       commentBody += `**${b.criterion}:** ${b.score}/${b.max}\n`;
     });
-
-    // 3. Feedback Sections
     commentBody += `\n**Feedback based on criteria:**\n${ai.feedback_criteria}\n\n`;
     commentBody += `**Additional feedback:**\n${ai.additional_feedback}\n\n`;
     commentBody += `**Optional Suggestion:**\n${ai.optional_suggestion}\n\n`;
@@ -850,24 +838,52 @@ async function postCommentToGithub(student, gradeRec) {
 
   commentBody += `*Graded via RepoReview System (${publishTimestamp})*`;
 
-  const res = await fetch(
+  // 1. Fetch existing comments on this commit to check for duplicates
+  const getRes = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/commits/${gradeRec.commitSha}/comments`,
     {
-      method: "POST",
       headers: {
         Authorization: `Bearer ${ghToken}`,
         Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
         "X-GitHub-Api-Version": "2022-11-28",
       },
-      body: JSON.stringify({ body: commentBody }),
     },
   );
 
+  let existingCommentId = null;
+  if (getRes.ok) {
+    const comments = await getRes.json();
+    // Look for our specific system signature
+    const existing = comments.find(
+      (c) => c.body && c.body.includes("Graded via RepoReview System"),
+    );
+    if (existing) existingCommentId = existing.id;
+  }
+
+  // 2. Decide whether to POST a new comment or PATCH an existing one
+  let fetchUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${gradeRec.commitSha}/comments`;
+  let fetchMethod = "POST";
+
+  if (existingCommentId) {
+    // GitHub API uses a different endpoint specifically for updating comments
+    fetchUrl = `https://api.github.com/repos/${owner}/${repo}/comments/${existingCommentId}`;
+    fetchMethod = "PATCH";
+  }
+
+  const res = await fetch(fetchUrl, {
+    method: fetchMethod,
+    headers: {
+      Authorization: `Bearer ${ghToken}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    body: JSON.stringify({ body: commentBody }),
+  });
+
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    const ghErrorMsg = errorData.message || res.statusText;
-    throw new Error(`GitHub says: "${ghErrorMsg}"`);
+    throw new Error(`GitHub says: "${errorData.message || res.statusText}"`);
   }
 
   await setDoc(
