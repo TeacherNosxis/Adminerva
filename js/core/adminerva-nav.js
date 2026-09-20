@@ -22,9 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const adminDirLink = isSuperAdmin
     ? `<a href="users.html" class="${getStyle("directory")}">Directory</a>`
     : "";
-  const adminSetLink = isSuperAdmin
-    ? `<a href="settings.html" class="${getStyle("settings")}">System Settings</a>`
-    : "";
   const adminSetIcon = isSuperAdmin
     ? `
         <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2.5 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center" title="Global Settings">
@@ -68,28 +65,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
             </div>
         `;
-  } else if (activeModule === "educator") {
+  } else if (activeModule === "educator" || activeModule === "repo") {
+    // 🚀 UNIFIED EDUCATOR & REPO NAVIGATION
     centerLinks = `
-            <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Dashboard</a>
+            <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Analytics</a>
             <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
-            ${adminDirLink}${adminSetLink}
+            <a href="gradebook.html" class="${getStyle("gradebook")}">Gradebook</a>
+            ${adminDirLink}
         `;
     rightSide = `
             <a href="dev.html" target="_blank" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded hover:bg-emerald-500/20 transition hidden sm:flex items-center gap-2 mr-4">
                 <span>👀</span> Student View
             </a>
             <span class="text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 rounded hidden sm:block mr-4">${isSuperAdmin ? "Super Admin" : "Teacher Mode"}</span>
-            <button id="signOutBtn" class="text-sm px-3 py-1.5 text-gray-400 hover:text-white font-bold transition">Sign Out</button>
+            ${adminSetIcon}
+            <button id="signOutBtn" class="ml-4 text-sm px-3 py-1.5 text-gray-400 hover:text-white font-bold transition">Sign Out</button>
         `;
-    logoBlock = adminLogoBlock;
-  } else if (activeModule === "repo") {
-    centerLinks = `
-            <a href="index.html" class="${getStyle("dashboard")}">Analytics</a>
-            <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
-            <a href="gradebook.html" class="${getStyle("gradebook")}">Gradebook</a>
-            ${adminDirLink}
-        `;
-    rightSide = adminSetIcon;
     logoBlock = adminLogoBlock;
   } else if (activeModule === "lesson") {
     centerLinks = `

@@ -26,7 +26,7 @@ let activeEndDateStr = "";
 // ==========================================
 window.showLoader = function (msg, subMsg = "") {
   if (typeof window.showSubtleLoader === "function") {
-    const combinedMsg = subMsg ? `${msg} - ${subMsg}` : msg;
+    const combinedMsg = subMsg ? `${msg} -${subMsg}` : msg;
     window.showSubtleLoader(combinedMsg);
   }
 };
@@ -47,7 +47,7 @@ function getQuarter(monthStr) {
 
 function buildFeedbackHtml(gradeData, maxScore) {
   let html = `<div class="space-y-1">`;
-  html += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} / ${maxScore}</div>`;
+  html += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} /${maxScore}</div>`;
   if (gradeData.breakdown) {
     gradeData.breakdown.forEach((b) => {
       html += `<div class="text-gray-700 font-semibold">${b.criterion}: ${b.score}/${b.max}</div>`;
@@ -144,46 +144,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initDateSelects();
   updateQuotaDisplay();
 });
-
-function initFirebase() {
-  const configStr = localStorage.getItem("Adminerva_firebase_config");
-  if (!configStr) {
-    document.getElementById("gradingTableBody").innerHTML =
-      `<tr><td colspan="6" class="py-8 text-center text-red-500 font-bold">Firebase not configured. Please visit the Admin Hub.</td></tr>`;
-    return;
-  }
-  try {
-    db = getFirestore(initializeApp(JSON.parse(configStr)));
-    loadSections();
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function initRubric() {
-  const activeId = localStorage.getItem("Adminerva_active_template_id");
-  const rubricLabel = document.getElementById("activeRubricLabel");
-
-  const setNoRubricWarning = () => {
-    rubricLabel.textContent = "WARNING: No Rubric Found!";
-    rubricLabel.classList.replace("text-purple-600", "text-red-600");
-  };
-
-  if (!activeId || !db) return setNoRubricWarning();
-
-  try {
-    const docSnap = await getDoc(doc(db, "templates", activeId));
-    if (docSnap.exists()) {
-      activeTemplate = { id: docSnap.id, ...docSnap.data() };
-      rubricLabel.textContent = activeTemplate.name;
-    } else {
-      setNoRubricWarning();
-    }
-  } catch (e) {
-    console.error("Failed to fetch active rubric:", e);
-    setNoRubricWarning();
-  }
-}
 
 function initDateSelects() {
   const currentYear = new Date().getFullYear();
@@ -317,7 +277,7 @@ window.fetchSectionCommits = async function () {
       processed++;
       window.showLoader(
         `Fetching GitHub Data...`,
-        `Checking repos: ${processed} of ${currentStudents.length}`,
+        `Checking repos: ${processed} of${currentStudents.length}`,
       );
 
       commitDataMap[student.id] = {
@@ -470,8 +430,7 @@ function renderGradingTable() {
       ghData.count > 0
         ? `<div class="flex flex-col gap-1.5 w-full">
                 <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
-                <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>
-                ${dbGrade ? `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left w-full">✏️ Manual Edit</button>` : ""}
+                <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>${dbGrade ? `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left w-full">✏️ Manual Edit</button>` : ""}
                </div>`
         : `<span class="text-[10px] text-gray-400 font-bold block text-center">No Data</span>`;
 
