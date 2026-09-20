@@ -312,7 +312,7 @@ window.fetchSectionCommits = async function () {
         const until = activeEndDateStr;
 
         const response = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}`,
+          `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}&author=${encodeURIComponent(student.githubUsername)}`,
           {
             headers: {
               Authorization: `Bearer ${ghToken}`,
@@ -339,7 +339,7 @@ window.fetchSectionCommits = async function () {
             (c) => c.commit.message,
           );
 
-          const limit = Math.min(commits.length, 5);
+          const limit = Math.min(commits.length, 10); // Limit to first 10 commits for performance
           for (let i = 0; i < limit; i++) {
             const detailRes = await fetch(
               `https://api.github.com/repos/${owner}/${repo}/commits/${commits[i].sha}`,
@@ -351,6 +351,11 @@ window.fetchSectionCommits = async function () {
                 commitDataMap[student.id].additions += detail.stats.additions;
                 commitDataMap[student.id].deletions += detail.stats.deletions;
               }
+
+              // NEW: Append the commit message as context for the AI
+              commitDataMap[student.id].patches +=
+                `\n\n### COMMIT MESSAGE: "${commits[i].commit.message}"\n`;
+
               if (detail.files) {
                 detail.files.forEach((file) => {
                   if (
@@ -358,7 +363,7 @@ window.fetchSectionCommits = async function () {
                     !file.filename.match(/\.(png|jpg|exe|zip|svg|lock)$/i)
                   ) {
                     commitDataMap[student.id].patches +=
-                      `\n--- ${file.filename} ---\n${file.patch}\n`;
+                      `--- ${file.filename} ---\n${file.patch}\n`;
                   }
                 });
               }
@@ -672,13 +677,14 @@ CRITICAL SYSTEM INSTRUCTIONS:
 3. CODE QUOTATION RULE: If you quote the student's code, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
 4. DO NOT REPEAT THE STUDENT'S CODE. Limit your feedback to concise, actionable sentences.
 5. You MUST provide detailed text for the feedback_criteria, additional_feedback, and optional_suggestion fields.
+6. DEVELOPER INTENT: Read the provided "COMMIT MESSAGE" for each patch to understand the student's specific point of view and intent. Evaluate how successfully their code executes that specific intent.
 
 Grade out of a maximum total score of ${maxScore}.
 Criteria:
 ${criteriaText}
 
-Student Code:
-${data.patches.substring(0, 15000)}
+Student's Commits & Code Patches:
+${data.patches.substring(0, 40000)}
 `;
 
   window.showLoader(
