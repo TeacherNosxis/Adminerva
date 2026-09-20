@@ -1,6 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+// Import centralized database instead of initializing locally
+import { db } from "../core/firebase-core.js";
 import {
-  getFirestore,
   collection,
   getDocs,
   deleteDoc,
@@ -9,34 +9,23 @@ import {
   getDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+// initFirebase is now a simple wrapper or can be called immediately since db is ready
 window.initFirebase = function () {
-  const configStr = localStorage.getItem("Adminerva_firebase_config");
-  if (!configStr) return;
-  try {
-    const firebaseConfig = JSON.parse(configStr);
-    const app = initializeApp(firebaseConfig);
-    window.db = getFirestore(app);
+  if (window.loadLibraryFolders) {
     window.loadLibraryFolders();
-  } catch (e) {
-    console.error("Firebase Initialization Failed:", e);
   }
 };
 
+// Ensure all database queries use the imported 'db' directly:
 window.loadLibraryFolders = async function () {
   const container = document.getElementById("libraryFolderContainer");
   if (!container) return;
-
-  if (!window.db) {
-    container.innerHTML =
-      '<div class="text-xs text-red-500 italic">Firebase not ready.</div>';
-    return;
-  }
 
   container.innerHTML =
     '<div class="text-xs text-gray-500 italic">Fetching folders from cloud...</div>';
 
   try {
-    const snap = await getDocs(collection(window.db, "reference_folders"));
+    const snap = await getDocs(collection(db, "reference_folders"));
     const libraryData = [];
     snap.forEach((d) => libraryData.push({ id: d.id, ...d.data() }));
 
@@ -72,7 +61,7 @@ window.fetchPreviousPlan = async function (
   academicTerm,
   currentCourseWeek,
 ) {
-  if (!window.db) return null;
+  if (!db) return null;
 
   const currentWeekNum = parseInt(currentCourseWeek.replace(/\D/g, ""));
   if (currentWeekNum <= 1) return null;
@@ -91,7 +80,7 @@ window.fetchPreviousPlan = async function (
   );
 
   try {
-    const docSnap = await getDoc(doc(window.db, "lesson_plans", id));
+    const docSnap = await getDoc(doc(db, "lesson_plans", id));
     return docSnap.exists() ? docSnap.data() : null;
   } catch (e) {
     return null;
@@ -111,7 +100,7 @@ window.saveLessonPlan = async function () {
     alert("Please generate a lesson plan first before saving.");
     return false;
   }
-  if (!window.db) {
+  if (!db) {
     alert("Firebase is not connected! Please configure it in Global Settings.");
     return false;
   }
@@ -163,7 +152,7 @@ window.saveLessonPlan = async function () {
       timestamp: new Date().toISOString(),
     };
 
-    await setDoc(doc(window.db, "lesson_plans", safeDocId), planData);
+    await setDoc(doc(db, "lesson_plans", safeDocId), planData);
     alert(`✅ Lesson Plan saved successfully!`);
     return true;
   } catch (e) {
@@ -189,13 +178,13 @@ window.openLoadPlanModal = async function () {
         </div>
     `;
 
-  if (!window.db) {
+  if (!db) {
     container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-center font-bold">Firebase is not connected!</div>`;
     return;
   }
 
   try {
-    const querySnapshot = await getDocs(collection(window.db, "lesson_plans"));
+    const querySnapshot = await getDocs(collection(db, "lesson_plans"));
     if (querySnapshot.empty) {
       container.innerHTML = `<div class="text-center py-12"><p class="text-gray-500 font-bold">No saved plans found.</p></div>`;
       return;
@@ -373,7 +362,7 @@ window.deleteLessonPlan = async function (docId) {
     ).toISOString();
 
     await setDoc(
-      doc(window.db, "lesson_plans", docId),
+      doc(db, "lesson_plans", docId),
       {
         is_archived: true,
         archived_at: new Date().toISOString(),
@@ -395,7 +384,7 @@ window.deleteLessonPlan = async function (docId) {
 // ARCHIVE MANAGER
 // ==========================================
 window.openArchiveManager = async function () {
-  if (!window.db) return alert("Firebase is not connected.");
+  if (!db) return alert("Firebase is not connected.");
 
   let modal = document.getElementById("archiveModal");
   if (!modal) {
@@ -427,8 +416,8 @@ window.openArchiveManager = async function () {
     const { collection, getDocs } =
       await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
     const [plansSnap, presSnap] = await Promise.all([
-      getDocs(collection(window.db, "lesson_plans")),
-      getDocs(collection(window.db, "presentations")),
+      getDocs(collection(db, "lesson_plans")),
+      getDocs(collection(db, "presentations")),
     ]);
 
     let archivedItems = [];
@@ -496,12 +485,12 @@ window.openArchiveManager = async function () {
 };
 
 window.restoreDocument = async function (collectionName, docId) {
-  if (!window.db) return;
+  if (!db) return;
   try {
     const { doc, setDoc } =
       await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
     await setDoc(
-      doc(window.db, collectionName, docId),
+      doc(db, collectionName, docId),
       { is_archived: false },
       { merge: true },
     );
@@ -516,7 +505,7 @@ window.restoreDocument = async function (collectionName, docId) {
 
 window.hardDeleteDocument = async function (collectionName, docId) {
   if (
-    !window.db ||
+    !db ||
     !confirm(
       "WARNING: This will eradicate the file permanently. Cannot be undone. Proceed?",
     )
@@ -525,7 +514,7 @@ window.hardDeleteDocument = async function (collectionName, docId) {
   try {
     const { doc, deleteDoc } =
       await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-    await deleteDoc(doc(window.db, collectionName, docId));
+    await deleteDoc(doc(db, collectionName, docId));
 
     window.openArchiveManager();
     if (typeof window.openLoadPlanModal === "function")
@@ -537,13 +526,13 @@ window.hardDeleteDocument = async function (collectionName, docId) {
 
 // Auto-purge routine
 setTimeout(async () => {
-  if (!window.db) return;
+  if (!db) return;
   try {
     const { collection, getDocs, doc, deleteDoc } =
       await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
     const [plansSnap, presSnap] = await Promise.all([
-      getDocs(collection(window.db, "lesson_plans")),
-      getDocs(collection(window.db, "presentations")),
+      getDocs(collection(db, "lesson_plans")),
+      getDocs(collection(db, "presentations")),
     ]);
 
     const now = Date.now();
@@ -552,7 +541,7 @@ setTimeout(async () => {
         const data = document.data();
         if (data.is_archived && data.purge_at) {
           if (now > new Date(data.purge_at).getTime()) {
-            await deleteDoc(doc(window.db, collName, document.id));
+            await deleteDoc(doc(db, collName, document.id));
             console.log(
               `[Auto-Purge] Eradicated expired ${collName}: ${document.id}`,
             );

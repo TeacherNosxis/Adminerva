@@ -1,52 +1,18 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { db } from "../core/firebase-core.js";
 import {
-  getFirestore,
   collection,
   getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-let db = null;
-let libraryData = [];
-let activeFolderId = null;
-
-document.addEventListener("DOMContentLoaded", () => {
-  initFirebase();
-});
-
 function initFirebase() {
-  const configStr = localStorage.getItem("Adminerva_firebase_config");
-  if (!configStr) {
-    document.getElementById("folderList").innerHTML =
-      '<div class="text-xs text-red-500 italic p-4">Firebase not configured.</div>';
-    return;
-  }
-  try {
-    db = getFirestore(initializeApp(JSON.parse(configStr)));
-    loadLibrary();
-  } catch (e) {
-    console.error("Firebase Initialization Failed:", e);
-  }
+  // No more localStorage parsing needed! db is instantly ready.
+  loadLibrary();
 }
 
-function formatDate(isoString) {
-  if (!isoString) return "Unknown date";
-  const date = new Date(isoString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-// --- FOLDER CRUD ---
+// Inside your library fetch calls, replace getFirestore(...) with just 'db':
 async function loadLibrary() {
-  if (!db) return;
   try {
-    const querySnapshot = await getDocs(collection(db, "reference_folders"));
+    const snap = await getDocs(collection(db, "reference_folders"));
     libraryData = [];
     querySnapshot.forEach((docSnap) => {
       libraryData.push({ id: docSnap.id, ...docSnap.data() });
@@ -64,6 +30,15 @@ async function loadLibrary() {
   }
 }
 
+function formatDate(isoString) {
+  if (!isoString) return "Unknown date";
+  const date = new Date(isoString);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 window.createFolder = async function () {
   if (!db) return alert("Firebase is not connected.");
   const input = document.getElementById("newFolderInput");
