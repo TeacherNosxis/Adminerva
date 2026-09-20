@@ -8,6 +8,7 @@ import {
   query,
   where,
   getDoc,
+  increment,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ==========================================
@@ -57,32 +58,47 @@ function buildFeedbackHtml(gradeData, maxScore) {
   return html;
 }
 
-function updateQuotaDisplay() {
-  const today = new Date().toISOString().split("T")[0];
-  let usage = JSON.parse(
-    localStorage.getItem("Adminerva_ai_usage") || '{"date": "", "count": 0}',
-  );
+async function updateQuotaDisplay() {
+  if (!db) return 0;
 
-  if (usage.date !== today) {
-    usage = { date: today, count: 0 };
-    localStorage.setItem("Adminerva_ai_usage", JSON.stringify(usage));
+  const today = new Date().toISOString().split("T")[0];
+  const docRef = doc(db, "system", `ai_usage_${today}`);
+  let currentCount = 0;
+
+  try {
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      currentCount = snap.data().count || 0;
+    } else {
+      // Initialize today's tracker if it doesn't exist
+      await setDoc(docRef, { count: 0, date: today });
+    }
+  } catch (e) {
+    console.error("Failed to fetch AI quota:", e);
   }
 
   const display = document.getElementById("aiQuotaDisplay");
   if (display) {
-    display.textContent = `${usage.count} / 1500`;
-    if (usage.count >= 1400) display.classList.add("text-red-600");
+    display.textContent = `${currentCount} / 1500`;
+    if (currentCount >= 1400) {
+      display.classList.add("text-red-600");
+    } else {
+      display.classList.remove("text-red-600");
+    }
   }
-  return usage;
+
+  return currentCount;
 }
 
-function incrementAiQuota() {
-  const usage = updateQuotaDisplay();
-  usage.count++;
-  localStorage.setItem("Adminerva_ai_usage", JSON.stringify(usage));
-  updateQuotaDisplay();
-}
+async function incrementAiQuota() {
+  if (!db) return;
+  const today = new Date().toISOString().split("T")[0];
+  const docRef = doc(db, "system", `ai_usage_${today}`);
 
+  // Atomically increment the count on the server
+  await setDoc(docRef, { count: increment(1) }, { merge: true });
+  await updateQuotaDisplay();
+}
 // ==========================================
 // INITIALIZATION
 // ==========================================
@@ -680,8 +696,8 @@ ${data.patches.substring(0, 15000)}
   while (attempt < maxAttempts && !success) {
     attempt++;
     try {
-      const currentUsage = updateQuotaDisplay();
-      if (currentUsage.count >= 1500) {
+      const currentCount = await updateQuotaDisplay();
+      if (currentCount >= 1500) {
         throw new Error(
           "Daily AI Quota Reached (1500/1500). Please wait until tomorrow.",
         );
