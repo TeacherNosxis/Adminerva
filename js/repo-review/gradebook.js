@@ -11,11 +11,15 @@ let db = null;
 let currentStudents = [];
 let gradeMatrix = {}; // Maps studentId -> { 1: score, 2: score, 3: score, 4: score, avg: value }
 
-window.showLoader = function () {
-  document.getElementById("globalLoader").classList.replace("hidden", "flex");
+window.showLoader = function (msg = "Fetching Gradebook Data...") {
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader(msg);
+  }
 };
 window.hideLoader = function () {
-  document.getElementById("globalLoader").classList.replace("flex", "hidden");
+  if (typeof window.hideSubtleLoader === "function") {
+    window.hideSubtleLoader();
+  }
 };
 
 document.addEventListener("DOMContentLoaded", () => {

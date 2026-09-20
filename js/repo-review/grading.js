@@ -27,15 +27,19 @@ let activeEndDateStr = "";
 // LOADER UTILS & QUOTA
 // ==========================================
 window.showLoader = function (msg, subMsg = "") {
-  document.getElementById("loaderMessage").textContent = msg;
-  document.getElementById("loaderSubMessage").textContent = subMsg;
-  document.getElementById("globalLoader").classList.remove("hidden");
-  document.getElementById("globalLoader").classList.add("flex");
+  if (typeof window.showSubtleLoader === "function") {
+    // Combine the main message and sub-message cleanly for the single-line subtle loader
+    const combinedMsg = subMsg ? `${msg} - ${subMsg}` : msg;
+    window.showSubtleLoader(combinedMsg);
+  }
 };
+
 window.hideLoader = function () {
-  document.getElementById("globalLoader").classList.add("hidden");
-  document.getElementById("globalLoader").classList.remove("flex");
+  if (typeof window.hideSubtleLoader === "function") {
+    window.hideSubtleLoader();
+  }
 };
+
 function getQuarter(monthStr) {
   const m = parseInt(monthStr);
   if (m >= 7 && m <= 9) return "Q1";
