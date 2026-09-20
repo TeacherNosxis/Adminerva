@@ -1,13 +1,13 @@
 window.showLoader = function (msg = "Processing...") {
-  const msgEl = document.getElementById("loaderMessage");
-  if (msgEl) msgEl.textContent = msg;
-  const loader = document.getElementById("globalLoader");
-  if (loader) loader.classList.replace("hidden", "flex");
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader(msg);
+  }
 };
 
 window.hideLoader = function () {
-  const loader = document.getElementById("globalLoader");
-  if (loader) loader.classList.replace("flex", "hidden");
+  if (typeof window.hideSubtleLoader === "function") {
+    window.hideSubtleLoader();
+  }
 };
 // 🚀 Vertical Sidebar Navigation (Dynamic Tailwind Injection)
 window.switchSettingsCategory = function (targetPanelId) {
