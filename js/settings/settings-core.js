@@ -9,52 +9,93 @@ window.hideLoader = function () {
   const loader = document.getElementById("globalLoader");
   if (loader) loader.classList.replace("flex", "hidden");
 };
+
 window.handleCsvUpload = function (event) {
   const file = event.target.files[0];
   if (!file) return;
 
   if (!window.db) return alert("Firebase disconnected. Check settings.");
-  window.showLoader("Importing Students...");
+  window.showLoader("Importing and Deduplicating Students...");
 
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
     complete: async function (results) {
       const data = results.data;
-      let successCount = 0;
+      const uniqueStudents = new Map();
+
+      for (const row of data) {
+        // 1. Target the exact First/Last name columns from the form and combine them
+        const firstName = row["Your First Name:"] || row.FirstName || "";
+        const lastName = row["Your Last Name:"] || row.LastName || "";
+        const name =
+          `${firstName} ${lastName}`.trim() ||
+          row.Name ||
+          row["Full Name"] ||
+          "";
+
+        // 2. Target the exact email column
+        const email = row["Email Address"] || row.Email || row.email || "";
+
+        // 3. Target the Section
+        const section =
+          row.Section ||
+          row.section ||
+          document.getElementById("sectionFilterSelect")?.value ||
+          "Default";
+
+        // 4. Target the exact GitHub username column
+        const githubUsername =
+          row["Exact GitHub Username"] ||
+          row.GitHubUsername ||
+          row["GitHub Username"] ||
+          "";
+
+        // 5. Target the exact Repo URL column AND strip out any accidental brackets [ ] or spaces
+        let repoUrl =
+          row["Public Repository URL"] ||
+          row.RepoUrl ||
+          row["Repository Link"] ||
+          "";
+        repoUrl = repoUrl.replace(/[\[\]\s]/g, ""); // Cleans [https://...] to https://...
+
+        // If the core data exists, add it to the Map (newest overwrites oldest automatically)
+        if (name && githubUsername && repoUrl) {
+          const uniqueKey = email
+            ? email.toLowerCase().trim()
+            : name.toLowerCase().trim();
+
+          uniqueStudents.set(uniqueKey, {
+            name,
+            email,
+            section,
+            githubUsername,
+            repoUrl,
+          });
+        }
+      }
 
       try {
         const { collection, addDoc } =
           await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+        let successCount = 0;
 
-        for (const row of data) {
-          // Flexible key matching in case CSV headers vary slightly
-          const name = row.Name || row.name || row.Fullname || "";
-          const email = row.Email || row.email || "";
-          const section =
-            row.Section ||
-            row.section ||
-            document.getElementById("sectionFilterSelect")?.value ||
-            "Default";
-          const githubUsername =
-            row.GitHubUsername || row.github || row.Github || "";
-          const repoUrl = row.RepoUrl || row.repository || row.Repo || "";
-
-          if (name && githubUsername && repoUrl) {
-            await addDoc(collection(window.db, "students"), {
-              name,
-              email,
-              section,
-              githubUsername,
-              repoUrl,
-            });
-            successCount++;
-          }
+        for (const [key, studentData] of uniqueStudents.entries()) {
+          await addDoc(collection(window.db, "students"), studentData);
+          successCount++;
         }
 
-        event.target.value = ""; // Reset file input
-        await window.loadSectionsAndStudents();
-        alert(`✅ Successfully imported ${successCount} students.`);
+        event.target.value = "";
+        if (window.loadSectionsAndStudents)
+          await window.loadSectionsAndStudents();
+
+        if (successCount === 0) {
+          alert(
+            "⚠️ 0 students imported. Please double-check your CSV headers.",
+          );
+        } else {
+          alert(`✅ Successfully imported ${successCount} unique students.`);
+        }
       } catch (err) {
         alert("Import failed: " + err.message);
       } finally {
@@ -67,6 +108,7 @@ window.handleCsvUpload = function (event) {
     },
   });
 };
+
 // 🚀 Vertical Sidebar Navigation (Dynamic Tailwind Injection)
 window.switchSettingsCategory = function (targetPanelId) {
   // 1. Hide all right-side panels
