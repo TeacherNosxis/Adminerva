@@ -9,15 +9,19 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 // IMPORTANT: Paste your actual Firebase config object here!
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-};
+const configStr = localStorage.getItem("Adminerva_firebase_config");
 
+if (!configStr) {
+  const errorDiv = document.getElementById("authError");
+  if (errorDiv) {
+    errorDiv.textContent =
+      "System offline: Firebase not configured. Please set up API keys in the Admin settings.";
+    errorDiv.classList.remove("hidden");
+  }
+  throw new Error("Missing Firebase Configuration in localStorage.");
+}
+
+const firebaseConfig = JSON.parse(configStr);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
@@ -66,8 +70,8 @@ document.getElementById("anonBtn")?.addEventListener("click", async () => {
     // Hijacked button for dev testing with a hardcoded user
     const result = await signInWithEmailAndPassword(
       auth,
-      "teststudent@example.com",
-      "password123",
+      "test1@g.com",
+      "admin123",
     );
     routeUser(result.user);
   } catch (error) {
