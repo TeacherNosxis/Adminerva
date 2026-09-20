@@ -12,13 +12,16 @@ let mySubjects = [];
 let myEvents = [];
 let isEditing = false;
 
-// --- CLOUD SYNC HELPERS ---
-window.showLoader = function (msg = "Syncing...") {
-  document.getElementById("loaderMessage").textContent = msg;
-  document.getElementById("globalLoader").classList.replace("hidden", "flex");
+// --- CLOUD SYNC HELPERS (Subtle Loader Adapter) ---
+window.showLoader = function (msg = "Syncing schedule...") {
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader(msg);
+  }
 };
 window.hideLoader = function () {
-  document.getElementById("globalLoader").classList.replace("flex", "hidden");
+  if (typeof window.hideSubtleLoader === "function") {
+    window.hideSubtleLoader();
+  }
 };
 
 document.addEventListener("DOMContentLoaded", async () => {

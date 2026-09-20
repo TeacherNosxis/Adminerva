@@ -86,57 +86,16 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==========================================
 // 3. UI & CALENDAR HELPERS
 // ==========================================
-window.showLoader = function (
-  mainText = "AI Architecting Syllabus...",
-  subText = "Analyzing scope and structuring session activities.",
-) {
-  const loader = document.getElementById("globalLoader");
-  const mainTextEl = document.getElementById("loaderMainText");
-  const subTextEl = document.getElementById("loaderSubText");
-  if (mainTextEl) mainTextEl.textContent = mainText;
-  if (subTextEl) subTextEl.textContent = subText;
-
-  const isAlreadyRunning = loader.classList.contains("flex");
-  loader.classList.replace("hidden", "flex");
-
-  if (isAlreadyRunning) return;
-
-  clearInterval(window.timerInterval);
-  clearInterval(window.verseInterval);
-
-  window.elapsedSeconds = 0;
-  const timeEl = document.getElementById("elapsedTime");
-  if (timeEl) timeEl.textContent = "0s";
-
-  const verseEl = document.getElementById("bibleVerse");
-  if (verseEl)
-    verseEl.textContent =
-      window.bibleVerses[Math.floor(Math.random() * window.bibleVerses.length)];
-
-  window.timerInterval = setInterval(() => {
-    window.elapsedSeconds++;
-    if (timeEl) timeEl.textContent = window.elapsedSeconds + "s";
-  }, 1000);
-
-  window.verseInterval = setInterval(() => {
-    if (!verseEl) return;
-    verseEl.style.opacity = 0;
-    setTimeout(() => {
-      verseEl.textContent =
-        window.bibleVerses[
-          Math.floor(Math.random() * window.bibleVerses.length)
-        ];
-      verseEl.style.opacity = 1;
-    }, 300);
-  }, 5000);
+window.showLoader = function (mainText = "Processing...") {
+  if (typeof window.showSubtleLoader === "function") {
+    window.showSubtleLoader(mainText);
+  }
 };
 
 window.hideLoader = function () {
-  document.getElementById("globalLoader").classList.replace("flex", "hidden");
-  clearInterval(window.timerInterval);
-  clearInterval(window.verseInterval);
-  window.timerInterval = null;
-  window.verseInterval = null;
+  if (typeof window.hideSubtleLoader === "function") {
+    window.hideSubtleLoader();
+  }
 };
 
 window.setupDateCalculator = function () {

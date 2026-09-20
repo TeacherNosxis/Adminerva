@@ -66,7 +66,7 @@ window.initiateGenerationFlow = async function () {
     return;
   }
 
-  window.showLoader();
+  window.showSubtleLoader("Reviewing custom instructions...");
 
   const preCheckPrompt = `
 You are an expert curriculum assistant. Review ONLY the Custom Instructions. 
@@ -239,7 +239,7 @@ Custom Instructions: ${window.cachedCustomInstructions}
 User Clarification: ${userClarification || "None"}
 Teacher Schedule:\n${window.cachedSchedule}
 Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
-  window.showLoader();
+  window.showSubtleLoader("Architecting lesson plan structure...");
   let rawJson = "";
 
   try {

@@ -300,15 +300,15 @@ window.exportToGoogleDocs = function () {
     callback: async (tokenResponse) => {
       if (tokenResponse.error !== undefined)
         return alert("Google Authentication failed.");
-      if (typeof window.showLoader === "function")
-        window.showLoader(
-          "Exporting to Google Docs...",
-          "Formatting layout and resizing landscape tables.",
-        );
+      if (typeof window.showSubtleLoader === "function") {
+        window.showSubtleLoader("Exporting and formatting Google Doc...");
+      }
 
       const isReady = await window.buildDocumentLayout();
       if (!isReady) {
-        if (typeof window.hideLoader === "function") window.hideLoader();
+        if (typeof window.hideSubtleLoader === "function") {
+          window.hideSubtleLoader();
+        }
         return;
       }
 

@@ -311,15 +311,19 @@ window.extractPDF = async function () {
     for (let i = 0; i < fileInput.files.length; i++) {
       const file = fileInput.files[i];
 
-      // 🚀 NEW: Apply a 4-second cooldown BEFORE the 2nd, 3rd, 4th, and 5th files
       if (i > 0) {
-        if (loaderText)
-          loaderText.innerText = `Cooling down API to prevent rate limits (waiting 4s)...`;
+        if (typeof window.showSubtleLoader === "function") {
+          window.showSubtleLoader(
+            `Cooling down API (${i + 1}/${fileInput.files.length})...`,
+          );
+        }
         await delay(4000);
       }
 
-      if (loaderText) {
-        loaderText.innerText = `Extracting ${i + 1} of ${fileInput.files.length}: ${file.name}...`;
+      if (typeof window.showSubtleLoader === "function") {
+        window.showSubtleLoader(
+          `Extracting PDF (${i + 1} of ${fileInput.files.length}): ${file.name}`,
+        );
       }
 
       const base64String = await new Promise((resolve, reject) => {
@@ -393,7 +397,8 @@ window.extractPDF = async function () {
     renderFolders();
     renderDocuments(folder.documents);
 
-    loader.classList.replace("flex", "hidden");
-    if (loaderText) loaderText.innerText = "Extracting PDF Data...";
+    if (typeof window.hideSubtleLoader === "function") {
+      window.hideSubtleLoader();
+    }
   }
 };
