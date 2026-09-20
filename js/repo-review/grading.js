@@ -7,6 +7,7 @@ import {
   setDoc,
   query,
   where,
+  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ==========================================
@@ -85,9 +86,9 @@ function incrementAiQuota() {
 // ==========================================
 // INITIALIZATION
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initFirebase();
-  initRubric();
+  await initRubric();
   initDateSelects();
   updateQuotaDisplay();
 });
@@ -107,24 +108,28 @@ function initFirebase() {
   }
 }
 
-function initRubric() {
-  const tplStr = localStorage.getItem("Adminerva_grading_templates");
+async function initRubric() {
   const activeId = localStorage.getItem("Adminerva_active_template_id");
+  const rubricLabel = document.getElementById("activeRubricLabel");
 
-  if (tplStr && activeId) {
-    const templates = JSON.parse(tplStr);
-    activeTemplate = templates.find((t) => t.id === activeId) || templates[0];
-  }
+  const setNoRubricWarning = () => {
+    rubricLabel.textContent = "WARNING: No Rubric Found!";
+    rubricLabel.classList.replace("text-purple-600", "text-red-600");
+  };
 
-  if (!activeTemplate) {
-    document.getElementById("activeRubricLabel").textContent =
-      "WARNING: No Rubric Found!";
-    document
-      .getElementById("activeRubricLabel")
-      .classList.replace("text-purple-600", "text-red-600");
-  } else {
-    document.getElementById("activeRubricLabel").textContent =
-      activeTemplate.name;
+  if (!activeId || !db) return setNoRubricWarning();
+
+  try {
+    const docSnap = await getDoc(doc(db, "templates", activeId));
+    if (docSnap.exists()) {
+      activeTemplate = { id: docSnap.id, ...docSnap.data() };
+      rubricLabel.textContent = activeTemplate.name;
+    } else {
+      setNoRubricWarning();
+    }
+  } catch (e) {
+    console.error("Failed to fetch active rubric:", e);
+    setNoRubricWarning();
   }
 }
 

@@ -5,6 +5,7 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  setDoc, // Add this
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ==========================================
@@ -180,24 +181,40 @@ const DEFAULT_TEMPLATES = [
   },
 ];
 
-window.initRubrics = function () {
-  const stored = localStorage.getItem("Adminerva_grading_templates");
-  window.templates = stored
-    ? JSON.parse(stored)
-    : JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-  window.activeTemplateId =
-    localStorage.getItem("Adminerva_active_template_id") ||
-    window.templates[0].id;
-  window.editingTemplate = JSON.parse(
-    JSON.stringify(
-      window.templates.find((t) => t.id === window.activeTemplateId) ||
-        window.templates[0],
-    ),
-  );
+window.initRubrics = async function () {
+  window.showLoader("Loading Rubrics from Cloud...");
+  try {
+    if (!window.db) throw new Error("Firebase disconnected.");
 
-  window.renderTemplateDropdown();
-  window.renderTemplateEditor();
-  window.updateRubricEquippedUI();
+    // Fetch all templates from Firestore
+    const snap = await getDocs(collection(window.db, "templates"));
+    window.templates = [];
+    snap.forEach((d) => window.templates.push({ id: d.id, ...d.data() }));
+
+    // Fallback if the database has no templates yet
+    if (window.templates.length === 0) {
+      window.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+    }
+
+    // Determine active template
+    window.activeTemplateId =
+      localStorage.getItem("Adminerva_active_template_id") ||
+      window.templates[0].id;
+    window.editingTemplate = JSON.parse(
+      JSON.stringify(
+        window.templates.find((t) => t.id === window.activeTemplateId) ||
+          window.templates[0],
+      ),
+    );
+
+    window.renderTemplateDropdown();
+    window.renderTemplateEditor();
+    window.updateRubricEquippedUI();
+  } catch (e) {
+    console.error("Failed to load rubrics:", e);
+  } finally {
+    window.hideLoader();
+  }
 };
 
 window.renderTemplateDropdown = function () {
@@ -280,17 +297,30 @@ window.removeCriterion = function (i) {
   window.renderTemplateEditor();
 };
 
-window.saveRubrics = function () {
+window.saveRubrics = async function () {
+  if (!window.db) return alert("Firebase disconnected.");
+  window.showLoader("Saving Rubric to Cloud...");
   window.updateTemplatePreview();
-  const idx = window.templates.findIndex(
-    (t) => t.id === window.editingTemplate.id,
-  );
-  if (idx >= 0) window.templates[idx] = window.editingTemplate;
-  else window.templates.push(window.editingTemplate);
-  localStorage.setItem(
-    "Adminerva_grading_templates",
-    JSON.stringify(window.templates),
-  );
-  window.renderTemplateDropdown();
-  alert("Saved.");
+
+  try {
+    // Save or update the rubric in the "templates" collection using its ID
+    await setDoc(
+      doc(window.db, "templates", window.editingTemplate.id),
+      window.editingTemplate,
+    );
+
+    // Update local state
+    const idx = window.templates.findIndex(
+      (t) => t.id === window.editingTemplate.id,
+    );
+    if (idx >= 0) window.templates[idx] = window.editingTemplate;
+    else window.templates.push(window.editingTemplate);
+
+    window.renderTemplateDropdown();
+    alert("Rubric saved to cloud successfully.");
+  } catch (e) {
+    alert("Failed to save rubric: " + e.message);
+  } finally {
+    window.hideLoader();
+  }
 };
