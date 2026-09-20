@@ -59,8 +59,7 @@
               </p>
               <input type="file" id="csvFile" accept=".csv" class="hidden" />
             </div>
-
-            <button
+<button
               id="uploadBtn"
               class="w-full mt-4 bg-blue-600 text-white font-bold py-2.5 px-4 rounded-md hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
             >
@@ -70,8 +69,17 @@
               id="uploadStatus"
               class="text-xs font-bold text-center mt-3 hidden"
             ></p>
-          </div>
-        </div>
+            
+            <!-- ADD THE CLEAR BUTTON HERE -->
+            <div class="mt-8 pt-6 border-t border-slate-200">
+                <button
+                  onclick="window.clearDirectory()"
+                  class="w-full bg-red-50 text-red-600 border border-red-200 font-bold py-2.5 px-4 rounded-md hover:bg-red-100 hover:text-red-700 transition shadow-sm flex items-center justify-center gap-2"
+                >
+                  <span>⚠️</span> Clear Entire Directory
+                </button>
+                <p class="text-[10px] text-slate-400 text-center mt-2 uppercase tracking-wide">Cannot be undone</p>
+            </div>
 
         <!-- Right Column: User Management Table -->
         <div class="lg:col-span-2">
