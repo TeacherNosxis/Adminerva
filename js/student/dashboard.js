@@ -21,7 +21,6 @@ onAuthStateChanged(auth, async (user) => {
   if (emailDisplay) emailDisplay.textContent = user.email;
 
   try {
-    // 1. Fetch ALL documents matching the student's email
     const q = query(
       collection(db, "students"),
       where("email", "==", user.email.toLowerCase()),
@@ -39,7 +38,6 @@ onAuthStateChanged(auth, async (user) => {
     userProfiles = [];
     snap.forEach((d) => userProfiles.push(d.data()));
 
-    // 2. Setup the Section Selector Dropdown
     const selector = document.getElementById("sectionSelector");
     if (selector) {
       if (userProfiles.length > 1) {
@@ -52,7 +50,6 @@ onAuthStateChanged(auth, async (user) => {
           );
         });
 
-        // Listen for class/club switching
         selector.addEventListener("change", (e) => {
           loadDashboardProfile(userProfiles[e.target.value]);
         });
@@ -61,7 +58,6 @@ onAuthStateChanged(auth, async (user) => {
       }
     }
 
-    // 3. Load the first profile by default
     loadDashboardProfile(userProfiles[0]);
   } catch (error) {
     console.error("Dashboard Load Error:", error);
@@ -72,7 +68,9 @@ async function loadDashboardProfile(studentData) {
   const subtitle = document.getElementById("repoSubtitle");
   const container = document.getElementById("commitListContainer");
 
-  // Clear chart if it exists from a previous section
+  // 🚀 IGNITION KEY: Run the diagnostic check immediately on load!
+  verifyStudentSetup(studentData);
+
   if (currentChart) {
     currentChart.destroy();
     currentChart = null;
@@ -82,12 +80,12 @@ async function loadDashboardProfile(studentData) {
     subtitle.innerHTML = `<strong class="text-amber-700">${studentData.section}:</strong> <span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>`;
     container.innerHTML =
       "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
+    renderChart([]); // Render an empty chart so the box isn't blank
     return;
   }
 
   subtitle.innerHTML = `<strong>${studentData.section}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${studentData.githubUsername}</span> on <a href="${studentData.repoUrl}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${studentData.repoUrl}</a>`;
 
-  // Set loading state
   container.innerHTML = `
         <div class="animate-pulse flex space-x-4">
             <div class="flex-1 space-y-4 py-1">
@@ -127,6 +125,7 @@ async function fetchGitHubData(repoUrl, username) {
     if (commits.length === 0) {
       container.innerHTML =
         "<p class='text-sm text-slate-500 font-bold'>No commits found for your username yet.</p>";
+      renderChart([]); // Fixes blank white box error
       return;
     }
 
@@ -153,23 +152,39 @@ async function fetchGitHubData(repoUrl, username) {
     renderChart(commits);
   } catch (err) {
     container.innerHTML = `<p class="text-sm text-red-500 font-medium">${err.message}</p>`;
+    renderChart([]);
   }
 }
 
 function renderChart(commits) {
-  const dateCounts = {};
-  commits.forEach((c) => {
-    const date = new Date(c.commit.author.date).toLocaleDateString(undefined, {
+  let sortedDates, dataPoints;
+  const hasData = commits && commits.length > 0;
+
+  if (!hasData) {
+    const today = new Date().toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
     });
-    dateCounts[date] = (dateCounts[date] || 0) + 1;
-  });
+    sortedDates = [today];
+    dataPoints = [0];
+  } else {
+    const dateCounts = {};
+    commits.forEach((c) => {
+      const date = new Date(c.commit.author.date).toLocaleDateString(
+        undefined,
+        {
+          month: "short",
+          day: "numeric",
+        },
+      );
+      dateCounts[date] = (dateCounts[date] || 0) + 1;
+    });
 
-  const sortedDates = Object.keys(dateCounts).sort(
-    (a, b) => new Date(a) - new Date(b),
-  );
-  const dataPoints = sortedDates.map((date) => dateCounts[date]);
+    sortedDates = Object.keys(dateCounts).sort(
+      (a, b) => new Date(a) - new Date(b),
+    );
+    dataPoints = sortedDates.map((date) => dateCounts[date]);
+  }
 
   const ctx = document.getElementById("commitChart").getContext("2d");
 
@@ -183,12 +198,14 @@ function renderChart(commits) {
         {
           label: "Commits",
           data: dataPoints,
-          borderColor: "#3b82f6",
-          backgroundColor: "rgba(59, 130, 246, 0.1)",
+          borderColor: hasData ? "#3b82f6" : "#cbd5e1",
+          backgroundColor: hasData
+            ? "rgba(59, 130, 246, 0.1)"
+            : "rgba(203, 213, 225, 0.1)",
           borderWidth: 2,
           tension: 0.4,
           fill: true,
-          pointBackgroundColor: "#1d4ed8",
+          pointBackgroundColor: hasData ? "#1d4ed8" : "#94a3b8",
           pointBorderColor: "#fff",
           pointBorderWidth: 2,
           pointRadius: 4,
@@ -221,12 +238,12 @@ function renderChart(commits) {
   });
 }
 
-// Global Sign Out Logic
 document.addEventListener("click", (e) => {
   if (e.target && e.target.id === "signOutBtn") {
     signOut(auth).then(() => (window.location.href = "login.html"));
   }
 });
+
 // ==========================================
 // STUDENT DIAGNOSTIC ENGINE
 // ==========================================
@@ -237,7 +254,6 @@ async function verifyStudentSetup(studentData) {
 
   if (!banner || !studentData) return;
 
-  // Helper to set warning UI
   const triggerWarning = (colorClass, header, message) => {
     banner.className = `mb-6 p-4 rounded-lg border shadow-sm flex items-start gap-3 ${colorClass}`;
     title.textContent = header;
@@ -245,7 +261,6 @@ async function verifyStudentSetup(studentData) {
     banner.classList.remove("hidden");
   };
 
-  // 1. Check for blank fields
   if (!studentData.repoUrl || !studentData.githubUsername) {
     return triggerWarning(
       "bg-amber-50 border-amber-200 text-amber-800",
@@ -254,7 +269,6 @@ async function verifyStudentSetup(studentData) {
     );
   }
 
-  // 2. Ping GitHub API to test repo health
   try {
     let owner, repo;
     const urlParts = studentData.repoUrl
@@ -276,6 +290,14 @@ async function verifyStudentSetup(studentData) {
       );
     }
 
+    if (res.status === 403) {
+      return triggerWarning(
+        "bg-slate-50 border-slate-200 text-slate-800",
+        "GitHub Rate Limit Reached",
+        "You have refreshed too many times. Please wait a few minutes before GitHub allows us to check your repository again.",
+      );
+    }
+
     if (res.status === 409) {
       return triggerWarning(
         "bg-blue-50 border-blue-200 text-blue-800",
@@ -293,7 +315,6 @@ async function verifyStudentSetup(studentData) {
       const stuEmail = (studentData.email || "").toLowerCase().trim();
       const stuName = (studentData.name || "").toLowerCase().trim();
 
-      // Run the exact same Hybrid Identity Matcher the AutoGrader uses
       const hasCommit = commits.some((c) => {
         const login = (c.author?.login || "").toLowerCase();
         const commitEmail = (c.commit?.author?.email || "").toLowerCase();
@@ -311,7 +332,6 @@ async function verifyStudentSetup(studentData) {
         return false;
       });
 
-      // The repo has code, but none of it was written by this student
       if (!hasCommit && commits.length > 0) {
         return triggerWarning(
           "bg-amber-50 border-amber-200 text-amber-800",
@@ -320,7 +340,6 @@ async function verifyStudentSetup(studentData) {
         );
       }
 
-      // All clear! Hide the banner.
       banner.classList.add("hidden");
     }
   } catch (e) {
