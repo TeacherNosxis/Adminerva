@@ -315,20 +315,17 @@ async function verifyStudentSetup(studentData) {
       const stuEmail = (studentData.email || "").toLowerCase().trim();
       const stuName = (studentData.name || "").toLowerCase().trim();
 
+      // Run the exact same Hybrid Identity Matcher the AutoGrader uses
       const hasCommit = commits.some((c) => {
         const login = (c.author?.login || "").toLowerCase();
         const commitEmail = (c.commit?.author?.email || "").toLowerCase();
         const commitName = (c.commit?.author?.name || "").toLowerCase();
 
-        if (
-          login === "teachernosxis" ||
-          commitEmail.includes("josephsixson") ||
-          commitEmail.includes("babaynike2013")
-        )
-          return false;
+        // 🚀 FIX: Removed the hardcoded 'teachernosxis' ban so you can test the system!
         if (ghUsername && login === ghUsername) return true;
         if (stuEmail && commitEmail === stuEmail) return true;
         if (stuName && commitName === stuName) return true;
+
         return false;
       });
 
