@@ -326,49 +326,58 @@ window.revokeStudent = async function (compositeDocId) {
 
 window.clearDirectory = async function () {
   const firstConfirm = confirm(
-    "⚠️ DANGER: Are you absolutely sure you want to delete ALL students? This cannot be undone.",
+    "⚠️ DANGER: Are you sure you want to delete ALL students and ALL grading data? This cannot be undone.",
   );
   if (!firstConfirm) return;
 
   const secondConfirm = confirm(
-    "Please confirm one more time. This will wipe your entire student directory.",
+    "Please confirm one more time. This will wipe your entire directory AND reset all analytics metrics to zero.",
   );
   if (!secondConfirm) return;
 
   if (typeof window.showSubtleLoader === "function")
-    window.showSubtleLoader("Wiping Student Directory...");
+    window.showSubtleLoader("Wiping Database (Students & Grades)...");
 
   try {
-    const snap = await getDocs(collection(db, "students"));
-    const batch = writeBatch(db);
-    let count = 0;
+    const deletePromises = [];
+    let studentCount = 0;
+    let gradeCount = 0;
 
-    snap.forEach((documentSnapshot) => {
+    // 1. Queue Student Deletions
+    const studentSnap = await getDocs(collection(db, "students"));
+    studentSnap.forEach((documentSnapshot) => {
       const data = documentSnapshot.data();
       if (data.email === SUPER_ADMIN_EMAIL || data.email === TEACHER_EMAIL)
         return;
-
-      const docRef = doc(db, "students", documentSnapshot.id);
-      batch.delete(docRef);
-      count++;
+      deletePromises.push(deleteDoc(doc(db, "students", documentSnapshot.id)));
+      studentCount++;
     });
 
-    if (count === 0) {
-      alert("The directory is already empty.");
+    // 2. Queue Grade Deletions (This clears the ghost analytics data)
+    const gradesSnap = await getDocs(collection(db, "grades"));
+    gradesSnap.forEach((documentSnapshot) => {
+      deletePromises.push(deleteDoc(doc(db, "grades", documentSnapshot.id)));
+      gradeCount++;
+    });
+
+    if (deletePromises.length === 0) {
+      alert("The database is already completely empty.");
       if (typeof window.hideSubtleLoader === "function")
         window.hideSubtleLoader();
       return;
     }
 
-    await batch.commit();
+    // Execute all deletions simultaneously (Bypasses Firestore's 500 batch limit)
+    await Promise.all(deletePromises);
+
     alert(
-      `✅ Successfully cleared ${count} student records from the database.`,
+      `✅ Hard Reset Complete: Cleared ${studentCount} students and ${gradeCount} grade records.`,
     );
 
     await loadDirectory();
   } catch (error) {
-    console.error("Error clearing directory:", error);
-    alert("❌ Failed to clear directory: " + error.message);
+    console.error("Error clearing database:", error);
+    alert("❌ Failed to clear database: " + error.message);
   } finally {
     if (typeof window.hideSubtleLoader === "function")
       window.hideSubtleLoader();
