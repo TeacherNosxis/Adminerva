@@ -12,7 +12,7 @@ import {
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const SUPER_ADMIN_EMAIL = "testadmin@example.com".toLowerCase();
+const SUPER_ADMIN_EMAIL = "babaynike2013@gmail.com".toLowerCase();
 const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
 
 // ==========================================
