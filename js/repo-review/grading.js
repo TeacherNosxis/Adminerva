@@ -209,17 +209,35 @@ window.updateDateScope = function () {
 async function loadSections() {
   if (!db) return;
   try {
-    const snap = await getDocs(collection(db, "sections"));
+    // 1. Scan the active students database
+    const snap = await getDocs(collection(db, "students"));
     const select = document.getElementById("sectionSelect");
     select.innerHTML = "";
+
+    // 2. Extract unique section names using a Set
+    let uniqueSections = new Set();
     snap.forEach((d) => {
+      const sectionName = d.data().section;
+      if (sectionName) uniqueSections.add(sectionName);
+    });
+
+    // 3. Sort them alphabetically and populate the dropdown
+    [...uniqueSections].sort().forEach((sec) => {
       select.insertAdjacentHTML(
         "beforeend",
-        `<option value="${d.data().name}">${d.data().name}</option>`,
+        `<option value="${sec}">${sec}</option>`,
       );
     });
+
+    // ONLY FOR dashboard_2.js: trigger the data load if sections exist
+    if (
+      typeof window.loadDashboardData === "function" &&
+      uniqueSections.size > 0
+    ) {
+      window.loadDashboardData();
+    }
   } catch (e) {
-    console.error(e);
+    console.error("Failed to load sections", e);
   }
 }
 
