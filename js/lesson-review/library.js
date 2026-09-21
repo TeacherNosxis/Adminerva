@@ -2,19 +2,31 @@ import { db } from "../core/firebase-core.js";
 import {
   collection,
   getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+// 1. Declare Global Variables explicitly
+let libraryData = [];
+let activeFolderId = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+  initFirebase();
+});
+
 function initFirebase() {
-  // No more localStorage parsing needed! db is instantly ready.
   loadLibrary();
 }
 
-// Inside your library fetch calls, replace getFirestore(...) with just 'db':
 async function loadLibrary() {
   try {
     const snap = await getDocs(collection(db, "reference_folders"));
     libraryData = [];
-    querySnapshot.forEach((docSnap) => {
+
+    // 2. Fix the variable name: changed querySnapshot to snap
+    snap.forEach((docSnap) => {
       libraryData.push({ id: docSnap.id, ...docSnap.data() });
     });
 
@@ -39,6 +51,7 @@ function formatDate(isoString) {
     year: "numeric",
   });
 }
+
 window.createFolder = async function () {
   if (!db) return alert("Firebase is not connected.");
   const input = document.getElementById("newFolderInput");
@@ -279,7 +292,6 @@ window.extractPDF = async function () {
   const folder = libraryData.find((f) => f.id === activeFolderId);
   let updatedDocs = [...(folder.documents || [])];
 
-  // 🚀 NEW: Helper function to pause execution
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   try {
@@ -317,7 +329,6 @@ window.extractPDF = async function () {
           contents: [
             {
               parts: [
-                // 🚀 THE FIX: An unconditional command to extract everything (Text + Images)
                 {
                   text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
                 },
@@ -333,7 +344,6 @@ window.extractPDF = async function () {
         }),
       });
 
-      // 🚀 FIX: Removed the hardcoded "Not found" string to avoid confusing 503s with 404s
       if (!response.ok)
         throw new Error(
           `API Error on ${file.name}: Status ${response.status}. The API may be overloaded.`,
@@ -357,7 +367,6 @@ window.extractPDF = async function () {
       });
     }
 
-    // Save to Firebase
     await updateDoc(doc(db, "reference_folders", activeFolderId), {
       documents: updatedDocs,
       updatedAt: new Date().toISOString(),
