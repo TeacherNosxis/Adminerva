@@ -244,41 +244,30 @@ const DEFAULT_TEMPLATES = [
   },
 ];
 
-window.initRubrics = async function () {
-  window.showLoader("Loading Rubrics from Cloud...");
+async function initRubric() {
+  const activeId = localStorage.getItem("Adminerva_active_template_id");
+  const rubricLabel = document.getElementById("activeRubricLabel");
+
+  const setNoRubricWarning = () => {
+    rubricLabel.textContent = "WARNING: No Rubric Found!";
+    rubricLabel.classList.replace("text-purple-600", "text-red-600");
+  };
+
+  if (!activeId || !db) return setNoRubricWarning();
+
   try {
-    if (!window.db) throw new Error("Firebase disconnected.");
-
-    // Fetch all templates from Firestore
-    const snap = await getDocs(collection(window.db, "templates"));
-    window.templates = [];
-    snap.forEach((d) => window.templates.push({ id: d.id, ...d.data() }));
-
-    // Fallback if the database has no templates yet
-    if (window.templates.length === 0) {
-      window.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+    const docSnap = await getDoc(doc(db, "templates", activeId));
+    if (docSnap.exists()) {
+      activeTemplate = { id: docSnap.id, ...docSnap.data() };
+      rubricLabel.textContent = activeTemplate.name;
+    } else {
+      setNoRubricWarning();
     }
-
-    // Determine active template
-    window.activeTemplateId =
-      localStorage.getItem("Adminerva_active_template_id") ||
-      window.templates[0].id;
-    window.editingTemplate = JSON.parse(
-      JSON.stringify(
-        window.templates.find((t) => t.id === window.activeTemplateId) ||
-          window.templates[0],
-      ),
-    );
-
-    window.renderTemplateDropdown();
-    window.renderTemplateEditor();
-    window.updateRubricEquippedUI();
   } catch (e) {
-    console.error("Failed to load rubrics:", e);
-  } finally {
-    window.hideLoader();
+    console.error("Failed to fetch active rubric:", e);
+    setNoRubricWarning();
   }
-};
+}
 
 window.renderTemplateDropdown = function () {
   const select = document.getElementById("templateSelect");
@@ -488,7 +477,6 @@ window.saveRubrics = async function () {
   }
 };
 
-
 window.handleCsvUpload = function (event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -588,4 +576,3 @@ window.handleCsvUpload = function (event) {
     },
   });
 };
-

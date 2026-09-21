@@ -78,18 +78,22 @@ async function initRubric() {
     rubricLabel.classList.replace("text-purple-600", "text-red-600");
   };
 
-  if (!activeId || !db) return setNoRubricWarning();
+  if (!activeId) return setNoRubricWarning();
 
   try {
-    const docSnap = await getDoc(doc(db, "templates", activeId));
-    if (docSnap.exists()) {
-      activeTemplate = { id: docSnap.id, ...docSnap.data() };
+    // Redirected to fetch from Local Storage instead of Firebase
+    const storedTemplates = JSON.parse(
+      localStorage.getItem("Adminerva_grading_templates") || "[]",
+    );
+    activeTemplate = storedTemplates.find((t) => t.id === activeId);
+
+    if (activeTemplate) {
       rubricLabel.textContent = activeTemplate.name;
     } else {
       setNoRubricWarning();
     }
   } catch (e) {
-    console.error("Failed to fetch active rubric:", e);
+    console.error("Failed to parse local rubric data:", e);
     setNoRubricWarning();
   }
 }
