@@ -23,9 +23,7 @@ onAuthStateChanged(auth, (user) => {
     window.location.href = "login.html";
     return;
   }
-
   const email = user.email.toLowerCase();
-
   if (email !== SUPER_ADMIN_EMAIL && email !== TEACHER_EMAIL) {
     window.location.href = "student-dashboard.html";
   } else {
@@ -56,7 +54,6 @@ let selectedCsvFile = null;
 
 if (dropzone && fileInput) {
   dropzone.addEventListener("click", () => fileInput.click());
-
   fileInput.addEventListener("change", (e) => {
     if (e.target.files.length > 0) {
       selectedCsvFile = e.target.files[0];
@@ -69,7 +66,6 @@ if (dropzone && fileInput) {
 if (uploadBtn) {
   uploadBtn.addEventListener("click", () => {
     if (!selectedCsvFile) return;
-
     uploadBtn.disabled = true;
     uploadBtn.textContent = "Parsing CSV...";
     uploadStatus.classList.remove("hidden");
@@ -94,18 +90,46 @@ async function processCSV(csvText) {
     return showUploadError("CSV is empty or missing headers.");
   }
 
-  const headers = rows[0].toLowerCase().split(",");
-  const emailIdx = headers.findIndex((h) => h.includes("email"));
+  // 🚀 NEW: Advanced CSV Splitter that respects Google Forms quotation marks!
+  function splitCsvRow(row) {
+    let cols = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < row.length; i++) {
+      if (row[i] === '"') {
+        inQuotes = !inQuotes; // Toggle quote state
+      } else if (row[i] === "," && !inQuotes) {
+        cols.push(cur.trim()); // Split only if outside quotes
+        cur = "";
+      } else {
+        cur += row[i];
+      }
+    }
+    cols.push(cur.trim());
+    return cols;
+  }
+
+  const headers = splitCsvRow(rows[0].toLowerCase());
+
+  // Auto-detect columns (handles forms that just use "Name" instead of First/Last)
+  const emailIdx = headers.findIndex(
+    (h) => h.includes("email") || h.includes("address"),
+  );
   const firstIdx = headers.findIndex((h) => h.includes("first"));
   const lastIdx = headers.findIndex((h) => h.includes("last"));
-  const sectionIdx = headers.findIndex((h) => h.includes("section"));
+  const nameIdx = headers.findIndex(
+    (h) => h.includes("name") && !h.includes("first") && !h.includes("last"),
+  );
+  const sectionIdx = headers.findIndex(
+    (h) => h.includes("section") || h.includes("club") || h.includes("class"),
+  );
 
   if (emailIdx === -1) {
     return showUploadError("CSV must contain a column named 'email'.");
   }
   if (sectionIdx === -1) {
     return showUploadError(
-      "CSV must contain a column named 'section' for Multi-Section Support.",
+      "CSV must contain a column named 'section' or 'club'.",
     );
   }
 
@@ -116,33 +140,45 @@ async function processCSV(csvText) {
     let count = 0;
 
     for (let i = 1; i < rows.length; i++) {
-      const cols = rows[i].split(",");
-      const rawEmail = cols[emailIdx]?.trim().toLowerCase();
+      const cols = splitCsvRow(rows[i]);
+      const rawEmail = cols[emailIdx]?.toLowerCase();
 
       if (!rawEmail || !rawEmail.includes("@")) continue;
 
-      const sectionName = cols[sectionIdx]?.trim() || "Unassigned";
+      let firstName = firstIdx !== -1 ? cols[firstIdx] : "";
+      let lastName = lastIdx !== -1 ? cols[lastIdx] : "";
+      let fullName =
+        nameIdx !== -1 ? cols[nameIdx] : `${firstName} ${lastName}`.trim();
+      if (!fullName) fullName = "Unnamed Student";
 
-      const studentData = {
-        email: rawEmail,
-        firstName: firstIdx !== -1 ? cols[firstIdx]?.trim() : "",
-        lastName: lastIdx !== -1 ? cols[lastIdx]?.trim() : "",
-        section: sectionName,
-        role: "student",
-        enrolledAt: new Date().toISOString(),
-      };
+      // 🚀 NEW: Multi-Section Extraction
+      // Google Forms separates multiple checkbox answers with commas (e.g. "Class A, Club B")
+      const rawSectionData = cols[sectionIdx] || "Unassigned";
+      const sections = rawSectionData
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
-      studentData.name =
-        `${studentData.firstName} ${studentData.lastName}`.trim();
-      if (!studentData.name) studentData.name = "Unnamed Student";
+      // Create a separate database record for EVERY section/club they checked
+      for (let sec of sections) {
+        const studentData = {
+          email: rawEmail,
+          firstName: firstName,
+          lastName: lastName,
+          name: fullName,
+          section: sec, // Save the specific section/club
+          role: "student",
+          enrolledAt: new Date().toISOString(),
+        };
 
-      // COMPOSITE ID GENERATOR
-      const safeSection = sectionName.replace(/[^a-zA-Z0-9]/g, "");
-      const compositeId = `${rawEmail}_${safeSection}`;
+        // COMPOSITE ID GENERATOR
+        const safeSection = sec.replace(/[^a-zA-Z0-9]/g, "");
+        const compositeId = `${rawEmail}_${safeSection}`;
 
-      const docRef = doc(db, "students", compositeId);
-      batch.set(docRef, studentData, { merge: true });
-      count++;
+        const docRef = doc(db, "students", compositeId);
+        batch.set(docRef, studentData, { merge: true });
+        count++;
+      }
     }
 
     await batch.commit();
@@ -196,8 +232,6 @@ async function loadDirectory() {
 
       const isLinked = data.githubUsername && data.repoUrl;
 
-      // Set initial state. If linked, show verifying. If not, missing info.
-      // Using a unique ID for the pill so we can dynamically update it.
       const pillId = `status_${documentSnapshot.id.replace(/[^a-zA-Z0-9]/g, "")}`;
 
       const statusHtml = isLinked
@@ -219,7 +253,6 @@ async function loadDirectory() {
             `;
       tbody.insertAdjacentHTML("beforeend", tr);
 
-      // If the user is linked, fire the async GitHub verifier
       if (isLinked) {
         verifyRepoStatus(pillId, data.repoUrl, ghToken);
       }
@@ -240,7 +273,7 @@ async function loadDirectory() {
   }
 }
 
-// NEW: Async Live Repo Health Check
+// Async Live Repo Health Check
 async function verifyRepoStatus(elementId, repoUrl, token) {
   const pill = document.getElementById(elementId);
   if (!pill) return;
@@ -258,7 +291,6 @@ async function verifyRepoStatus(elementId, repoUrl, token) {
     repo = urlParts.pop();
     owner = urlParts.pop();
 
-    // Ask GitHub for exactly 1 commit. This tells us instantly if it exists, is empty, or is blocked.
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`,
       {
@@ -269,7 +301,7 @@ async function verifyRepoStatus(elementId, repoUrl, token) {
       },
     );
 
-    pill.classList.remove("animate-pulse"); // Stop the verification pulse
+    pill.classList.remove("animate-pulse");
 
     if (res.ok) {
       pill.className =
@@ -343,7 +375,6 @@ window.clearDirectory = async function () {
     let studentCount = 0;
     let gradeCount = 0;
 
-    // 1. Queue Student Deletions
     const studentSnap = await getDocs(collection(db, "students"));
     studentSnap.forEach((documentSnapshot) => {
       const data = documentSnapshot.data();
@@ -353,7 +384,6 @@ window.clearDirectory = async function () {
       studentCount++;
     });
 
-    // 2. Queue Grade Deletions (This clears the ghost analytics data)
     const gradesSnap = await getDocs(collection(db, "grades"));
     gradesSnap.forEach((documentSnapshot) => {
       deletePromises.push(deleteDoc(doc(db, "grades", documentSnapshot.id)));
@@ -367,7 +397,6 @@ window.clearDirectory = async function () {
       return;
     }
 
-    // Execute all deletions simultaneously (Bypasses Firestore's 500 batch limit)
     await Promise.all(deletePromises);
 
     alert(
