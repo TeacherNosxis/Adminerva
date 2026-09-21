@@ -70,7 +70,7 @@ function initFirebase() {
 }
 
 async function initRubric() {
-  const activeId = localStorage.getItem("Adminerva_active_template_id");
+  let activeId = localStorage.getItem("Adminerva_active_template_id");
   const rubricLabel = document.getElementById("activeRubricLabel");
 
   const setNoRubricWarning = () => {
@@ -78,22 +78,36 @@ async function initRubric() {
     rubricLabel.classList.replace("text-purple-600", "text-red-600");
   };
 
-  if (!activeId) return setNoRubricWarning();
+  if (!db) return setNoRubricWarning();
 
   try {
-    // Redirected to fetch from Local Storage instead of Firebase
-    const storedTemplates = JSON.parse(
-      localStorage.getItem("Adminerva_grading_templates") || "[]",
-    );
-    activeTemplate = storedTemplates.find((t) => t.id === activeId);
+    // 1. Try to fetch the specifically equipped rubric first
+    if (activeId) {
+      const docSnap = await getDoc(doc(db, "templates", activeId));
+      if (docSnap.exists()) {
+        activeTemplate = { id: docSnap.id, ...docSnap.data() };
+        rubricLabel.textContent = activeTemplate.name;
+        rubricLabel.classList.replace("text-red-600", "text-purple-600");
+        return; // Success, exit function
+      }
+    }
 
-    if (activeTemplate) {
+    // 2. FALLBACK: If no rubric is equipped (or the old one was deleted), grab the first one from the database
+    const snap = await getDocs(collection(db, "templates"));
+    if (!snap.empty) {
+      const firstDoc = snap.docs[0];
+      activeTemplate = { id: firstDoc.id, ...firstDoc.data() };
+
+      // Auto-equip this fallback so the system remembers it next time
+      localStorage.setItem("Adminerva_active_template_id", activeTemplate.id);
+
       rubricLabel.textContent = activeTemplate.name;
+      rubricLabel.classList.replace("text-red-600", "text-purple-600");
     } else {
-      setNoRubricWarning();
+      setNoRubricWarning(); // The database is actually empty
     }
   } catch (e) {
-    console.error("Failed to parse local rubric data:", e);
+    console.error("Failed to fetch active rubric:", e);
     setNoRubricWarning();
   }
 }
