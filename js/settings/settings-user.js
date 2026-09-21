@@ -16,8 +16,11 @@ const SUPER_ADMIN_EMAIL = "testadmin@example.com".toLowerCase();
 const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
 
 // ==========================================
-// SECURITY & INITIALIZATION
+// STATE MANAGEMENT & CACHE
 // ==========================================
+let allStudents = [];
+let currentSort = { col: "name", dir: "asc" };
+
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     window.location.href = "login.html";
@@ -43,13 +46,12 @@ if (signOutBtn) {
 }
 
 // ==========================================
-// CSV PARSING & UPLOAD (COMPOSITE IDs)
+// CSV PARSING & UPLOAD
 // ==========================================
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("csvFile");
 const uploadBtn = document.getElementById("uploadBtn");
 const uploadStatus = document.getElementById("uploadStatus");
-
 let selectedCsvFile = null;
 
 if (dropzone && fileInput) {
@@ -86,20 +88,18 @@ async function processCSV(csvText) {
     .split("\n")
     .map((row) => row.trim())
     .filter((row) => row.length > 0);
-  if (rows.length < 2) {
+  if (rows.length < 2)
     return showUploadError("CSV is empty or missing headers.");
-  }
 
-  // 🚀 NEW: Advanced CSV Splitter that respects Google Forms quotation marks!
   function splitCsvRow(row) {
     let cols = [];
     let cur = "";
     let inQuotes = false;
     for (let i = 0; i < row.length; i++) {
       if (row[i] === '"') {
-        inQuotes = !inQuotes; // Toggle quote state
+        inQuotes = !inQuotes;
       } else if (row[i] === "," && !inQuotes) {
-        cols.push(cur.trim()); // Split only if outside quotes
+        cols.push(cur.trim());
         cur = "";
       } else {
         cur += row[i];
@@ -110,8 +110,6 @@ async function processCSV(csvText) {
   }
 
   const headers = splitCsvRow(rows[0].toLowerCase());
-
-  // Auto-detect columns (handles forms that just use "Name" instead of First/Last)
   const emailIdx = headers.findIndex(
     (h) => h.includes("email") || h.includes("address"),
   );
@@ -124,14 +122,12 @@ async function processCSV(csvText) {
     (h) => h.includes("section") || h.includes("club") || h.includes("class"),
   );
 
-  if (emailIdx === -1) {
+  if (emailIdx === -1)
     return showUploadError("CSV must contain a column named 'email'.");
-  }
-  if (sectionIdx === -1) {
+  if (sectionIdx === -1)
     return showUploadError(
       "CSV must contain a column named 'section' or 'club'.",
     );
-  }
 
   uploadBtn.textContent = "Syncing to Database...";
 
@@ -151,27 +147,23 @@ async function processCSV(csvText) {
         nameIdx !== -1 ? cols[nameIdx] : `${firstName} ${lastName}`.trim();
       if (!fullName) fullName = "Unnamed Student";
 
-      // 🚀 NEW: Multi-Section Extraction
-      // Google Forms separates multiple checkbox answers with commas (e.g. "Class A, Club B")
       const rawSectionData = cols[sectionIdx] || "Unassigned";
       const sections = rawSectionData
         .split(",")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
 
-      // Create a separate database record for EVERY section/club they checked
       for (let sec of sections) {
         const studentData = {
           email: rawEmail,
           firstName: firstName,
           lastName: lastName,
           name: fullName,
-          section: sec, // Save the specific section/club
+          section: sec,
           role: "student",
           enrolledAt: new Date().toISOString(),
         };
 
-        // COMPOSITE ID GENERATOR
         const safeSection = sec.replace(/[^a-zA-Z0-9]/g, "");
         const compositeId = `${rawEmail}_${safeSection}`;
 
@@ -186,7 +178,6 @@ async function processCSV(csvText) {
     uploadStatus.className =
       "text-xs font-bold text-center mt-3 text-emerald-600";
     uploadStatus.textContent = `✅ Successfully imported ${count} multi-section records!`;
-
     selectedCsvFile = null;
     dropzone.innerHTML = `<span class="text-3xl block mb-2">📥</span><p class="text-sm font-bold text-slate-700">Click or drag CSV here</p><p class="text-xs text-slate-400 mt-1">Maximum 500 records per upload</p>`;
 
@@ -207,87 +198,179 @@ function showUploadError(msg) {
 }
 
 // ==========================================
-// DIRECTORY READ, VERIFY & DELETE
+// DIRECTORY READ, CACHE, & UI UPDATES
 // ==========================================
-async function loadDirectory() {
+window.loadDirectory = async function () {
   const tbody = document.getElementById("userTableBody");
   if (!tbody) return;
 
   tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 italic font-medium">Fetching roster from database...</td></tr>`;
 
-  const ghToken = localStorage.getItem("Adminerva_github_token");
-
   try {
     const snap = await getDocs(collection(db, "students"));
-    tbody.innerHTML = "";
-
-    let recordCount = 0;
+    allStudents = [];
+    let uniqueSections = new Set();
 
     snap.forEach((documentSnapshot) => {
       const data = documentSnapshot.data();
       if (data.email === SUPER_ADMIN_EMAIL || data.email === TEACHER_EMAIL)
         return;
 
-      recordCount++;
+      uniqueSections.add(data.section);
+      const isLinked = !!(data.githubUsername && data.repoUrl);
 
-      const isLinked = data.githubUsername && data.repoUrl;
+      // Build local memory object
+      allStudents.push({
+        ...data,
+        id: documentSnapshot.id,
+        isLinked: isLinked,
+        pillId: `status_${documentSnapshot.id.replace(/[^a-zA-Z0-9]/g, "")}`,
+        ghStatusText: isLinked ? "Verifying..." : "Missing Info",
+        ghStatusClass: isLinked
+          ? "bg-blue-100 text-blue-700 animate-pulse"
+          : "bg-slate-200 text-slate-600",
+        verified: false,
+      });
+    });
 
-      const pillId = `status_${documentSnapshot.id.replace(/[^a-zA-Z0-9]/g, "")}`;
+    // Populate dynamic Section Filter dropdown
+    const secFilter = document.getElementById("sectionFilter");
+    if (secFilter) {
+      secFilter.innerHTML = `<option value="all">All Sections</option>`;
+      [...uniqueSections].sort().forEach((sec) => {
+        secFilter.insertAdjacentHTML(
+          "beforeend",
+          `<option value="${sec}">${sec}</option>`,
+        );
+      });
+    }
 
-      const statusHtml = isLinked
-        ? `<span id="${pillId}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 animate-pulse">Verifying...</span>`
-        : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600">Missing Info</span>`;
+    applyFiltersAndRender();
+
+    // Asynchronously verify GitHub status for linked accounts
+    const ghToken = localStorage.getItem("Adminerva_github_token");
+    allStudents.forEach((stu) => {
+      if (stu.isLinked && !stu.verified) {
+        verifyRepoStatusCache(stu, ghToken);
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 font-bold">Error loading directory: ${error.message}</td></tr>`;
+  }
+};
+
+// ==========================================
+// SEARCH, FILTER, AND SORT LOGIC
+// ==========================================
+function applyFiltersAndRender() {
+  const searchVal = (
+    document.getElementById("searchInput")?.value || ""
+  ).toLowerCase();
+  const sectionVal = document.getElementById("sectionFilter")?.value || "all";
+  const statusVal = document.getElementById("statusFilter")?.value || "all";
+
+  // 1. Filter
+  let filteredData = allStudents.filter((s) => {
+    const matchSearch =
+      s.name.toLowerCase().includes(searchVal) ||
+      s.email.toLowerCase().includes(searchVal);
+    const matchSection = sectionVal === "all" || s.section === sectionVal;
+
+    let matchStatus = true;
+    if (statusVal === "linked") matchStatus = s.isLinked;
+    if (statusVal === "missing") matchStatus = !s.isLinked;
+
+    return matchSearch && matchSection && matchStatus;
+  });
+
+  // 2. Sort
+  filteredData.sort((a, b) => {
+    let valA = (a[currentSort.col] || "").toString().toLowerCase();
+    let valB = (b[currentSort.col] || "").toString().toLowerCase();
+
+    if (valA < valB) return currentSort.dir === "asc" ? -1 : 1;
+    if (valA > valB) return currentSort.dir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // 3. Render HTML
+  const tbody = document.getElementById("userTableBody");
+  tbody.innerHTML = "";
+
+  if (filteredData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 font-medium">No records match your filters.</td></tr>`;
+  } else {
+    filteredData.forEach((data) => {
+      const statusHtml = `<span id="${data.pillId}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${data.ghStatusClass}">${data.ghStatusText}</span>`;
 
       const tr = `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                     <td class="px-6 py-4">
-                        <div class="font-medium text-slate-800">${data.name || "Unknown"}</div>
+                        <div class="font-medium text-slate-800">${data.name}</div>
                         <div class="text-[10px] font-bold text-blue-500 uppercase tracking-wider mt-0.5">${data.section}</div>
                     </td>
                     <td class="px-6 py-4 text-slate-500 font-mono text-xs">${data.email}</td>
                     <td class="px-6 py-4">${statusHtml}</td>
                     <td class="px-6 py-4 text-right">
-                        <button onclick="window.revokeStudent('${documentSnapshot.id}')" class="text-red-500 hover:text-red-700 font-medium text-xs border border-red-100 bg-red-50 px-3 py-1.5 rounded transition shadow-sm">Revoke</button>
+                        <button onclick="window.revokeStudent('${data.id}')" class="text-red-500 hover:text-red-700 font-medium text-xs border border-red-100 bg-red-50 px-3 py-1.5 rounded transition shadow-sm">Revoke</button>
                     </td>
                 </tr>
             `;
       tbody.insertAdjacentHTML("beforeend", tr);
-
-      if (isLinked) {
-        verifyRepoStatus(pillId, data.repoUrl, ghToken);
-      }
     });
-
-    if (recordCount === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 font-medium">No students found. Import a CSV to begin.</td></tr>`;
-    }
-
-    const footerCount = document.querySelector(
-      ".p-4.border-t.border-slate-200.bg-slate-50 span",
-    );
-    if (footerCount)
-      footerCount.textContent = `Showing ${recordCount} enrollment records`;
-  } catch (error) {
-    console.error(error);
-    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 font-bold">Error loading directory: ${error.message}</td></tr>`;
   }
+
+  const footerCount = document.getElementById("footerCount");
+  if (footerCount)
+    footerCount.textContent = `Showing ${filteredData.length} records`;
+
+  // 4. Update Header UI Arrows
+  document.getElementById("sort-name").textContent =
+    currentSort.col === "name" ? (currentSort.dir === "asc" ? "↑" : "↓") : "";
+  document.getElementById("sort-email").textContent =
+    currentSort.col === "email" ? (currentSort.dir === "asc" ? "↑" : "↓") : "";
 }
 
-// Async Live Repo Health Check
-async function verifyRepoStatus(elementId, repoUrl, token) {
-  const pill = document.getElementById(elementId);
-  if (!pill) return;
+// Bind event listeners to UI inputs
+document
+  .getElementById("searchInput")
+  ?.addEventListener("input", applyFiltersAndRender);
+document
+  .getElementById("sectionFilter")
+  ?.addEventListener("change", applyFiltersAndRender);
+document
+  .getElementById("statusFilter")
+  ?.addEventListener("change", applyFiltersAndRender);
 
+window.sortTable = function (colName) {
+  if (currentSort.col === colName) {
+    currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+  } else {
+    currentSort.col = colName;
+    currentSort.dir = "asc";
+  }
+  applyFiltersAndRender();
+};
+
+// ==========================================
+// BACKGROUND GITHUB VERIFICATION (NO RATE LIMIT SPAM)
+// ==========================================
+async function verifyRepoStatusCache(stu, token) {
   if (!token) {
-    pill.className =
-      "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700";
-    pill.textContent = "Linked (No Token)";
+    stu.ghStatusClass = "bg-green-100 text-green-700";
+    stu.ghStatusText = "Linked (No Token)";
+    stu.verified = true;
+    updateDOMStatus(stu);
     return;
   }
 
   try {
     let owner, repo;
-    const urlParts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
+    const urlParts = stu.repoUrl
+      .replace(/\/$/, "")
+      .replace(".git", "")
+      .split("/");
     repo = urlParts.pop();
     owner = urlParts.pop();
 
@@ -301,47 +384,44 @@ async function verifyRepoStatus(elementId, repoUrl, token) {
       },
     );
 
-    pill.classList.remove("animate-pulse");
+    stu.verified = true;
 
     if (res.ok) {
-      pill.className =
-        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700";
-      pill.textContent = "Active Repo";
+      stu.ghStatusClass = "bg-emerald-100 text-emerald-700";
+      stu.ghStatusText = "Active Repo";
     } else if (res.status === 409) {
-      pill.className =
-        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700";
-      pill.textContent = "Linked, Empty";
+      stu.ghStatusClass = "bg-amber-100 text-amber-700";
+      stu.ghStatusText = "Linked, Empty";
     } else if (res.status === 404) {
-      pill.className =
-        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700";
-      pill.textContent = "Not Found / Private";
+      stu.ghStatusClass = "bg-red-100 text-red-700";
+      stu.ghStatusText = "Not Found / Private";
     } else {
-      pill.className =
-        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700";
-      pill.textContent = "API Blocked";
+      stu.ghStatusClass = "bg-red-100 text-red-700";
+      stu.ghStatusText = "API Error";
     }
+    updateDOMStatus(stu);
   } catch (e) {
-    pill.classList.remove("animate-pulse");
-    pill.className =
-      "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700";
-    pill.textContent = "Network Error";
+    stu.verified = true;
+    stu.ghStatusClass = "bg-red-100 text-red-700";
+    stu.ghStatusText = "Network Error";
+    updateDOMStatus(stu);
   }
 }
 
-const refreshBtn = document.querySelector(
-  "button.text-blue-600.hover\\:underline",
-);
-if (refreshBtn) refreshBtn.addEventListener("click", loadDirectory);
-
-window.revokeStudent = async function (compositeDocId) {
-  if (
-    !confirm(
-      `Are you sure you want to revoke this specific access? If they are in multiple sections, this only removes them from this one.`,
-    )
-  ) {
-    return;
+// Only updates the DOM if the element is currently visible on screen
+function updateDOMStatus(stu) {
+  const pill = document.getElementById(stu.pillId);
+  if (pill) {
+    pill.className = `inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${stu.ghStatusClass}`;
+    pill.textContent = stu.ghStatusText;
   }
+}
 
+// ==========================================
+// DATA DELETION
+// ==========================================
+window.revokeStudent = async function (compositeDocId) {
+  if (!confirm(`Are you sure you want to revoke this specific access?`)) return;
   if (typeof window.showSubtleLoader === "function")
     window.showSubtleLoader("Revoking access...");
 
@@ -368,7 +448,7 @@ window.clearDirectory = async function () {
   if (!secondConfirm) return;
 
   if (typeof window.showSubtleLoader === "function")
-    window.showSubtleLoader("Wiping Database (Students & Grades)...");
+    window.showSubtleLoader("Wiping Database...");
 
   try {
     const deletePromises = [];
@@ -398,11 +478,9 @@ window.clearDirectory = async function () {
     }
 
     await Promise.all(deletePromises);
-
     alert(
       `✅ Hard Reset Complete: Cleared ${studentCount} students and ${gradeCount} grade records.`,
     );
-
     await loadDirectory();
   } catch (error) {
     console.error("Error clearing database:", error);

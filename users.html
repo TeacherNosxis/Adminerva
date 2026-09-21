@@ -10,8 +10,8 @@
     class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col hidden"
     id="pageBody"
   >
-    <!-- Replace the <nav> block with this: -->
     <div id="adminerva-nav" data-module="educator" data-page="directory"></div>
+
     <!-- Main Content -->
     <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
       <header class="mb-8">
@@ -27,62 +27,63 @@
         <!-- Left Column: CSV Upload -->
         <div class="lg:col-span-1 space-y-6">
           <div
-            class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
+            class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full"
           >
-            <h3
-              class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"
-            >
-              <span class="text-blue-500">📄</span> Import Roster
-            </h3>
-            <p class="text-sm text-slate-500 mb-4">
-              Upload a CSV file containing
-              <code class="bg-slate-100 text-slate-700 px-1 rounded">email</code
-              >,
-              <code class="bg-slate-100 text-slate-700 px-1 rounded"
-                >firstName</code
-              >, and
-              <code class="bg-slate-100 text-slate-700 px-1 rounded"
-                >lastName</code
-              >.
-            </p>
-
-            <div
-              class="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 hover:border-blue-400 transition cursor-pointer"
-              id="dropzone"
-            >
-              <span class="text-3xl block mb-2">📥</span>
-              <p class="text-sm font-bold text-slate-700">
-                Click or drag CSV here
-              </p>
-              <p class="text-xs text-slate-400 mt-1">
-                Maximum 500 records per upload
-              </p>
-              <input type="file" id="csvFile" accept=".csv" class="hidden" />
-            </div>
-            <button
-              id="uploadBtn"
-              class="w-full mt-4 bg-blue-600 text-white font-bold py-2.5 px-4 rounded-md hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
-            >
-              Sync to Database
-            </button>
-            <p
-              id="uploadStatus"
-              class="text-xs font-bold text-center mt-3 hidden"
-            ></p>
-
-            <!-- ADD THE CLEAR BUTTON HERE -->
-            <div class="mt-8 pt-6 border-t border-slate-200">
-              <button
-                onclick="window.clearDirectory()"
-                class="w-full bg-red-50 text-red-600 border border-red-200 font-bold py-2.5 px-4 rounded-md hover:bg-red-100 hover:text-red-700 transition shadow-sm flex items-center justify-center gap-2"
+            <div>
+              <h3
+                class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"
               >
-                <span>⚠️</span> Clear Entire Directory
+                <span class="text-blue-500">📄</span> Import Roster
+              </h3>
+              <p class="text-sm text-slate-500 mb-4">
+                Upload a CSV file containing
+                <code class="bg-slate-100 text-slate-700 px-1 rounded"
+                  >email</code
+                >,
+                <code class="bg-slate-100 text-slate-700 px-1 rounded"
+                  >firstName</code
+                >, and
+                <code class="bg-slate-100 text-slate-700 px-1 rounded"
+                  >lastName</code
+                >.
+              </p>
+
+              <div
+                class="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 hover:border-blue-400 transition cursor-pointer"
+                id="dropzone"
+              >
+                <span class="text-3xl block mb-2">📥</span>
+                <p class="text-sm font-bold text-slate-700">
+                  Click or drag CSV here
+                </p>
+                <p class="text-xs text-slate-400 mt-1">
+                  Maximum 500 records per upload
+                </p>
+                <input type="file" id="csvFile" accept=".csv" class="hidden" />
+              </div>
+
+              <button
+                id="uploadBtn"
+                class="w-full mt-4 bg-blue-600 text-white font-bold py-2.5 px-4 rounded-md hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
+              >
+                Sync to Database
               </button>
               <p
-                class="text-[10px] text-slate-400 text-center mt-2 uppercase tracking-wide"
-              >
-                Cannot be undone
-              </p>
+                id="uploadStatus"
+                class="text-xs font-bold text-center mt-3 hidden"
+              ></p>
+            </div>
+
+            <!-- ISOLATED CLEAR BUTTON -->
+            <div class="mt-auto pt-12">
+              <div class="border-t border-red-100 pt-4 flex justify-center">
+                <button
+                  onclick="window.clearDirectory()"
+                  class="text-xs font-bold text-red-400 hover:text-red-700 transition flex items-center gap-1.5 opacity-60 hover:opacity-100"
+                >
+                  <span class="text-base">🗑️</span> Hard Reset Database
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -92,100 +93,84 @@
           <div
             class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full"
           >
-            <!-- Table Header & Tabs -->
+            <!-- Tabs -->
             <div
-              class="p-0 border-b border-slate-200 bg-slate-50 flex justify-between items-end px-6 pt-4"
+              class="p-0 border-b border-slate-200 bg-slate-50 flex px-6 pt-4"
             >
-              <div class="flex gap-6">
-                <button
-                  class="pb-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600"
+              <button
+                class="pb-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 mr-6"
+              >
+                Enrolled Students
+              </button>
+              <button
+                class="pb-3 text-sm font-medium text-slate-500 hover:text-slate-800"
+              >
+                Instructors
+              </button>
+            </div>
+
+            <!-- NEW: Filter & Search Bar -->
+            <div
+              class="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row gap-3 items-center justify-between"
+            >
+              <div class="flex gap-2 w-full sm:w-auto">
+                <select
+                  id="sectionFilter"
+                  class="text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 font-medium text-slate-700 cursor-pointer"
                 >
-                  Enrolled Students
-                </button>
-                <button
-                  class="pb-3 text-sm font-medium text-slate-500 hover:text-slate-800"
+                  <option value="all">All Sections</option>
+                </select>
+                <select
+                  id="statusFilter"
+                  class="text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 font-medium text-slate-700 cursor-pointer"
                 >
-                  Instructors
-                </button>
+                  <option value="all">All Statuses</option>
+                  <option value="linked">GitHub Linked</option>
+                  <option value="missing">Missing Info</option>
+                </select>
               </div>
-              <div class="pb-2">
+              <div class="w-full sm:w-64 relative">
+                <span
+                  class="absolute inset-y-0 left-0 flex items-center pl-3 opacity-50"
+                  >🔍</span
+                >
                 <input
                   type="text"
-                  placeholder="Search emails..."
-                  class="text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  id="searchInput"
+                  placeholder="Search name or email..."
+                  class="w-full text-sm border border-slate-300 rounded-md pl-9 pr-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
             </div>
 
             <!-- Table Content -->
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse">
+            <div class="overflow-x-auto flex-1">
+              <table class="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                   <tr
-                    class="bg-slate-100/50 text-xs text-slate-500 uppercase tracking-wider font-bold"
+                    class="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200"
                   >
-                    <th class="px-6 py-3 border-b border-slate-200">
+                    <!-- Clickable Sort Headers -->
+                    <th
+                      class="px-6 py-3 cursor-pointer hover:bg-slate-200 transition select-none"
+                      onclick="window.sortTable('name')"
+                    >
                       Student Name
+                      <span id="sort-name" class="ml-1 text-blue-500"></span>
                     </th>
-                    <th class="px-6 py-3 border-b border-slate-200">
+                    <th
+                      class="px-6 py-3 cursor-pointer hover:bg-slate-200 transition select-none"
+                      onclick="window.sortTable('email')"
+                    >
                       Email Address
+                      <span id="sort-email" class="ml-1 text-blue-500"></span>
                     </th>
-                    <th class="px-6 py-3 border-b border-slate-200">
-                      GitHub Setup
-                    </th>
-                    <th class="px-6 py-3 border-b border-slate-200 text-right">
-                      Actions
-                    </th>
+                    <th class="px-6 py-3">GitHub Setup</th>
+                    <th class="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="userTableBody" class="text-sm">
-                  <!-- Dummy Data for UI preview -->
-                  <tr
-                    class="hover:bg-slate-50 transition border-b border-slate-100"
-                  >
-                    <td class="px-6 py-4 font-medium text-slate-800">
-                      Test Student
-                    </td>
-                    <td class="px-6 py-4 text-slate-500 font-mono text-xs">
-                      teststudent@example.com
-                    </td>
-                    <td class="px-6 py-4">
-                      <span
-                        class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700"
-                        >Linked</span
-                      >
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                      <button
-                        class="text-red-500 hover:text-red-700 font-medium text-xs"
-                      >
-                        Revoke
-                      </button>
-                    </td>
-                  </tr>
-                  <tr
-                    class="hover:bg-slate-50 transition border-b border-slate-100"
-                  >
-                    <td class="px-6 py-4 font-medium text-slate-800">
-                      Pending User
-                    </td>
-                    <td class="px-6 py-4 text-slate-500 font-mono text-xs">
-                      pending@example.com
-                    </td>
-                    <td class="px-6 py-4">
-                      <span
-                        class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700"
-                        >Missing Info</span
-                      >
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                      <button
-                        class="text-red-500 hover:text-red-700 font-medium text-xs"
-                      >
-                        Revoke
-                      </button>
-                    </td>
-                  </tr>
+                  <!-- Rows inject here -->
                 </tbody>
               </table>
             </div>
@@ -194,15 +179,19 @@
             <div
               class="p-4 border-t border-slate-200 bg-slate-50 text-xs font-medium text-slate-500 flex justify-between items-center"
             >
-              <span>Showing 2 of 2 records</span>
-              <button class="text-blue-600 hover:underline">
-                Refresh List
+              <span id="footerCount">Loading...</span>
+              <button
+                onclick="window.loadDirectory()"
+                class="text-blue-600 hover:underline flex items-center gap-1"
+              >
+                <span>🔄</span> Refresh Data
               </button>
             </div>
           </div>
         </div>
       </div>
     </main>
+
     <script src="js/core/adminerva-nav.js"></script>
     <script type="module" src="js/settings/settings-user.js"></script>
     <script src="js/core/adminerva-loader.js"></script>
