@@ -227,3 +227,103 @@ document.addEventListener("click", (e) => {
     signOut(auth).then(() => (window.location.href = "login.html"));
   }
 });
+// ==========================================
+// STUDENT DIAGNOSTIC ENGINE
+// ==========================================
+async function verifyStudentSetup(studentData) {
+  const banner = document.getElementById("studentWarningBanner");
+  const title = document.getElementById("warningTitle");
+  const msg = document.getElementById("warningMessage");
+
+  if (!banner || !studentData) return;
+
+  // Helper to set warning UI
+  const triggerWarning = (colorClass, header, message) => {
+    banner.className = `mb-6 p-4 rounded-lg border shadow-sm flex items-start gap-3 ${colorClass}`;
+    title.textContent = header;
+    msg.innerHTML = message;
+    banner.classList.remove("hidden");
+  };
+
+  // 1. Check for blank fields
+  if (!studentData.repoUrl || !studentData.githubUsername) {
+    return triggerWarning(
+      "bg-amber-50 border-amber-200 text-amber-800",
+      "Missing Configuration",
+      "You must configure your <strong>GitHub Username</strong> and <strong>Repository URL</strong> in your Settings to track your progress.",
+    );
+  }
+
+  // 2. Ping GitHub API to test repo health
+  try {
+    let owner, repo;
+    const urlParts = studentData.repoUrl
+      .replace(/\/$/, "")
+      .replace(".git", "")
+      .split("/");
+    repo = urlParts.pop();
+    owner = urlParts.pop();
+
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=10`,
+    );
+
+    if (res.status === 404) {
+      return triggerWarning(
+        "bg-red-50 border-red-200 text-red-800",
+        "Repository Not Found",
+        "We cannot reach your code. Ensure your URL is spelled correctly and that the repository is set to <strong>Public</strong> on GitHub.",
+      );
+    }
+
+    if (res.status === 409) {
+      return triggerWarning(
+        "bg-blue-50 border-blue-200 text-blue-800",
+        "Empty Repository",
+        "Your repository is successfully linked, but it is completely empty. Push your first code commit to see your analytics.",
+      );
+    }
+
+    if (res.ok) {
+      const commits = await res.json();
+
+      const ghUsername = (studentData.githubUsername || "")
+        .toLowerCase()
+        .trim();
+      const stuEmail = (studentData.email || "").toLowerCase().trim();
+      const stuName = (studentData.name || "").toLowerCase().trim();
+
+      // Run the exact same Hybrid Identity Matcher the AutoGrader uses
+      const hasCommit = commits.some((c) => {
+        const login = (c.author?.login || "").toLowerCase();
+        const commitEmail = (c.commit?.author?.email || "").toLowerCase();
+        const commitName = (c.commit?.author?.name || "").toLowerCase();
+
+        if (
+          login === "teachernosxis" ||
+          commitEmail.includes("josephsixson") ||
+          commitEmail.includes("babaynike2013")
+        )
+          return false;
+        if (ghUsername && login === ghUsername) return true;
+        if (stuEmail && commitEmail === stuEmail) return true;
+        if (stuName && commitName === stuName) return true;
+        return false;
+      });
+
+      // The repo has code, but none of it was written by this student
+      if (!hasCommit && commits.length > 0) {
+        return triggerWarning(
+          "bg-amber-50 border-amber-200 text-amber-800",
+          "Identity Mismatch Detected",
+          `We see code in this repository, but none of it matches your configured GitHub username (<strong>${studentData.githubUsername}</strong>). If you wrote this code, please check for typos in your Settings.`,
+        );
+      }
+
+      // All clear! Hide the banner.
+      banner.classList.add("hidden");
+    }
+  } catch (e) {
+    console.error("Diagnostic check failed:", e);
+  }
+}

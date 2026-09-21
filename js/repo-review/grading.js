@@ -313,7 +313,7 @@ window.fetchSectionCommits = async function () {
       processed++;
       window.showLoader(
         `Fetching GitHub Data...`,
-        `Checking repos: ${processed} of${currentStudents.length}`,
+        `Checking repos: ${processed} of ${currentStudents.length}`,
       );
 
       commitDataMap[student.id] = {
@@ -343,8 +343,9 @@ window.fetchSectionCommits = async function () {
         const since = activeStartDateStr;
         const until = activeEndDateStr;
 
+        // Fetch all commits for this specific week
         const response = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}&author=${encodeURIComponent(student.githubUsername)}`,
+          `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}`,
           {
             headers: {
               Authorization: `Bearer ${ghToken}`,
@@ -378,9 +379,43 @@ window.fetchSectionCommits = async function () {
           continue;
         }
 
-        const commits = await response.json();
+        let commits = await response.json();
 
         if (Array.isArray(commits)) {
+          const ghUsername = (student.githubUsername || "")
+            .toLowerCase()
+            .trim();
+          const stuEmail = (student.email || "").toLowerCase().trim();
+          const stuName = (student.name || "").toLowerCase().trim();
+
+          // 🚀 THE FIX: HYBRID IDENTITY FILTER (Ensures Individual Grading)
+          commits = commits.filter((c) => {
+            const login = (c.author?.login || "").toLowerCase();
+            const commitEmail = (c.commit?.author?.email || "").toLowerCase();
+            const commitName = (c.commit?.author?.name || "").toLowerCase();
+
+            // 1. Always ignore instructor commits
+            if (
+              login === "teachernosxis" ||
+              commitEmail.includes("josephsixson") ||
+              commitEmail.includes("babaynike2013")
+            ) {
+              return false;
+            }
+
+            // 2. Exact Username Match (Primary check)
+            if (ghUsername && login === ghUsername) return true;
+
+            // 3. Typo Fallback 1: Match by their registered email
+            if (stuEmail && commitEmail === stuEmail) return true;
+
+            // 4. Typo Fallback 2: Match by their registered real name
+            if (stuName && commitName === stuName) return true;
+
+            // If none of these match, this commit belongs to someone else (e.g., a group member)
+            return false;
+          });
+
           commitDataMap[student.id].count = commits.length;
 
           if (commits.length > 0) {
@@ -391,7 +426,7 @@ window.fetchSectionCommits = async function () {
               (c) => c?.commit?.message || "No commit message",
             );
 
-            const limit = Math.min(commits.length, 10); // Limit to first 10 commits for performance
+            const limit = Math.min(commits.length, 10);
             for (let i = 0; i < limit; i++) {
               const detailRes = await fetch(
                 `https://api.github.com/repos/${owner}/${repo}/commits/${commits[i].sha}`,
@@ -404,7 +439,6 @@ window.fetchSectionCommits = async function () {
                   commitDataMap[student.id].deletions += detail.stats.deletions;
                 }
 
-                // NEW: Append the commit message as context for the AI
                 commitDataMap[student.id].patches +=
                   `\n\n### COMMIT MESSAGE: "${commits[i]?.commit?.message || "No message"}"\n`;
 
