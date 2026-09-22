@@ -308,8 +308,8 @@ window.fetchSectionCommits = async function () {
     for (let student of currentStudents) {
       processed++;
       window.showLoader(
-        `Fetching GitHub Data...`,
-        `Checking repos: ${processed} of${currentStudents.length}`,
+        `Fetching GitHub Data.../n`,
+        `Checking repos: ${processed} of ${currentStudents.length}`,
       );
 
       commitDataMap[student.id] = {
@@ -855,7 +855,13 @@ ${data.patches.substring(0, 40000)}
 
       if (!response.ok) {
         if (response.status === 429) {
-          await new Promise((r) => setTimeout(r, 2000 * attempt));
+          // Increase the wait time to 15 seconds, then 30 seconds
+          const waitTime = 15000 * attempt;
+          window.showLoader(
+            `AI Analyzing Code for ${student.name}...`,
+            `API Speed Limit Hit. Pausing for ${waitTime / 1000}s to cool down...`,
+          );
+          await new Promise((r) => setTimeout(r, waitTime));
           throw new Error("Rate Limit Exceeded.");
         }
         const errData = await response.json().catch(() => ({}));
