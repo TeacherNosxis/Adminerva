@@ -20,22 +20,14 @@ let firestoreGradesMap = {}; // Maps studentId -> saved firebase grades
 
 let activeStartDateStr = "";
 let activeEndDateStr = "";
-
 // ==========================================
 // DYNAMIC QUOTA MAPPING
 // ==========================================
 const modelQuotaMap = {
-  "gemini-2.0-flash": "Unlimited",
-  "gemini-2.0-flash-lite": "Unlimited",
-  "gemini-2.5-flash": 10000,
-  "gemini-2.5-flash-lite": "Unlimited",
-  "gemini-2.5-pro": 1000,
   "gemini-3-flash-preview": 10000,
   "gemini-3.1-pro-preview": 250,
   "gemini-3.1-pro-preview-customtools": 250,
-  "gemini-3.1-flash-lite": 150000,
   "gemini-3.5-flash": 10000,
-  "gemini-3.5-flash-lite": 150000,
   "gemini-3.6-flash": 10000,
   "gemini-3.7-flash": 10000,
   "gemini-3.8-flash": 10000,
@@ -43,7 +35,7 @@ const modelQuotaMap = {
 
 function getModelQuota() {
   const model =
-    localStorage.getItem("Adminerva_ai_model") || "gemini-3.8-flash";
+    localStorage.getItem("Adminerva_ai_model") || "gemini-3.7-flash";
   return modelQuotaMap[model] !== undefined ? modelQuotaMap[model] : 10000;
 }
 
@@ -152,17 +144,24 @@ async function initRubric() {
 }
 
 async function updateQuotaDisplay() {
-  if (!db) return 0;
+  if (!db) return { requests: 0, tokens: 0 };
   const today = new Date().toISOString().split("T")[0];
   const docRef = doc(db, "system", `ai_usage_${today}`);
-  let currentCount = 0;
+  const activeModel =
+    localStorage.getItem("Adminerva_ai_model") || "gemini-3.7-flash";
+  const safeModelKey = activeModel.replace(/\./g, "_");
+
+  let currentRequests = 0;
+  let currentTokens = 0;
 
   try {
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      currentCount = snap.data().count || 0;
+      const data = snap.data();
+      currentRequests = data[`${safeModelKey}_requests`] || 0;
+      currentTokens = data[`${safeModelKey}_tokens`] || 0;
     } else {
-      await setDoc(docRef, { count: 0, date: today });
+      await setDoc(docRef, { date: today });
     }
   } catch (e) {
     console.error("Failed to fetch AI quota:", e);
@@ -172,13 +171,17 @@ async function updateQuotaDisplay() {
   const display = document.getElementById("aiQuotaDisplay");
 
   if (display) {
+    const tokenDisplay =
+      currentTokens >= 1000
+        ? `${(currentTokens / 1000).toFixed(1)}k`
+        : currentTokens;
+
     if (maxQuota === "Unlimited") {
-      display.textContent = `${currentCount} / Unlimited`;
+      display.textContent = `${currentRequests} / Unlimited (🪙 ${tokenDisplay} tokens)`;
       display.classList.remove("text-red-600");
     } else {
-      display.textContent = `${currentCount} / ${maxQuota}`;
-      // Turn red when you reach 90% of whatever the current limit is
-      if (currentCount >= maxQuota * 0.9) {
+      display.textContent = `${currentRequests} / ${maxQuota} (🪙 ${tokenDisplay} tokens)`;
+      if (currentRequests >= maxQuota * 0.9) {
         display.classList.add("text-red-600");
       } else {
         display.classList.remove("text-red-600");
@@ -186,14 +189,27 @@ async function updateQuotaDisplay() {
     }
   }
 
-  return currentCount;
+  return { requests: currentRequests, tokens: currentTokens };
 }
 
-async function incrementAiQuota() {
+async function incrementAiQuota(tokensUsed = 0) {
   if (!db) return;
   const today = new Date().toISOString().split("T")[0];
+  const activeModel =
+    localStorage.getItem("Adminerva_ai_model") || "gemini-3.7-flash";
+  const safeModelKey = activeModel.replace(/\./g, "_");
   const docRef = doc(db, "system", `ai_usage_${today}`);
-  await setDoc(docRef, { count: increment(1) }, { merge: true });
+
+  await setDoc(
+    docRef,
+    {
+      date: today,
+      [`${safeModelKey}_requests`]: increment(1),
+      [`${safeModelKey}_tokens`]: increment(tokensUsed),
+    },
+    { merge: true },
+  );
+
   await updateQuotaDisplay();
 }
 
@@ -821,11 +837,11 @@ ${data.patches.substring(0, 40000)}
     attempt++;
     try {
       const maxQuota = getModelQuota();
-      const currentCount = await updateQuotaDisplay();
+      const quota = await updateQuotaDisplay();
 
-      if (maxQuota !== "Unlimited" && currentCount >= maxQuota) {
+      if (maxQuota !== "Unlimited" && quota.requests >= maxQuota) {
         throw new Error(
-          `Daily AI Quota Reached (${maxQuota}/${maxQuota}). Please wait until tomorrow or switch models.`,
+          `Daily AI Quota Reached for ${model} (${maxQuota}/${maxQuota}). Please wait until tomorrow or switch models.`,
         );
       }
 
@@ -942,7 +958,8 @@ ${data.patches.substring(0, 40000)}
         : 0;
       gradeData.tokensUsed = tokensUsed;
 
-      incrementAiQuota();
+      // Increment both request count and total tokens for the active model
+      await incrementAiQuota(tokensUsed);
       success = true;
     } catch (err) {
       lastError = err.message;
