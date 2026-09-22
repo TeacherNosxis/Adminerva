@@ -4,8 +4,6 @@ import {
   getDocs,
   query,
   where,
-  getDoc,
-  doc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   onAuthStateChanged,
@@ -23,6 +21,7 @@ onAuthStateChanged(auth, async (user) => {
   const emailDisplay = document.getElementById("userEmailDisplay");
   if (emailDisplay) emailDisplay.textContent = user.email;
 
+  // Listen for Time Filter Changes
   const timeFilterDropdown = document.getElementById("timeFilter");
   if (timeFilterDropdown) {
     timeFilterDropdown.addEventListener("change", (e) => {
@@ -35,6 +34,7 @@ onAuthStateChanged(auth, async (user) => {
       }
     });
   }
+
   try {
     const q = query(
       collection(db, "students"),
@@ -51,7 +51,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     userProfiles = [];
-    snap.forEach((d) => userProfiles.push({ id: d.id, ...d.data() }));
+    snap.forEach((d) => userProfiles.push(d.data()));
 
     const selector = document.getElementById("sectionSelector");
     if (selector) {
@@ -84,7 +84,6 @@ async function loadDashboardProfile(studentData) {
   const subtitle = document.getElementById("repoSubtitle");
   const container = document.getElementById("commitListContainer");
 
-  // 🚀 IGNITION KEY: Run the diagnostic check immediately on load!
   verifyStudentSetup(studentData);
 
   if (currentChart) {
@@ -96,7 +95,7 @@ async function loadDashboardProfile(studentData) {
     subtitle.innerHTML = `<strong class="text-amber-700">${studentData.section}:</strong> <span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>`;
     container.innerHTML =
       "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
-    renderChart([]); // Render an empty chart so the box isn't blank
+    renderChart([], "7d");
     return;
   }
 
@@ -113,14 +112,18 @@ async function loadDashboardProfile(studentData) {
             </div>
         </div>`;
 
-  await fetchGitHubData(studentData.repoUrl, studentData.githubUsername);
-  await fetchRepoBankData(studentData.repoUrl, studentData.id);
+  const defaultFilter = document.getElementById("timeFilter")?.value || "7d";
+  await fetchGitHubData(
+    studentData.repoUrl,
+    studentData.githubUsername,
+    defaultFilter,
+  );
 }
 
 async function fetchGitHubData(repoUrl, username, filter = "7d") {
   const container = document.getElementById("commitListContainer");
 
-  // 1. Calculate the 'Since' Date based on the filter
+  // Calculate Target Date
   const now = new Date();
   let sinceDate = new Date();
   if (filter === "24h") sinceDate.setHours(now.getHours() - 24);
@@ -136,30 +139,39 @@ async function fetchGitHubData(repoUrl, username, filter = "7d") {
     repo = urlParts.pop();
     owner = urlParts.pop();
 
-    // Fetch with dynamic timeline filter and increased per_page limit
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(username)}&since=${sinceIso}&per_page=100`,
-    );
+    let allCommits = [];
+    let page = 1;
+    let keepFetching = true;
+    const maxPages = filter === "90d" || filter === "30d" ? 4 : 1; // Fetch up to 400 commits for deep history
 
-    if (!response.ok) {
-      if (response.status === 404)
-        throw new Error(
-          "Repository is Private or Not Found. Cannot fetch analytics.",
-        );
-      throw new Error(`GitHub API Error: ${response.status}`);
+    // Automated Pagination Loop to prevent "Flat Line" data clipping
+    while (keepFetching && page <= maxPages) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(username)}&since=${sinceIso}&per_page=100&page=${page}`,
+      );
+
+      if (!response.ok) {
+        if (response.status === 404 && page === 1)
+          throw new Error("Repository is Private or Not Found.");
+        break;
+      }
+
+      const commits = await response.json();
+      allCommits = allCommits.concat(commits);
+
+      if (commits.length < 100) keepFetching = false;
+      page++;
     }
 
-    const commits = await response.json();
-
-    if (commits.length === 0) {
+    if (allCommits.length === 0) {
       container.innerHTML =
-        "<p class='text-sm text-slate-500 font-bold'>No commits found for your username yet.</p>";
-      renderChart([]); // Fixes blank white box error
+        "<p class='text-sm text-slate-500 font-bold'>No commits found in this timeframe.</p>";
+      renderChart([], filter);
       return;
     }
 
     container.innerHTML = "";
-    commits.slice(0, 7).forEach((c) => {
+    allCommits.slice(0, 7).forEach((c) => {
       const date = new Date(c.commit.author.date).toLocaleDateString(
         undefined,
         { month: "short", day: "numeric" },
@@ -178,18 +190,19 @@ async function fetchGitHubData(repoUrl, username, filter = "7d") {
       );
     });
 
-    renderChart(commits);
+    renderChart(allCommits, filter);
   } catch (err) {
     container.innerHTML = `<p class="text-sm text-red-500 font-medium">${err.message}</p>`;
-    renderChart([]);
+    renderChart([], filter);
   }
 }
+
 function renderChart(commits, filter) {
   const now = new Date();
   const labels = [];
   const dataMap = {};
 
-  // 1. GENERATE BLANK TIMELINE (Fixes the "Single Dot" graph issue)
+  // Generate strict timelines to guarantee proportional chart spacing
   if (filter === "24h") {
     for (let i = 23; i >= 0; i--) {
       let d = new Date(now.getTime() - i * 60 * 60 * 1000);
@@ -212,7 +225,6 @@ function renderChart(commits, filter) {
     }
   }
 
-  // 2. PLOT COMMITS ONTO TIMELINE
   const hasData = commits && commits.length > 0;
   if (hasData) {
     commits.forEach((c) => {
@@ -230,6 +242,13 @@ function renderChart(commits, filter) {
   const displayLabels = labels.map((l) => l.label);
   const dataPoints = labels.map((l) => dataMap[l.key]);
 
+  // Dynamic Chart Styling based on the timeline length
+  let pointRadius = filter === "90d" ? 1 : filter === "30d" ? 3 : 5;
+  let pointHoverRadius = filter === "90d" ? 4 : 7;
+  let maxTicks =
+    filter === "24h" ? 24 : filter === "7d" ? 7 : filter === "30d" ? 15 : 12;
+  let lineTension = filter === "90d" ? 0.1 : filter === "30d" ? 0.2 : 0.4;
+
   const ctx = document.getElementById("commitChart").getContext("2d");
   if (currentChart) currentChart.destroy();
 
@@ -246,13 +265,14 @@ function renderChart(commits, filter) {
             ? "rgba(59, 130, 246, 0.1)"
             : "rgba(203, 213, 225, 0.1)",
           borderWidth: 2,
-          tension: 0.4,
+          tension: lineTension,
           fill: true,
           pointBackgroundColor: hasData ? "#1d4ed8" : "#94a3b8",
           pointBorderColor: "#fff",
           pointBorderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 6,
+          pointRadius: pointRadius,
+          pointHoverRadius: pointHoverRadius,
+          pointHitRadius: 15,
         },
       ],
     },
@@ -269,7 +289,7 @@ function renderChart(commits, filter) {
         x: {
           grid: { display: false },
           border: { display: false },
-          ticks: { maxTicksLimit: 12 }, // Keeps the 3-month graph from getting too crowded
+          ticks: { maxTicksLimit: maxTicks, autoSkip: true },
         },
       },
       plugins: {
@@ -279,6 +299,8 @@ function renderChart(commits, filter) {
           padding: 10,
           cornerRadius: 8,
           displayColors: false,
+          intersect: false,
+          mode: "index",
         },
       },
     },
@@ -325,7 +347,6 @@ async function verifyStudentSetup(studentData) {
     repo = urlParts.pop();
     owner = urlParts.pop();
 
-    // 🚀 FIX: Increased per_page to 100 to cast a wider net and prevent false positives
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
     );
@@ -387,66 +408,5 @@ async function verifyStudentSetup(studentData) {
     }
   } catch (e) {
     console.error("Diagnostic check failed:", e);
-  }
-}
-
-// Helper to generate the exact Repobank ID
-function getRepoId(repoUrl) {
-  try {
-    const parts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
-    return `${parts[parts.length - 2]}_${parts[parts.length - 1]}`;
-  } catch (e) {
-    return "unknown_repo";
-  }
-}
-
-// Fetch and render the AI's long-term memory
-async function fetchRepoBankData(repoUrl, studentId) {
-  const container = document.getElementById("projectSnapshotContent");
-  if (!repoUrl || !container) return;
-
-  try {
-    const repoId = getRepoId(repoUrl);
-    const repoSnap = await getDoc(doc(db, "repobank", repoId));
-
-    if (repoSnap.exists()) {
-      const data = repoSnap.data();
-      const studentData = data.members ? data.members[studentId] : null;
-
-      let html = `
-        <div class="space-y-4 not-italic">
-          <div>
-            <h4 class="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-1">Project Concept</h4>
-            <p class="text-white text-sm leading-relaxed">${data.concept || "Not defined yet."}</p>
-          </div>
-      `;
-
-      if (studentData) {
-        html += `
-          <div>
-            <h4 class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-1">Your Overall Role</h4>
-            <p class="text-white text-sm leading-relaxed">${studentData.overallContribution || "No specific role recorded yet."}</p>
-          </div>
-          <div>
-            <h4 class="text-[10px] text-purple-400 font-bold uppercase tracking-wider mb-1">Recent Focus</h4>
-            <p class="text-white text-sm leading-relaxed">${studentData.recentContribution || "No recent activity logged."}</p>
-          </div>
-        `;
-      }
-
-      html += `
-          <div class="mt-4 pt-3 border-t border-slate-700">
-            <h4 class="text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-1">Whole Group Feedback</h4>
-            <p class="text-slate-300 text-xs leading-relaxed">${data.feedback || "No general feedback."}</p>
-          </div>
-        </div>
-      `;
-
-      container.innerHTML = html;
-    } else {
-      container.innerHTML = `No long-term memory exists for this repository yet. The AI will generate your project's structural overview upon your next code review.`;
-    }
-  } catch (e) {
-    console.error("Failed to fetch Repobank data:", e);
   }
 }
