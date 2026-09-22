@@ -4,6 +4,8 @@ import {
   getDocs,
   query,
   where,
+  getDoc,
+  doc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   onAuthStateChanged,
@@ -36,7 +38,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     userProfiles = [];
-    snap.forEach((d) => userProfiles.push(d.data()));
+    snap.forEach((d) => userProfiles.push({ id: d.id, ...d.data() }));
 
     const selector = document.getElementById("sectionSelector");
     if (selector) {
@@ -98,6 +100,7 @@ async function loadDashboardProfile(studentData) {
         </div>`;
 
   await fetchGitHubData(studentData.repoUrl, studentData.githubUsername);
+  await fetchRepoBankData(studentData.repoUrl, studentData.id);
 }
 
 async function fetchGitHubData(repoUrl, username) {
@@ -341,5 +344,66 @@ async function verifyStudentSetup(studentData) {
     }
   } catch (e) {
     console.error("Diagnostic check failed:", e);
+  }
+}
+
+// Helper to generate the exact Repobank ID
+function getRepoId(repoUrl) {
+  try {
+    const parts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
+    return `${parts[parts.length - 2]}_${parts[parts.length - 1]}`;
+  } catch (e) {
+    return "unknown_repo";
+  }
+}
+
+// Fetch and render the AI's long-term memory
+async function fetchRepoBankData(repoUrl, studentId) {
+  const container = document.getElementById("projectSnapshotContent");
+  if (!repoUrl || !container) return;
+
+  try {
+    const repoId = getRepoId(repoUrl);
+    const repoSnap = await getDoc(doc(db, "repobank", repoId));
+
+    if (repoSnap.exists()) {
+      const data = repoSnap.data();
+      const studentData = data.members ? data.members[studentId] : null;
+
+      let html = `
+        <div class="space-y-4 not-italic">
+          <div>
+            <h4 class="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-1">Project Concept</h4>
+            <p class="text-white text-sm leading-relaxed">${data.concept || "Not defined yet."}</p>
+          </div>
+      `;
+
+      if (studentData) {
+        html += `
+          <div>
+            <h4 class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-1">Your Overall Role</h4>
+            <p class="text-white text-sm leading-relaxed">${studentData.overallContribution || "No specific role recorded yet."}</p>
+          </div>
+          <div>
+            <h4 class="text-[10px] text-purple-400 font-bold uppercase tracking-wider mb-1">Recent Focus</h4>
+            <p class="text-white text-sm leading-relaxed">${studentData.recentContribution || "No recent activity logged."}</p>
+          </div>
+        `;
+      }
+
+      html += `
+          <div class="mt-4 pt-3 border-t border-slate-700">
+            <h4 class="text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-1">Whole Group Feedback</h4>
+            <p class="text-slate-300 text-xs leading-relaxed">${data.feedback || "No general feedback."}</p>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    } else {
+      container.innerHTML = `No long-term memory exists for this repository yet. The AI will generate your project's structural overview upon your next code review.`;
+    }
+  } catch (e) {
+    console.error("Failed to fetch Repobank data:", e);
   }
 }

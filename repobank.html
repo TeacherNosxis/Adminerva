@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RepoReview - Repobank Directory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
+    <!-- Navigation (Make sure to add a link to this page in adminerva-nav.js) -->
+    <div id="adminerva-nav" data-module="educator" data-page="repobank"></div>
+
+    <div
+      class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col gap-6"
+    >
+      <!-- Header & Section Filter -->
+      <div
+        class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+      >
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            🧠 Repobank Directory
+          </h2>
+          <p class="text-sm text-gray-500 mt-1">
+            AI-generated long-term memory, project concepts, and role tracking.
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label
+            class="text-sm font-bold text-gray-700 uppercase tracking-wider"
+            >Class Section:</label
+          >
+          <select
+            id="sectionSelect"
+            onchange="loadRepobankData()"
+            class="p-2 border border-gray-300 rounded font-semibold focus:ring-purple-500 bg-gray-50 min-w-[200px]"
+          ></select>
+        </div>
+      </div>
+
+      <!-- Main Content Grid -->
+      <div
+        id="repobankContainer"
+        class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-12"
+      >
+        <div class="text-gray-500 italic font-medium">
+          Select a section to load Repobank data...
+        </div>
+      </div>
+    </div>
+
+    <!-- Loader -->
+    <div
+      id="globalLoader"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[100] items-center justify-center flex-col"
+    >
+      <div
+        class="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500 border-solid mb-4"
+      ></div>
+      <p id="loaderMessage" class="text-white font-bold text-lg tracking-wider">
+        Loading Memory Banks...
+      </p>
+    </div>
+
+    <script src="js/core/adminerva-loader.js"></script>
+    <script src="js/core/adminerva-nav.js"></script>
+    <script type="module" src="js/core/auth-guard.js"></script>
+    <script type="module" src="js/repo-review/repobank.js"></script>
+  </body>
+</html>
