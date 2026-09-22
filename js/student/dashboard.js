@@ -14,6 +14,7 @@ import {
 
 let userProfiles = [];
 let currentChart = null;
+let currentStudentProfile = null;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return (window.location.href = "login.html");
@@ -22,6 +23,18 @@ onAuthStateChanged(auth, async (user) => {
   const emailDisplay = document.getElementById("userEmailDisplay");
   if (emailDisplay) emailDisplay.textContent = user.email;
 
+  const timeFilterDropdown = document.getElementById("timeFilter");
+  if (timeFilterDropdown) {
+    timeFilterDropdown.addEventListener("change", (e) => {
+      if (currentStudentProfile) {
+        fetchGitHubData(
+          currentStudentProfile.repoUrl,
+          currentStudentProfile.githubUsername,
+          e.target.value,
+        );
+      }
+    });
+  }
   try {
     const q = query(
       collection(db, "students"),
@@ -67,6 +80,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 async function loadDashboardProfile(studentData) {
+  currentStudentProfile = studentData;
   const subtitle = document.getElementById("repoSubtitle");
   const container = document.getElementById("commitListContainer");
 
@@ -103,16 +117,28 @@ async function loadDashboardProfile(studentData) {
   await fetchRepoBankData(studentData.repoUrl, studentData.id);
 }
 
-async function fetchGitHubData(repoUrl, username) {
+async function fetchGitHubData(repoUrl, username, filter = "7d") {
   const container = document.getElementById("commitListContainer");
+
+  // 1. Calculate the 'Since' Date based on the filter
+  const now = new Date();
+  let sinceDate = new Date();
+  if (filter === "24h") sinceDate.setHours(now.getHours() - 24);
+  else if (filter === "7d") sinceDate.setDate(now.getDate() - 7);
+  else if (filter === "30d") sinceDate.setMonth(now.getMonth() - 1);
+  else if (filter === "90d") sinceDate.setMonth(now.getMonth() - 3);
+
+  const sinceIso = sinceDate.toISOString();
+
   try {
     let owner, repo;
     const urlParts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
     repo = urlParts.pop();
     owner = urlParts.pop();
 
+    // Fetch with dynamic timeline filter and increased per_page limit
     const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(username)}&per_page=30`,
+      `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(username)}&since=${sinceIso}&per_page=100`,
     );
 
     if (!response.ok) {
@@ -158,45 +184,59 @@ async function fetchGitHubData(repoUrl, username) {
     renderChart([]);
   }
 }
+function renderChart(commits, filter) {
+  const now = new Date();
+  const labels = [];
+  const dataMap = {};
 
-function renderChart(commits) {
-  let sortedDates, dataPoints;
-  const hasData = commits && commits.length > 0;
-
-  if (!hasData) {
-    const today = new Date().toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-    sortedDates = [today];
-    dataPoints = [0];
+  // 1. GENERATE BLANK TIMELINE (Fixes the "Single Dot" graph issue)
+  if (filter === "24h") {
+    for (let i = 23; i >= 0; i--) {
+      let d = new Date(now.getTime() - i * 60 * 60 * 1000);
+      let label = d.toLocaleTimeString([], { hour: "numeric", hour12: true });
+      let key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
+      labels.push({ label, key });
+      dataMap[key] = 0;
+    }
   } else {
-    const dateCounts = {};
-    commits.forEach((c) => {
-      const date = new Date(c.commit.author.date).toLocaleDateString(
-        undefined,
-        {
-          month: "short",
-          day: "numeric",
-        },
-      );
-      dateCounts[date] = (dateCounts[date] || 0) + 1;
-    });
-
-    sortedDates = Object.keys(dateCounts).sort(
-      (a, b) => new Date(a) - new Date(b),
-    );
-    dataPoints = sortedDates.map((date) => dateCounts[date]);
+    let days = filter === "7d" ? 7 : filter === "30d" ? 30 : 90;
+    for (let i = days - 1; i >= 0; i--) {
+      let d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      let label = d.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+      let key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      labels.push({ label, key });
+      dataMap[key] = 0;
+    }
   }
 
-  const ctx = document.getElementById("commitChart").getContext("2d");
+  // 2. PLOT COMMITS ONTO TIMELINE
+  const hasData = commits && commits.length > 0;
+  if (hasData) {
+    commits.forEach((c) => {
+      let cd = new Date(c.commit.author.date);
+      let key =
+        filter === "24h"
+          ? `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}-${cd.getHours()}`
+          : `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}`;
+      if (dataMap[key] !== undefined) {
+        dataMap[key]++;
+      }
+    });
+  }
 
+  const displayLabels = labels.map((l) => l.label);
+  const dataPoints = labels.map((l) => dataMap[l.key]);
+
+  const ctx = document.getElementById("commitChart").getContext("2d");
   if (currentChart) currentChart.destroy();
 
   currentChart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: sortedDates,
+      labels: displayLabels,
       datasets: [
         {
           label: "Commits",
@@ -211,7 +251,7 @@ function renderChart(commits) {
           pointBackgroundColor: hasData ? "#1d4ed8" : "#94a3b8",
           pointBorderColor: "#fff",
           pointBorderWidth: 2,
-          pointRadius: 4,
+          pointRadius: 3,
           pointHoverRadius: 6,
         },
       ],
@@ -226,7 +266,11 @@ function renderChart(commits) {
           grid: { color: "#f1f5f9" },
           border: { display: false },
         },
-        x: { grid: { display: false }, border: { display: false } },
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { maxTicksLimit: 12 }, // Keeps the 3-month graph from getting too crowded
+        },
       },
       plugins: {
         legend: { display: false },
@@ -281,6 +325,7 @@ async function verifyStudentSetup(studentData) {
     repo = urlParts.pop();
     owner = urlParts.pop();
 
+    // 🚀 FIX: Increased per_page to 100 to cast a wider net and prevent false positives
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
     );
@@ -318,13 +363,11 @@ async function verifyStudentSetup(studentData) {
       const stuEmail = (studentData.email || "").toLowerCase().trim();
       const stuName = (studentData.name || "").toLowerCase().trim();
 
-      // Run the exact same Hybrid Identity Matcher the AutoGrader uses
       const hasCommit = commits.some((c) => {
         const login = (c.author?.login || "").toLowerCase();
         const commitEmail = (c.commit?.author?.email || "").toLowerCase();
         const commitName = (c.commit?.author?.name || "").toLowerCase();
 
-        // 🚀 FIX: Removed the hardcoded 'teachernosxis' ban so you can test the system!
         if (ghUsername && login === ghUsername) return true;
         if (stuEmail && commitEmail === stuEmail) return true;
         if (stuName && commitName === stuName) return true;

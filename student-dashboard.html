@@ -61,11 +61,24 @@
           <div
             class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
           >
-            <h3
-              class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"
-            >
-              <span class="text-blue-500">📈</span> Contribution Analytics
-            </h3>
+            <!-- NEW: Flex header with Time Filter -->
+            <div class="flex justify-between items-center mb-4">
+              <h3
+                class="text-lg font-bold text-slate-800 flex items-center gap-2"
+              >
+                <span class="text-blue-500">📈</span> Contribution Analytics
+              </h3>
+              <select
+                id="timeFilter"
+                class="text-xs border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold bg-slate-50 px-2 py-1.5 text-slate-700 cursor-pointer outline-none border transition"
+              >
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d" selected>Last 7 Days</option>
+                <option value="30d">Last 1 Month</option>
+                <option value="90d">Last 3 Months</option>
+              </select>
+            </div>
+
             <div class="relative h-64 w-full">
               <canvas id="commitChart"></canvas>
             </div>
