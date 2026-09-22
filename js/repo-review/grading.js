@@ -862,16 +862,24 @@ ${data.patches.substring(0, 40000)}
       );
 
       if (!response.ok) {
-        if (response.status === 429) {
-          // Increase the wait time to 15 seconds, then 30 seconds
-          const waitTime = 15000 * attempt;
-          await new Promise((r) => setTimeout(r, waitTime));
-          window.showLoader(
-            `AI Analyzing Code for ${student.name}...`,
-            `API Speed Limit Hit. Pausing for ${waitTime / 1000}s to cool down... ${r / 1000}s left`,
-          );
+        if (response.status === 429 || response.status >= 500) {
+          const totalSeconds = 15 * attempt;
+          const errorName =
+            response.status === 429
+              ? "Speed Limit Hit"
+              : "API Server Overloaded";
 
-          throw new Error("Rate Limit Exceeded.");
+          // 🚀 NEW: A live countdown loop that updates the UI every 1 second
+          for (let remaining = totalSeconds; remaining > 0; remaining--) {
+            window.showLoader(
+              `AI Analyzing Code for ${student.name}...`,
+              `${errorName}. Pausing to recover... ${remaining}s left.`,
+            );
+            // Pause the loop for exactly 1 second before ticking down again
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+
+          throw new Error(`API Error: ${response.status}`);
         }
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error?.message || response.statusText);
