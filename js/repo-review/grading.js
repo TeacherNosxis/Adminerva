@@ -45,6 +45,16 @@ function getQuarter(monthStr) {
   return "Q4";
 }
 
+// Helper to generate a unique repo ID from the GitHub URL
+function getRepoId(repoUrl) {
+  try {
+    const parts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
+    return `${parts[parts.length - 2]}_${parts[parts.length - 1]}`;
+  } catch (e) {
+    return "unknown_repo";
+  }
+}
+
 function buildFeedbackHtml(gradeData, maxScore) {
   let html = `<div class="space-y-1">`;
   html += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} /${maxScore}</div>`;
@@ -81,30 +91,25 @@ async function initRubric() {
   if (!db) return setNoRubricWarning();
 
   try {
-    // 1. Try to fetch the specifically equipped rubric first
     if (activeId) {
       const docSnap = await getDoc(doc(db, "templates", activeId));
       if (docSnap.exists()) {
         activeTemplate = { id: docSnap.id, ...docSnap.data() };
         rubricLabel.textContent = activeTemplate.name;
         rubricLabel.classList.replace("text-red-600", "text-purple-600");
-        return; // Success, exit function
+        return;
       }
     }
 
-    // 2. FALLBACK: If no rubric is equipped (or the old one was deleted), grab the first one from the database
     const snap = await getDocs(collection(db, "templates"));
     if (!snap.empty) {
       const firstDoc = snap.docs[0];
       activeTemplate = { id: firstDoc.id, ...firstDoc.data() };
-
-      // Auto-equip this fallback so the system remembers it next time
       localStorage.setItem("Adminerva_active_template_id", activeTemplate.id);
-
       rubricLabel.textContent = activeTemplate.name;
       rubricLabel.classList.replace("text-red-600", "text-purple-600");
     } else {
-      setNoRubricWarning(); // The database is actually empty
+      setNoRubricWarning();
     }
   } catch (e) {
     console.error("Failed to fetch active rubric:", e);
@@ -114,7 +119,6 @@ async function initRubric() {
 
 async function updateQuotaDisplay() {
   if (!db) return 0;
-
   const today = new Date().toISOString().split("T")[0];
   const docRef = doc(db, "system", `ai_usage_${today}`);
   let currentCount = 0;
@@ -124,7 +128,6 @@ async function updateQuotaDisplay() {
     if (snap.exists()) {
       currentCount = snap.data().count || 0;
     } else {
-      // Initialize today's tracker if it doesn't exist
       await setDoc(docRef, { count: 0, date: today });
     }
   } catch (e) {
@@ -148,11 +151,10 @@ async function incrementAiQuota() {
   if (!db) return;
   const today = new Date().toISOString().split("T")[0];
   const docRef = doc(db, "system", `ai_usage_${today}`);
-
-  // Atomically increment the count on the server
   await setDoc(docRef, { count: increment(1) }, { merge: true });
   await updateQuotaDisplay();
 }
+
 // ==========================================
 // INITIALIZATION
 // ==========================================
@@ -201,11 +203,9 @@ window.updateDateScope = function () {
     endDay = new Date(y, m + 1, 0).getDate();
   }
 
-  // Set explicit local times: start at 00:00:00, end at 23:59:59
   const sDate = new Date(y, m, startDay, 0, 0, 0);
   const eDate = new Date(y, m, endDay, 23, 59, 59);
 
-  // toISOString() automatically handles the conversion to UTC for GitHub
   activeStartDateStr = sDate.toISOString();
   activeEndDateStr = eDate.toISOString();
 
@@ -227,19 +227,16 @@ window.updateDateScope = function () {
 async function loadSections() {
   if (!db) return;
   try {
-    // 1. Scan the active students database
     const snap = await getDocs(collection(db, "students"));
     const select = document.getElementById("sectionSelect");
     select.innerHTML = "";
 
-    // 2. Extract unique section names using a Set
     let uniqueSections = new Set();
     snap.forEach((d) => {
       const sectionName = d.data().section;
       if (sectionName) uniqueSections.add(sectionName);
     });
 
-    // 3. Sort them alphabetically and populate the dropdown
     [...uniqueSections].sort().forEach((sec) => {
       select.insertAdjacentHTML(
         "beforeend",
@@ -247,7 +244,6 @@ async function loadSections() {
       );
     });
 
-    // ONLY FOR dashboard_2.js: trigger the data load if sections exist
     if (
       typeof window.loadDashboardData === "function" &&
       uniqueSections.size > 0
@@ -313,7 +309,7 @@ window.fetchSectionCommits = async function () {
       processed++;
       window.showLoader(
         `Fetching GitHub Data...`,
-        `Checking repos: ${processed} of ${currentStudents.length}`,
+        `Checking repos: ${processed} of${currentStudents.length}`,
       );
 
       commitDataMap[student.id] = {
@@ -340,12 +336,8 @@ window.fetchSectionCommits = async function () {
         repo = urlParts.pop();
         owner = urlParts.pop();
 
-        const since = activeStartDateStr;
-        const until = activeEndDateStr;
-
-        // Fetch all commits for this specific week
         const response = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&until=${until}`,
+          `https://api.github.com/repos/${owner}/${repo}/commits?since=${activeStartDateStr}&until=${activeEndDateStr}`,
           {
             headers: {
               Authorization: `Bearer ${ghToken}`,
@@ -388,13 +380,11 @@ window.fetchSectionCommits = async function () {
           const stuEmail = (student.email || "").toLowerCase().trim();
           const stuName = (student.name || "").toLowerCase().trim();
 
-          // 🚀 THE FIX: HYBRID IDENTITY FILTER (Ensures Individual Grading)
           commits = commits.filter((c) => {
             const login = (c.author?.login || "").toLowerCase();
             const commitEmail = (c.commit?.author?.email || "").toLowerCase();
             const commitName = (c.commit?.author?.name || "").toLowerCase();
 
-            // 1. Always ignore instructor commits
             if (
               login === "teachernosxis" ||
               commitEmail.includes("josephsixson") ||
@@ -403,16 +393,9 @@ window.fetchSectionCommits = async function () {
               return false;
             }
 
-            // 2. Exact Username Match (Primary check)
             if (ghUsername && login === ghUsername) return true;
-
-            // 3. Typo Fallback 1: Match by their registered email
             if (stuEmail && commitEmail === stuEmail) return true;
-
-            // 4. Typo Fallback 2: Match by their registered real name
             if (stuName && commitName === stuName) return true;
-
-            // If none of these match, this commit belongs to someone else (e.g., a group member)
             return false;
           });
 
@@ -495,25 +478,23 @@ function renderGradingTable() {
     let gradeBtnTxt = "Grade via AI";
     let publishBtnHtml = "";
 
-    // The ONLY place the Edit button should exist is safely inside this flex container
     let actionBtns =
       ghData.count > 0
         ? `<div class="flex flex-col gap-1.5 w-full">
-                <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
-                <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>${dbGrade ? `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left w-full">✏️ Manual Edit</button>` : ""}
-               </div>`
+            <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
+            <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>${dbGrade ? `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left w-full">✏️ Manual Edit</button>` : ""}
+           </div>`
         : `<span class="text-[10px] text-gray-400 font-bold block text-center">No Data</span>`;
 
     if (dbGrade) {
-      // Replaced the scrolling div with a clean button
       feedbackHtml = `
-                <div class="mb-1 flex items-center gap-2">
-                    <strong class="text-purple-700 text-sm">Score: ${dbGrade.score}/${dbGrade.maxScore}</strong>
-                </div>
-                <button onclick="openFeedbackModal('${student.id}')" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold flex items-center gap-1 mt-1 transition">
-                    💬 Read Full Feedback
-                </button>
-            `;
+          <div class="mb-1 flex items-center gap-2">
+              <strong class="text-purple-700 text-sm">Score: ${dbGrade.score}/${dbGrade.maxScore}</strong>
+          </div>
+          <button onclick="openFeedbackModal('${student.id}')" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold flex items-center gap-1 mt-1 transition">
+              💬 Read Full Feedback
+          </button>
+      `;
 
       if (dbGrade.publishedToGithub) {
         publishBtnHtml = `<span class="bg-green-100 text-green-700 border border-green-300 font-bold px-2 py-1 rounded text-[10px] block text-center mt-2 shadow-sm">✅ Published</span>`;
@@ -527,23 +508,23 @@ function renderGradingTable() {
       : `<span class="${ghData.count === 0 ? "text-red-500" : "text-green-600"} font-bold text-sm">${ghData.count}</span>`;
 
     const tr = `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="py-2 px-2 align-top">
-                    <div class="font-bold text-gray-800 text-xs">${student.name}</div>
-                    <div class="text-[10px] text-gray-500 truncate w-32" title="${student.githubUsername}">${student.githubUsername}</div>
-                </td>
-                <td class="py-2 px-2 text-center align-top">${commitDisplay}</td>
-                <td class="py-2 px-2 text-center align-top text-[10px] font-mono whitespace-nowrap"><span class="text-green-600">+${ghData.additions}</span><br><span class="text-red-500">-${ghData.deletions}</span></td>
-                <td class="py-2 px-2 text-[10px] text-gray-600 align-top">
-                    <div class="max-h-16 overflow-y-auto leading-snug">${ghData.latestMsg}</div>
-                </td>
-                <td class="py-2 px-2 align-top" id="fb-${student.id}">${feedbackHtml}</td>
-                <td class="py-2 px-2 align-top">
-                    ${actionBtns}
-                    <div id="pub-${student.id}">${publishBtnHtml}</div>
-                </td>
-            </tr>
-        `;
+        <tr class="border-b hover:bg-gray-50">
+            <td class="py-2 px-2 align-top">
+                <div class="font-bold text-gray-800 text-xs">${student.name}</div>
+                <div class="text-[10px] text-gray-500 truncate w-32" title="${student.githubUsername}">${student.githubUsername}</div>
+            </td>
+            <td class="py-2 px-2 text-center align-top">${commitDisplay}</td>
+            <td class="py-2 px-2 text-center align-top text-[10px] font-mono whitespace-nowrap"><span class="text-green-600">+${ghData.additions}</span><br><span class="text-red-500">-${ghData.deletions}</span></td>
+            <td class="py-2 px-2 text-[10px] text-gray-600 align-top">
+                <div class="max-h-16 overflow-y-auto leading-snug">${ghData.latestMsg}</div>
+            </td>
+            <td class="py-2 px-2 align-top" id="fb-${student.id}">${feedbackHtml}</td>
+            <td class="py-2 px-2 align-top">
+                ${actionBtns}
+                <div id="pub-${student.id}">${publishBtnHtml}</div>
+            </td>
+        </tr>
+    `;
     tbody.insertAdjacentHTML("beforeend", tr);
   });
 }
@@ -580,7 +561,7 @@ window.openDetails = function (studentId) {
     ? data.allMsgs.map((m) => `<li>${m}</li>`).join("")
     : "";
   document.getElementById("detCodeBlock").textContent =
-    data.patches || "No code readable code changes recorded.";
+    data.patches || "No readable code changes recorded.";
 
   document.getElementById("detailsModal").classList.remove("hidden");
 };
@@ -601,7 +582,6 @@ window.openEditModal = function (studentId) {
 
   document.getElementById("editStudentId").value = studentId;
   document.getElementById("editMaxScore").value = gradeRec.maxScore;
-
   document.getElementById("editTotalScoreDisplay").textContent = ai.total_score;
   document.getElementById("editMaxScoreDisplay").textContent =
     gradeRec.maxScore;
@@ -609,27 +589,25 @@ window.openEditModal = function (studentId) {
   const container = document.getElementById("editCriteriaContainer");
   container.innerHTML = "";
 
-  // Generate an input box for every single criteria in the rubric
   if (ai.breakdown) {
     ai.breakdown.forEach((b, index) => {
       container.insertAdjacentHTML(
         "beforeend",
         `
-                <div class="flex items-center justify-between bg-white p-2 border rounded shadow-sm">
-                    <label class="text-xs font-bold text-gray-700 w-2/3 truncate pr-2" title="${b.criterion}">${b.criterion}</label>
-                    <div class="flex items-center gap-1 w-1/3 justify-end">
-                        <input type="number" id="editCrit_${index}" value="${b.score}" max="${b.max}" min="0" onchange="recalculateTotal()" class="w-16 p-1 border rounded text-center font-bold text-purple-700 focus:ring-purple-500">
-                        <span class="text-xs text-gray-500 font-bold">/ ${b.max}</span>
-                        <input type="hidden" id="editCritName_${index}" value="${b.criterion}">
-                        <input type="hidden" id="editCritMax_${index}" value="${b.max}">
-                    </div>
+            <div class="flex items-center justify-between bg-white p-2 border rounded shadow-sm">
+                <label class="text-xs font-bold text-gray-700 w-2/3 truncate pr-2" title="${b.criterion}">${b.criterion}</label>
+                <div class="flex items-center gap-1 w-1/3 justify-end">
+                    <input type="number" id="editCrit_${index}" value="${b.score}" max="${b.max}" min="0" onchange="recalculateTotal()" class="w-16 p-1 border rounded text-center font-bold text-purple-700 focus:ring-purple-500">
+                    <span class="text-xs text-gray-500 font-bold">/ ${b.max}</span>
+                    <input type="hidden" id="editCritName_${index}" value="${b.criterion}">
+                    <input type="hidden" id="editCritMax_${index}" value="${b.max}">
                 </div>
-            `,
+            </div>
+        `,
       );
     });
   }
 
-  // Populate the clean textareas
   document.getElementById("editFeedbackCriteria").value =
     ai.feedback_criteria || "";
   document.getElementById("editAdditionalFeedback").value =
@@ -659,7 +637,6 @@ window.saveEditedGrade = async function () {
   const gradeRec = firestoreGradesMap[studentId];
   if (!gradeRec) return;
 
-  // 1. Reconstruct the new breakdown array and Total Score
   let newTotal = 0;
   let newBreakdown = [];
   const inputs = document.querySelectorAll('[id^="editCrit_"]');
@@ -671,7 +648,6 @@ window.saveEditedGrade = async function () {
     newBreakdown.push({ criterion, score, max });
   });
 
-  // 2. Build the new AI JSON Object
   const newRawAiData = {
     total_score: newTotal,
     breakdown: newBreakdown,
@@ -686,7 +662,6 @@ window.saveEditedGrade = async function () {
       .value.trim(),
   };
 
-  // 3. Convert it back into HTML using the helper
   const newFormattedFeedback = buildFeedbackHtml(newRawAiData, maxScore);
 
   window.showLoader("Saving Manual Override...");
@@ -694,7 +669,7 @@ window.saveEditedGrade = async function () {
     const updatedData = {
       score: newTotal,
       feedback: newFormattedFeedback,
-      rawAiData: newRawAiData, // Save it back so the GitHub publisher can format it
+      rawAiData: newRawAiData,
     };
 
     await setDoc(doc(db, "grades", gradeRec.docId), updatedData, {
@@ -713,8 +688,9 @@ window.saveEditedGrade = async function () {
     window.hideLoader();
   }
 };
+
 // ==========================================
-// STRICT AI GRADING
+// STRICT AI GRADING & REPOBANK MEMORY
 // ==========================================
 window.gradeCode = async function (studentId) {
   const gemKey = localStorage.getItem("Adminerva_gemini_token");
@@ -732,7 +708,6 @@ window.gradeCode = async function (studentId) {
   }
   if (!activeTemplate) return alert("No active rubric equipped.");
 
-  // NEW: Idempotent Regrading Check
   if (firestoreGradesMap[studentId]) {
     if (
       !confirm(
@@ -742,6 +717,23 @@ window.gradeCode = async function (studentId) {
       return;
     }
   }
+
+  // --- REPOBANK STATE FETCH ---
+  const repoId = getRepoId(student.repoUrl);
+  let repobankState = null;
+  try {
+    const repoSnap = await getDoc(doc(db, "repobank", repoId));
+    if (repoSnap.exists()) {
+      repobankState = repoSnap.data();
+    }
+  } catch (e) {
+    console.warn("Could not fetch repobank state", e);
+  }
+
+  const repobankContext = repobankState
+    ? `CURRENT REPOBANK STATE (JSON):\n${JSON.stringify(repobankState, null, 2)}`
+    : `CURRENT REPOBANK STATE: None (This is the first time analyzing this repo).`;
+  // -----------------------------
 
   const isPct = activeTemplate.scoringType === "percentage";
   const criteriaText = activeTemplate.criteria
@@ -767,13 +759,14 @@ CRITICAL SYSTEM INSTRUCTIONS:
 2. Evaluate the code against the provided criteria and assign a specific score for each.
 3. CODE QUOTATION RULE: If you quote the student's code, you MUST use backticks (\`) or single quotes ('). You are STRICTLY FORBIDDEN from using double quotes (").
 4. DO NOT REPEAT THE STUDENT'S CODE. Limit your feedback to concise, actionable sentences.
-5. You MUST provide detailed text for the feedback_criteria, additional_feedback, and optional_suggestion fields.
-6. FORMATTING: You MUST format the 'feedback_criteria' field as a bulleted list. Use a hyphen and a newline ("\\n- ") to separate the feedback for each specific criterion.
-7. DEVELOPER INTENT: Read the provided "COMMIT MESSAGE"...
+5. FORMATTING: You MUST format the 'feedback_criteria' field as a bulleted list. Use a hyphen and a newline ("\\n- ") to separate the feedback for each specific criterion.
+6. REPOBANK MEMORY: You are updating the long-term memory for this repository. Using the 'CURRENT REPOBANK STATE' and the new code changes below, update ${student.name}'s 'overallContribution' and 'recentContribution'. Update the project 'concept' if the new code clarifies it. Append to the whole group 'feedback' without losing past context. DO NOT modify or mention other members.
 
 Grade out of a maximum total score of ${maxScore}.
 Criteria:
 ${criteriaText}
+
+${repobankContext}
 
 Student's Commits & Code Patches:
 ${data.patches.substring(0, 40000)}
@@ -784,7 +777,6 @@ ${data.patches.substring(0, 40000)}
     "Applying strict grading rubrics.",
   );
 
-  // NEW: Retry Loop for Gemini JSON Resilience
   let attempt = 0;
   const maxAttempts = 3;
   let success = false;
@@ -836,13 +828,24 @@ ${data.patches.substring(0, 40000)}
                       required: ["criterion", "score", "max"],
                     },
                   },
-                  feedback_criteria: {
-                    type: "STRING",
-                    description:
-                      "MUST use \n- to create a bulleted list separating the feedback for each criterion.",
-                  },
+                  feedback_criteria: { type: "STRING" },
                   additional_feedback: { type: "STRING" },
                   optional_suggestion: { type: "STRING" },
+                  repobank_update: {
+                    type: "OBJECT",
+                    properties: {
+                      concept: { type: "STRING" },
+                      feedback: { type: "STRING" },
+                      overallContribution: { type: "STRING" },
+                      recentContribution: { type: "STRING" },
+                    },
+                    required: [
+                      "concept",
+                      "feedback",
+                      "overallContribution",
+                      "recentContribution",
+                    ],
+                  },
                 },
                 required: [
                   "total_score",
@@ -850,6 +853,7 @@ ${data.patches.substring(0, 40000)}
                   "feedback_criteria",
                   "additional_feedback",
                   "optional_suggestion",
+                  "repobank_update",
                 ],
               },
             },
@@ -859,7 +863,7 @@ ${data.patches.substring(0, 40000)}
 
       if (!response.ok) {
         if (response.status === 429) {
-          await new Promise((r) => setTimeout(r, 2000 * attempt)); // Quick backoff for 429 Rate Limit
+          await new Promise((r) => setTimeout(r, 2000 * attempt));
           throw new Error("Rate Limit Exceeded.");
         }
         const errData = await response.json().catch(() => ({}));
@@ -876,7 +880,6 @@ ${data.patches.substring(0, 40000)}
       gradeData = JSON.parse(rawJson);
       if (!gradeData.breakdown) gradeData.breakdown = [];
 
-      // Only count towards quota if successfully parsed
       incrementAiQuota();
       success = true;
     } catch (err) {
@@ -892,6 +895,7 @@ ${data.patches.substring(0, 40000)}
     );
   }
 
+  // --- SUCCESSFUL DATA SAVE LOGIC ---
   try {
     const formattedFeedback = buildFeedbackHtml(gradeData, maxScore);
     const y = parseInt(document.getElementById("yearSelect").value);
@@ -917,8 +921,31 @@ ${data.patches.substring(0, 40000)}
       commitSha: data.commitSha,
     };
 
+    // 1. Save standard grading data
     await setDoc(doc(db, "grades", gradeDocId), dbEntry);
     firestoreGradesMap[student.id] = { docId: gradeDocId, ...dbEntry };
+
+    // 2. Save Repobank Update
+    if (gradeData.repobank_update) {
+      const repoUpdateData = {
+        repoId: repoId,
+        repoName: student.repoUrl.split("/").pop().replace(".git", ""),
+        concept: gradeData.repobank_update.concept,
+        feedback: gradeData.repobank_update.feedback,
+        lastUpdated: new Date().toISOString(),
+        members: {
+          [student.id]: {
+            name: student.name,
+            overallContribution: gradeData.repobank_update.overallContribution,
+            recentContribution: gradeData.repobank_update.recentContribution,
+            lastCommitHashProcessed: data.commitSha,
+          },
+        },
+      };
+      await setDoc(doc(db, "repobank", repoId), repoUpdateData, {
+        merge: true,
+      });
+    }
 
     document.getElementById("aiStudentName").textContent =
       `Graded: ${student.name}`;
@@ -938,7 +965,6 @@ ${data.patches.substring(0, 40000)}
 // ==========================================
 // PUBLISHING (GITHUB API) & CONFIRMATION
 // ==========================================
-
 let pendingPublishAction = null;
 
 async function postCommentToGithub(student, gradeRec) {
@@ -974,7 +1000,6 @@ async function postCommentToGithub(student, gradeRec) {
   ];
   const targetMonthName = monthNames[gradeRec.month];
   const targetWeek = `Week ${gradeRec.week}`;
-
   const publishTimestamp = new Date().toLocaleString("en-US", {
     year: "numeric",
     month: "long",
@@ -1004,7 +1029,6 @@ async function postCommentToGithub(student, gradeRec) {
 
   commentBody += `*Graded via RepoReview System (${publishTimestamp})*`;
 
-  // 1. Fetch existing comments on this commit to check for duplicates
   const getRes = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/commits/${gradeRec.commitSha}/comments`,
     {
@@ -1019,19 +1043,16 @@ async function postCommentToGithub(student, gradeRec) {
   let existingCommentId = null;
   if (getRes.ok) {
     const comments = await getRes.json();
-    // Look for our specific system signature
     const existing = comments.find(
       (c) => c.body && c.body.includes("Graded via RepoReview System"),
     );
     if (existing) existingCommentId = existing.id;
   }
 
-  // 2. Decide whether to POST a new comment or PATCH an existing one
   let fetchUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${gradeRec.commitSha}/comments`;
   let fetchMethod = "POST";
 
   if (existingCommentId) {
-    // GitHub API uses a different endpoint specifically for updating comments
     fetchUrl = `https://api.github.com/repos/${owner}/${repo}/comments/${existingCommentId}`;
     fetchMethod = "PATCH";
   }
@@ -1073,14 +1094,11 @@ window.publishSingle = function (studentId) {
 
   document.getElementById("publishConfirmWarning").innerHTML =
     `You are about to publish the AutoGrader report for <strong class="text-gray-900">${student.name}</strong>. <br><br>Once published, GitHub will instantly email this student the feedback and score below.`;
-
   document.getElementById("publishConfirmScore").textContent =
     `${gradeRec.score} / ${gradeRec.maxScore}`;
   document.getElementById("publishConfirmFeedback").innerHTML =
     gradeRec.feedback;
-
   document.getElementById("publishConfirmPreview").classList.remove("hidden");
-
   document.getElementById("executePublishBtn").onclick = executePublish;
   document.getElementById("publishConfirmModal").classList.remove("hidden");
 };
@@ -1100,9 +1118,7 @@ window.publishAllGrades = function () {
 
   document.getElementById("publishConfirmWarning").innerHTML =
     `You are about to batch publish AutoGrader reports to <strong class="text-red-600 text-lg">${pendingQueue.length} student repositories</strong>.<br><br>⚠️ <strong class="text-gray-900">WARNING:</strong> GitHub will instantly blast an email to all ${pendingQueue.length} students containing their individual feedback. Are you absolutely sure the grades are finalized?`;
-
   document.getElementById("publishConfirmPreview").classList.add("hidden");
-
   document.getElementById("executePublishBtn").onclick = executePublish;
   document.getElementById("publishConfirmModal").classList.remove("hidden");
 };
@@ -1157,11 +1173,9 @@ async function executePublish() {
           await postCommentToGithub(student, gradeRec);
           published = true;
           successCount++;
-          // Base throttle to avoid hitting the rate limit initially
           await new Promise((resolve) => setTimeout(resolve, 1500));
         } catch (e) {
           retries++;
-          // If we hit a rate limit error, apply exponential backoff (2s, 4s, 8s...)
           if (e.message.includes("GitHub says:") && retries < maxRetries) {
             const backoff = Math.pow(2, retries) * 1000;
             window.showLoader(
@@ -1172,7 +1186,7 @@ async function executePublish() {
           } else {
             console.error(`Hard failure on ${student.name}:`, e);
             failCount++;
-            break; // Move to the next student if it's a permanent error (e.g., bad URL)
+            break;
           }
         }
       }

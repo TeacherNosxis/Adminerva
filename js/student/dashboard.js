@@ -279,7 +279,7 @@ async function verifyStudentSetup(studentData) {
     owner = urlParts.pop();
 
     const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=10`,
+      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
     );
 
     if (res.status === 404) {
