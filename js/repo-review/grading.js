@@ -809,7 +809,7 @@ ${data.patches.substring(0, 40000)}
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: "application/json",
-              temperature: 0.0,
+              temperature: 0.1,
               topK: 1,
               topP: 0.1,
               response_schema: {
@@ -865,11 +865,12 @@ ${data.patches.substring(0, 40000)}
         if (response.status === 429) {
           // Increase the wait time to 15 seconds, then 30 seconds
           const waitTime = 15000 * attempt;
+          await new Promise((r) => setTimeout(r, waitTime));
           window.showLoader(
             `AI Analyzing Code for ${student.name}...`,
-            `API Speed Limit Hit. Pausing for ${waitTime / 1000}s to cool down...`,
+            `API Speed Limit Hit. Pausing for ${waitTime / 1000}s to cool down... ${r / 1000}s left`,
           );
-          await new Promise((r) => setTimeout(r, waitTime));
+
           throw new Error("Rate Limit Exceeded.");
         }
         const errData = await response.json().catch(() => ({}));
