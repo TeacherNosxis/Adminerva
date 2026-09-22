@@ -144,8 +144,8 @@ async function updateQuotaDisplay() {
 
   const display = document.getElementById("aiQuotaDisplay");
   if (display) {
-    display.textContent = `${currentCount} / 1500`;
-    if (currentCount >= 1400) {
+    display.textContent = `${currentCount} / 20`;
+    if (currentCount >= 18) {
       display.classList.add("text-red-600");
     } else {
       display.classList.remove("text-red-600");
@@ -787,30 +787,35 @@ ${data.patches.substring(0, 40000)}
     attempt++;
     try {
       const currentCount = await updateQuotaDisplay();
-      if (currentCount >= 1500) {
+      if (currentCount >= 20) {
         throw new Error(
-          "Daily AI Quota Reached (1500/1500). Please wait until tomorrow.",
+          "Daily AI Quota Reached (20/20). Please wait until tomorrow.",
         );
       }
 
       if (attempt > 1) {
         window.showLoader(
           `AI Analyzing Code for ${student.name}...`,
-          `Retry attempt ${attempt} of ${maxAttempts} (Fixing JSON format)...`,
+          `Retry attempt ${attempt} of ${maxAttempts} (Recovering from API timeout/error)...`,
         );
       }
+
+      // 1. THE 45-SECOND KILL SWITCH
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: controller.signal, // Attach kill switch
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: "application/json",
-              temperature: 0.1,
-              topK: 1,
+              // 2. THE INFINITE LOOP FIX
+              temperature: 0.2,
               topP: 0.1,
               response_schema: {
                 type: "OBJECT",
@@ -861,21 +866,22 @@ ${data.patches.substring(0, 40000)}
         },
       );
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         if (response.status === 429 || response.status >= 500) {
-          const totalSeconds = 15 * attempt;
+          // 3. THE 60-SECOND COOLDOWN FOR 5 RPM LIMIT
+          const totalSeconds = 60;
           const errorName =
             response.status === 429
-              ? "Speed Limit Hit"
-              : "API Server Overloaded";
+              ? "Speed Limit Hit (5 RPM)"
+              : "API Server Overloaded (503)";
 
-          // 🚀 NEW: A live countdown loop that updates the UI every 1 second
           for (let remaining = totalSeconds; remaining > 0; remaining--) {
             window.showLoader(
               `AI Analyzing Code for ${student.name}...`,
               `${errorName}. Pausing to recover... ${remaining}s left.`,
             );
-            // Pause the loop for exactly 1 second before ticking down again
             await new Promise((resolve) => setTimeout(resolve, 1000));
           }
 
@@ -894,7 +900,7 @@ ${data.patches.substring(0, 40000)}
 
       gradeData = JSON.parse(rawJson);
       if (!gradeData.breakdown) gradeData.breakdown = [];
-      // NEW: Extract exactly how many tokens this request consumed
+
       const tokensUsed = aiResult.usageMetadata
         ? aiResult.usageMetadata.totalTokenCount
         : 0;
@@ -904,7 +910,12 @@ ${data.patches.substring(0, 40000)}
       success = true;
     } catch (err) {
       lastError = err.message;
-      if (err.message.includes("Daily AI Quota Reached")) break;
+
+      if (err.name === "AbortError") {
+        lastError = "API Connection Timeout (Took longer than 45 seconds).";
+      } else if (err.message.includes("Daily AI Quota Reached")) {
+        break;
+      }
     }
   }
 
