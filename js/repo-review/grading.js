@@ -385,14 +385,6 @@ window.fetchSectionCommits = async function () {
             const commitEmail = (c.commit?.author?.email || "").toLowerCase();
             const commitName = (c.commit?.author?.name || "").toLowerCase();
 
-            if (
-              login === "teachernosxis" ||
-              commitEmail.includes("josephsixson") ||
-              commitEmail.includes("babaynike2013")
-            ) {
-              return false;
-            }
-
             if (ghUsername && login === ghUsername) return true;
             if (stuEmail && commitEmail === stuEmail) return true;
             if (stuName && commitName === stuName) return true;
