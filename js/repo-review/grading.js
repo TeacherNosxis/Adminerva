@@ -867,7 +867,7 @@ ${data.patches.substring(0, 40000)}
             generationConfig: {
               responseMimeType: "application/json",
               // 2. THE INFINITE LOOP FIX
-              temperature: 0.2,
+              temperature: 0.0,
               topP: 0.1,
               response_schema: {
                 type: "OBJECT",
