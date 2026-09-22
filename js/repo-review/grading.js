@@ -22,6 +22,31 @@ let activeStartDateStr = "";
 let activeEndDateStr = "";
 
 // ==========================================
+// DYNAMIC QUOTA MAPPING
+// ==========================================
+const modelQuotaMap = {
+  "gemini-2.0-flash": "Unlimited",
+  "gemini-2.0-flash-lite": "Unlimited",
+  "gemini-2.5-flash": 10000,
+  "gemini-2.5-flash-lite": "Unlimited",
+  "gemini-2.5-pro": 1000,
+  "gemini-3.0-flash": 10000,
+  "gemini-3.1-pro": 250,
+  "gemini-3.1-flash-lite": 150000,
+  "gemini-3.5-flash": 10000,
+  "gemini-3.5-flash-lite": 150000,
+  "gemini-3.6-flash": 10000,
+  "gemini-3.7-flash": 10000,
+  "gemini-3.8-flash": 10000,
+};
+
+function getModelQuota() {
+  const model =
+    localStorage.getItem("Adminerva_ai_model") || "gemini-3.8-flash";
+  return modelQuotaMap[model] !== undefined ? modelQuotaMap[model] : 10000;
+}
+
+// ==========================================
 // LOADER UTILS & QUOTA
 // ==========================================
 window.showLoader = function (msg, subMsg = "") {
@@ -142,13 +167,21 @@ async function updateQuotaDisplay() {
     console.error("Failed to fetch AI quota:", e);
   }
 
+  const maxQuota = getModelQuota();
   const display = document.getElementById("aiQuotaDisplay");
+
   if (display) {
-    display.textContent = `${currentCount} / 20`;
-    if (currentCount >= 18) {
-      display.classList.add("text-red-600");
-    } else {
+    if (maxQuota === "Unlimited") {
+      display.textContent = `${currentCount} / Unlimited`;
       display.classList.remove("text-red-600");
+    } else {
+      display.textContent = `${currentCount} / ${maxQuota}`;
+      // Turn red when you reach 90% of whatever the current limit is
+      if (currentCount >= maxQuota * 0.9) {
+        display.classList.add("text-red-600");
+      } else {
+        display.classList.remove("text-red-600");
+      }
     }
   }
 
@@ -786,10 +819,12 @@ ${data.patches.substring(0, 40000)}
   while (attempt < maxAttempts && !success) {
     attempt++;
     try {
+      const maxQuota = getModelQuota();
       const currentCount = await updateQuotaDisplay();
-      if (currentCount >= 20) {
+
+      if (maxQuota !== "Unlimited" && currentCount >= maxQuota) {
         throw new Error(
-          "Daily AI Quota Reached (20/20). Please wait until tomorrow.",
+          `Daily AI Quota Reached (${maxQuota}/${maxQuota}). Please wait until tomorrow or switch models.`,
         );
       }
 
