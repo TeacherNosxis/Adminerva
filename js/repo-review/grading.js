@@ -885,6 +885,11 @@ ${data.patches.substring(0, 40000)}
 
       gradeData = JSON.parse(rawJson);
       if (!gradeData.breakdown) gradeData.breakdown = [];
+      // NEW: Extract exactly how many tokens this request consumed
+      const tokensUsed = aiResult.usageMetadata
+        ? aiResult.usageMetadata.totalTokenCount
+        : 0;
+      gradeData.tokensUsed = tokensUsed;
 
       incrementAiQuota();
       success = true;
@@ -925,6 +930,7 @@ ${data.patches.substring(0, 40000)}
       rawAiData: gradeData,
       publishedToGithub: false,
       commitSha: data.commitSha,
+      tokenUsage: gradeData.tokensUsed,
     };
 
     // 1. Save standard grading data
