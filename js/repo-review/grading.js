@@ -308,7 +308,7 @@ window.fetchSectionCommits = async function () {
     for (let student of currentStudents) {
       processed++;
       window.showLoader(
-        `Fetching GitHub Data.../n`,
+        `Fetching GitHub Data...\n`,
         `Checking repos: ${processed} of ${currentStudents.length}`,
       );
 
