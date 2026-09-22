@@ -18,16 +18,16 @@ document.addEventListener("DOMContentLoaded", () => {
       ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
       : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
 
-  // 🚀 CONDITIONAL RENDER VARIABLES (Empty for standard teachers)
+  // 🚀 Directory remains restricted to Super Admins
   const adminDirLink = isSuperAdmin
     ? `<a href="users.html" class="${getStyle("directory")}">Directory</a>`
     : "";
-  const adminSetIcon = isSuperAdmin
-    ? `
-        <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2.5 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center" title="Global Settings">
+
+  // 🚀 Settings Icon is now available to ALL Instructors
+  const settingsIcon = `
+        <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center mr-4" title="Global Settings">
             <span class="text-xl leading-none">⚙️</span>
-        </a>`
-    : "";
+        </a>`;
 
   const adminLogoBlock = `
         <div class="relative group cursor-pointer py-1">
@@ -66,20 +66,23 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
   } else if (activeModule === "educator" || activeModule === "repo") {
-    // 🚀 UNIFIED EDUCATOR & REPO NAVIGATION
+    // 🚀 Added Repobank to navigation
     centerLinks = `
             <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Analytics</a>
+            <a href="repobank.html" class="${getStyle("repobank")}">Repobank</a>
             <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
             <a href="gradebook.html" class="${getStyle("gradebook")}">Gradebook</a>
             ${adminDirLink}
         `;
+    // 🚀 Vertically stacked Role under Sign Out
     rightSide = `
-            <a href="dev.html" target="_blank" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded hover:bg-emerald-500/20 transition hidden sm:flex items-center gap-2 mr-4">
-                <span>👀</span> Student View
-            </a>
-            <span class="text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 rounded hidden sm:block mr-4">${isSuperAdmin ? "Super Admin" : "Teacher Mode"}</span>
-            ${adminSetIcon}
-            <button id="signOutBtn" class="ml-4 text-sm px-3 py-1.5 text-gray-400 hover:text-white font-bold transition">Sign Out</button>
+            <div class="flex items-center">
+                ${settingsIcon}
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-4 h-10">
+                    <button id="signOutBtn" class="text-sm text-gray-300 hover:text-white font-bold transition leading-none">Sign Out</button>
+                    <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
+                </div>
+            </div>
         `;
     logoBlock = adminLogoBlock;
   } else if (activeModule === "lesson") {
@@ -89,11 +92,27 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="schedule.html" class="${getStyle("schedule")}">Teacher's Schedule</a>
             <a href="library.html" class="${getStyle("library")}">Reference Library</a>
         `;
-    rightSide = adminSetIcon;
+    // Applied the same stacked profile view to the Lesson planner module
+    rightSide = `
+            <div class="flex items-center">
+                ${settingsIcon}
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-4 h-10">
+                    <button id="signOutBtn" class="text-sm text-gray-300 hover:text-white font-bold transition leading-none">Sign Out</button>
+                    <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
+                </div>
+            </div>
+        `;
     logoBlock = adminLogoBlock;
   } else if (activeModule === "settings") {
     centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide">System Configuration</span>`;
-    rightSide = ``;
+    rightSide = `
+            <div class="flex items-center">
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-4 h-10">
+                    <button id="signOutBtn" class="text-sm text-gray-300 hover:text-white font-bold transition leading-none">Sign Out</button>
+                    <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
+                </div>
+            </div>
+    `;
     logoBlock = adminLogoBlock;
   }
 
@@ -101,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <nav class="bg-gray-900/95 backdrop-blur-md text-white shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative z-50 border-b border-cyan-900/50 sticky top-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
             ${logoBlock}
-            <div class="hidden md:flex gap-8 text-sm font-bold tracking-wide items-center">${centerLinks}</div>
+            <div class="hidden md:flex gap-6 text-sm font-bold tracking-wide items-center">${centerLinks}</div>
             <div class="flex items-center">${rightSide}</div>
         </div>
     </nav>`;
