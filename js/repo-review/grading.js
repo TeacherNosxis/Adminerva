@@ -57,7 +57,15 @@ function getRepoId(repoUrl) {
 
 function buildFeedbackHtml(gradeData, maxScore) {
   let html = `<div class="space-y-1">`;
-  html += `<div class="font-extrabold text-lg text-gray-800 border-b pb-1 mb-2">Total: ${gradeData.total_score} /${maxScore}</div>`;
+
+  // NEW: Flexbox header to show Score and Token Usage side-by-side
+  html += `<div class="flex justify-between items-end border-b pb-1 mb-2">`;
+  html += `  <div class="font-extrabold text-lg text-gray-800">Total: ${gradeData.total_score} /${maxScore}</div>`;
+  if (gradeData.tokensUsed) {
+    html += `  <div class="text-[10px] font-bold text-gray-400 bg-gray-100 border border-gray-200 shadow-inner px-2 py-1 rounded" title="API Tokens Consumed">🪙 ${gradeData.tokensUsed.toLocaleString()} Tokens</div>`;
+  }
+  html += `</div>`;
+
   if (gradeData.breakdown) {
     gradeData.breakdown.forEach((b) => {
       html += `<div class="text-gray-700 font-semibold">${b.criterion}: ${b.score}/${b.max}</div>`;
