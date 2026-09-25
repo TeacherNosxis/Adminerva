@@ -62,7 +62,7 @@ window.fetchGroupRepos = async function () {
   if (!ghToken) return alert("Missing GitHub PAT. Configure it in settings.");
 
   const section = document.getElementById("sectionSelect").value;
-  window.showLoader(`Fetching students...`);
+  window.showLoader(`Initializing Fetch...`, `Gathering student data`);
 
   try {
     const qStudents = query(
@@ -83,6 +83,7 @@ window.fetchGroupRepos = async function () {
       if (!repoGroups[url]) repoGroups[url] = { members: [], apiError: null };
       repoGroups[url].members.push(student);
 
+      // Baseline clean slate for every student
       studentStatsMap[student.id] = {
         name: student.name,
         repoUrl: url,
@@ -98,30 +99,23 @@ window.fetchGroupRepos = async function () {
     const validRepoUrls = Object.keys(repoGroups).filter(
       (url) => url !== "unassigned" && url.includes("github.com"),
     );
-
     let processed = 0;
-    for (const url of validRepoUrls) {
-      processed++;
-      window.showLoader(
-        `Syncing Repositories`,
-        `Analyzing Group ${processed} of ${validRepoUrls.length}`,
-      );
 
+    // PARALLEL EXECUTION: Fire all repo fetches at the same time
+    const fetchPromises = validRepoUrls.map(async (url) => {
       try {
         const repoId = getRepoId(url);
         const urlParts = url.replace(".git", "").split("/");
         const repo = urlParts.pop();
         const owner = urlParts.pop();
 
-        // 1. Load the SHA-based Cache from Firebase
+        // 1. Check Firebase Cache
         const cacheRef = doc(db, "group_repo_cache", repoId);
         const cacheSnap = await getDoc(cacheRef);
-        let commitsCache = cacheSnap.exists()
-          ? cacheSnap.data().commitsCache || {}
-          : {};
-        let updatedCache = false;
+        const cachedData = cacheSnap.exists() ? cacheSnap.data() : {};
+        let commitsCache = cachedData.commitsCache || {};
 
-        // 2. Fetch the CURRENT Top 100 List (Always fresh, ignores dates)
+        // 2. Fetch the CURRENT Top 100 List
         const res = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
           {
@@ -135,12 +129,49 @@ window.fetchGroupRepos = async function () {
         if (!res.ok) {
           repoGroups[url].apiError =
             res.status === 409 ? "Empty Repository" : `HTTP ${res.status}`;
-          continue;
+          processed++;
+          window.showLoader(
+            `Syncing Repositories`,
+            `Completed ${processed} of ${validRepoUrls.length}`,
+          );
+          return;
         }
 
         const currentCommits = await res.json();
+        if (currentCommits.length === 0) return;
 
-        // 3. Process the current history line by line
+        // ==========================================
+        // 🚀 THE FAST-PATH: INSTANT CACHE HIT
+        // ==========================================
+        // If the newest commit SHA hasn't changed, instantly load the UI data from Firebase and skip all math
+        if (
+          cachedData.latestSha === currentCommits[0].sha &&
+          cachedData.studentStats
+        ) {
+          repoGroups[url].members.forEach((m) => {
+            if (cachedData.studentStats[m.id]) {
+              studentStatsMap[m.id] = cachedData.studentStats[m.id]; // Instant restore
+            }
+          });
+          processed++;
+          window.showLoader(
+            `Syncing Repositories`,
+            `Completed ${processed} of ${validRepoUrls.length}`,
+          );
+          return; // EXIT EARLY
+        }
+
+        // ==========================================
+        // 🐢 THE SLOW-PATH: CACHE MISS / REBUILD
+        // ==========================================
+        let updatedCache = false;
+
+        // We need a temporary map so we don't mess up the global one until we are done calculating
+        let tempStats = {};
+        repoGroups[url].members.forEach((m) => {
+          tempStats[m.id] = { ...studentStatsMap[m.id] };
+        });
+
         for (let c of currentCommits) {
           const authorLogin = (c.author?.login || "").toLowerCase();
           const authorName = (c.commit?.author?.name || "").toLowerCase();
@@ -152,14 +183,13 @@ window.fetchGroupRepos = async function () {
           );
 
           if (member) {
-            const stats = studentStatsMap[member.id];
+            const stats = tempStats[member.id];
             stats.count++;
 
             let commitDetail = commitsCache[c.sha];
 
-            // If SHA is missing from cache, fetch deep details and cache it
-            // Limit to top 15 deep fetches per student to avoid massive payload/rate limits
-            if (!commitDetail && stats.count <= 15) {
+            // Deep fetch missing SHAs (Max 10 per student to protect limits)
+            if (!commitDetail && stats.count <= 10) {
               const detailRes = await fetch(
                 `https://api.github.com/repos/${owner}/${repo}/commits/${c.sha}`,
                 {
@@ -182,15 +212,13 @@ window.fetchGroupRepos = async function () {
                   date: c.commit.author.date,
                   additions: detail.stats?.additions || 0,
                   deletions: detail.stats?.deletions || 0,
-                  // Limit patch string to prevent exceeding Firestore's 1MB document limit
-                  patch: patchData.substring(0, 3500),
+                  patch: patchData.substring(0, 3500), // Safety cap for Firebase size limits
                 };
 
                 commitsCache[c.sha] = commitDetail;
                 updatedCache = true;
               }
             } else if (!commitDetail) {
-              // Fallback for commits beyond the deep fetch limit
               commitDetail = {
                 message: c.commit.message,
                 date: c.commit.author.date,
@@ -200,7 +228,7 @@ window.fetchGroupRepos = async function () {
               };
             }
 
-            // 4. Apply the confirmed data to the UI
+            // Append calculated data
             if (commitDetail) {
               const dateStr = new Date(commitDetail.date).toLocaleDateString();
               stats.messages.push(`${dateStr} - ${commitDetail.message}`);
@@ -213,18 +241,40 @@ window.fetchGroupRepos = async function () {
           }
         }
 
-        // 5. Save the updated cache back to Firebase if new SHAs were found
-        if (updatedCache) {
-          await setDoc(
-            cacheRef,
-            { repoUrl: url, commitsCache: commitsCache },
-            { merge: true },
-          );
-        }
+        // Apply rebuilt data to the global UI map
+        repoGroups[url].members.forEach((m) => {
+          studentStatsMap[m.id] = tempStats[m.id];
+        });
+
+        // Save everything back to Firebase so the NEXT load is instant
+        await setDoc(
+          cacheRef,
+          {
+            repoUrl: url,
+            latestSha: currentCommits[0].sha,
+            commitsCache: commitsCache,
+            studentStats: tempStats,
+          },
+          { merge: true },
+        );
+
+        processed++;
+        window.showLoader(
+          `Syncing Repositories`,
+          `Completed ${processed} of ${validRepoUrls.length}`,
+        );
       } catch (err) {
         repoGroups[url].apiError = "Network Error";
+        processed++;
+        window.showLoader(
+          `Syncing Repositories`,
+          `Completed ${processed} of ${validRepoUrls.length}`,
+        );
       }
-    }
+    });
+
+    // Execute all parallel promises
+    await Promise.all(fetchPromises);
     renderGroupsUI();
   } catch (e) {
     alert(e.message);
