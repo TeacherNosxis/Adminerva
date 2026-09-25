@@ -166,7 +166,6 @@ async function loadDashboardProfile(studentData) {
       "Database read bypassed (Likely missing permissions). Continuing to UI load.",
     );
   }
-  // sample comment for nosxis
   // Because the script didn't crash above, the student will now successfully see the button.
   if (!studentData.githubToken) {
     overlay.classList.remove("hidden");
