@@ -200,29 +200,22 @@ function showUploadError(msg) {
 // GOOGLE SHEETS LIVE SYNC
 // ==========================================
 const syncSheetBtn = document.getElementById("syncSheetBtn");
-const sheetUrlInput = document.getElementById("sheetUrlInput");
+
+// Hardcoded Google Sheets CSV Link
+const ROSTER_SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBRK8KRB-RkW0nxLcRPlxhxDGxCRBI30wn9TDrbtFasZwuHDR1oZiY-N1qq6utAnZdDcragzpsDRbP/pub?output=csv";
 
 if (syncSheetBtn) {
   syncSheetBtn.addEventListener("click", async () => {
-    const url = sheetUrlInput.value.trim();
-
-    if (!url) {
-      return showUploadError("Please enter a valid Google Sheets URL.");
-    }
-    if (!url.includes("pub?output=csv")) {
-      return showUploadError(
-        "URL must end with 'pub?output=csv'. Please follow the publishing instructions.",
-      );
-    }
-
     syncSheetBtn.disabled = true;
     syncSheetBtn.textContent = "Fetching Live Data...";
+
     uploadStatus.classList.remove("hidden");
     uploadStatus.className = "text-xs font-bold text-center mt-3 text-blue-500";
     uploadStatus.textContent = "Downloading Google Sheet responses...";
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(ROSTER_SHEET_URL);
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
       const csvText = await response.text();
@@ -231,13 +224,11 @@ if (syncSheetBtn) {
 
       // Feed the fetched text directly into your existing logic
       await processCSV(csvText);
-
-      sheetUrlInput.value = ""; // Clear the input after success
     } catch (err) {
       showUploadError("Failed to fetch Sheet: " + err.message);
     } finally {
       syncSheetBtn.disabled = false;
-      syncSheetBtn.textContent = "Sync from Google Sheets";
+      syncSheetBtn.textContent = "Sync Class Roster";
     }
   });
 }
