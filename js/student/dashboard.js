@@ -24,29 +24,66 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) return (window.location.href = "login.html");
 
   document.getElementById("pageBody").classList.remove("hidden");
+
+  // 1. Check for Impersonation Mode
+  const impersonateEmail = localStorage.getItem("Adminerva_Impersonate");
+  const targetEmail = impersonateEmail
+    ? impersonateEmail.toLowerCase()
+    : user.email.toLowerCase();
+
   const emailDisplay = document.getElementById("userEmailDisplay");
-  if (emailDisplay) emailDisplay.textContent = user.email;
+  if (emailDisplay)
+    emailDisplay.textContent =
+      targetEmail + (impersonateEmail ? " (Impersonating)" : "");
+
+  // 2. Inject a warning banner if viewing as a student
+  if (impersonateEmail && !document.getElementById("impersonateBanner")) {
+    const nav = document.getElementById("adminerva-nav");
+    nav.insertAdjacentHTML(
+      "afterend",
+      `
+          <div id="impersonateBanner" class="bg-amber-400 text-amber-900 px-6 py-2.5 font-bold text-sm flex justify-between items-center shadow-sm border-b border-amber-500 w-full relative z-[100]">
+              <div class="flex items-center gap-2">
+                  <span class="text-xl">👁️</span>
+                  <span><strong>IMPERSONATION MODE:</strong> Viewing workspace exactly as <u>${targetEmail}</u> experiences it.</span>
+              </div>
+              <button onclick="window.exitImpersonation()" class="bg-amber-900 text-amber-50 px-4 py-1.5 rounded hover:bg-amber-950 transition shadow-sm text-xs tracking-wide">Exit & Return</button>
+          </div>
+      `,
+    );
+
+    window.exitImpersonation = function () {
+      localStorage.removeItem("Adminerva_Impersonate");
+      localStorage.removeItem("Adminerva_Mock_Role");
+      window.location.href = "users.html";
+    };
+  }
 
   const timeFilterDropdown = document.getElementById("timeFilter");
   if (timeFilterDropdown) {
     timeFilterDropdown.addEventListener("change", (e) => {
       if (currentStudentProfile) {
-        // Just re-render the cache with the new time filter
         renderCommits(cachedCommitsData, e.target.value);
         renderChart(cachedCommitsData, e.target.value);
       }
     });
   }
 
-  // Bind the GitHub OAuth Link Button
-  document
-    .getElementById("connectGithubBtn")
-    .addEventListener("click", linkGithubAccount);
+  const connectGithubBtn = document.getElementById("connectGithubBtn");
+  if (connectGithubBtn) {
+    if (impersonateEmail) {
+      connectGithubBtn.textContent = "Disabled during Impersonation";
+      connectGithubBtn.disabled = true;
+      connectGithubBtn.classList.add("opacity-50", "cursor-not-allowed");
+    } else {
+      connectGithubBtn.addEventListener("click", linkGithubAccount);
+    }
+  }
 
   try {
     const q = query(
       collection(db, "students"),
-      where("email", "==", user.email.toLowerCase()),
+      where("email", "==", targetEmail),
     );
     const snap = await getDocs(q);
 
@@ -92,6 +129,7 @@ async function loadDashboardProfile(studentData) {
   const container = document.getElementById("commitListContainer");
   const overlay = document.getElementById("githubAuthOverlay");
 
+  // Run the new Token-Powered Diagnostic Engine
   verifyStudentSetup(studentData);
   overlay.classList.add("hidden");
 
@@ -110,7 +148,6 @@ async function loadDashboardProfile(studentData) {
 
   subtitle.innerHTML = `<strong>${studentData.section}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${studentData.githubUsername}</span> on <a href="${studentData.repoUrl}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${studentData.repoUrl}</a>`;
 
-  // 1. INSTANT CACHE LOAD: Read from Firebase first
   const defaultFilter = document.getElementById("timeFilter")?.value || "7d";
   const cacheRef = doc(db, "student_dashboard_cache", studentData.docId);
   const cacheSnap = await getDoc(cacheRef);
@@ -121,13 +158,11 @@ async function loadDashboardProfile(studentData) {
     renderChart(cachedCommitsData, defaultFilter);
   }
 
-  // 2. CHECK TOKEN: If they haven't connected OAuth, show prompt and stop here
   if (!studentData.githubToken) {
     overlay.classList.remove("hidden");
     return;
   }
 
-  // 3. BACKGROUND SYNC: Use personal token to fetch updates
   syncGitHubData(
     studentData.repoUrl,
     studentData.githubUsername,
@@ -142,7 +177,6 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
     const repo = urlParts.pop();
     const owner = urlParts.pop();
 
-    // Fetching up to 4 pages (400 commits) for the 90d view support
     let allCommits = [];
     for (let page = 1; page <= 4; page++) {
       const response = await fetch(
@@ -163,8 +197,6 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
 
     if (allCommits.length > 0) {
       cachedCommitsData = allCommits;
-
-      // Save updated data to Firebase for the next instant load
       await setDoc(
         cacheRef,
         { commits: allCommits, lastSynced: new Date().toISOString() },
@@ -188,19 +220,16 @@ async function linkGithubAccount() {
     const result = await linkWithPopup(auth.currentUser, provider);
     const credential = GithubAuthProvider.credentialFromResult(result);
     const token = credential.accessToken;
-
-    // Auto-capture their verified GitHub Username from the provider details
     const verifiedUsername = result.user.reloadUserInfo.providerUserInfo.find(
       (p) => p.providerId === "github.com",
     ).screenName;
 
-    // Save token and verified username to Firestore
     const docRef = doc(db, "students", currentStudentProfile.docId);
     await setDoc(
       docRef,
       {
         githubToken: token,
-        githubUsername: verifiedUsername, // Overwrites any typos they made in settings
+        githubUsername: verifiedUsername,
       },
       { merge: true },
     );
@@ -280,7 +309,6 @@ function renderChart(commits, filter) {
           ? `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}-${cd.getHours()}`
           : `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}`;
 
-      // Respect the time filter limit for rendering
       let cutoff = new Date();
       if (filter === "24h") cutoff.setHours(now.getHours() - 24);
       else if (filter === "7d") cutoff.setDate(now.getDate() - 7);
@@ -362,10 +390,18 @@ function renderChart(commits, filter) {
 
 document.addEventListener("click", (e) => {
   if (e.target && e.target.id === "signOutBtn") {
-    signOut(auth).then(() => (window.location.href = "login.html"));
+    signOut(auth).then(() => {
+      localStorage.removeItem("Adminerva_Role");
+      localStorage.removeItem("Adminerva_Mock_Role");
+      localStorage.removeItem("Adminerva_Impersonate");
+      window.location.href = "login.html";
+    });
   }
 });
 
+// ==========================================
+// TOKEN-POWERED DIAGNOSTIC ENGINE
+// ==========================================
 async function verifyStudentSetup(studentData) {
   const banner = document.getElementById("studentWarningBanner");
   const title = document.getElementById("warningTitle");
@@ -396,5 +432,87 @@ async function verifyStudentSetup(studentData) {
     );
   }
 
-  banner.classList.add("hidden");
+  try {
+    let owner, repo;
+    const urlParts = studentData.repoUrl
+      .replace(/\/$/, "")
+      .replace(".git", "")
+      .split("/");
+    repo = urlParts.pop();
+    owner = urlParts.pop();
+
+    // The fetch now uses the student's exact personal token, even during impersonation
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=5`,
+      {
+        headers: {
+          Authorization: `Bearer ${studentData.githubToken}`,
+          Accept: "application/vnd.github+json",
+        },
+      },
+    );
+
+    if (res.status === 401) {
+      return triggerWarning(
+        "bg-red-50 border-red-200 text-red-800",
+        "Token Expired or Revoked",
+        "The connected GitHub account token is no longer valid. The account must be reconnected.",
+      );
+    }
+    if (res.status === 404) {
+      return triggerWarning(
+        "bg-red-50 border-red-200 text-red-800",
+        "Repository Not Found",
+        "We cannot reach this code. Ensure the URL is correct and the linked GitHub account has access to it.",
+      );
+    }
+    if (res.status === 403) {
+      return triggerWarning(
+        "bg-slate-50 border-slate-200 text-slate-800",
+        "GitHub Rate Limit Reached",
+        "Too many requests. Please wait a few minutes.",
+      );
+    }
+    if (res.status === 409) {
+      return triggerWarning(
+        "bg-blue-50 border-blue-200 text-blue-800",
+        "Empty Repository",
+        "Your repository is linked, but it is completely empty.",
+      );
+    }
+
+    if (res.ok) {
+      const commits = await res.json();
+
+      const ghUsername = (studentData.githubUsername || "")
+        .toLowerCase()
+        .trim();
+      const stuEmail = (studentData.email || "").toLowerCase().trim();
+      const stuName = (studentData.name || "").toLowerCase().trim();
+
+      const hasCommit = commits.some((c) => {
+        const login = (c.author?.login || "").toLowerCase();
+        const commitEmail = (c.commit?.author?.email || "").toLowerCase();
+        const commitName = (c.commit?.author?.name || "").toLowerCase();
+
+        return (
+          (ghUsername && login === ghUsername) ||
+          (stuEmail && commitEmail === stuEmail) ||
+          (stuName && commitName === stuName)
+        );
+      });
+
+      if (!hasCommit && commits.length > 0) {
+        return triggerWarning(
+          "bg-amber-50 border-amber-200 text-amber-800",
+          "Identity Mismatch Detected",
+          `We see code in this repository, but none of it matches the linked GitHub account (<strong>@${studentData.githubUsername}</strong>). Are you pushing code using a different account?`,
+        );
+      }
+
+      banner.classList.add("hidden");
+    }
+  } catch (e) {
+    console.error("Diagnostic check failed:", e);
+  }
 }

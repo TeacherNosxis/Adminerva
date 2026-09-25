@@ -196,6 +196,51 @@ function showUploadError(msg) {
   uploadBtn.textContent = "Sync to Database";
   uploadBtn.disabled = false;
 }
+// ==========================================
+// GOOGLE SHEETS LIVE SYNC
+// ==========================================
+const syncSheetBtn = document.getElementById("syncSheetBtn");
+const sheetUrlInput = document.getElementById("sheetUrlInput");
+
+if (syncSheetBtn) {
+  syncSheetBtn.addEventListener("click", async () => {
+    const url = sheetUrlInput.value.trim();
+
+    if (!url) {
+      return showUploadError("Please enter a valid Google Sheets URL.");
+    }
+    if (!url.includes("pub?output=csv")) {
+      return showUploadError(
+        "URL must end with 'pub?output=csv'. Please follow the publishing instructions.",
+      );
+    }
+
+    syncSheetBtn.disabled = true;
+    syncSheetBtn.textContent = "Fetching Live Data...";
+    uploadStatus.classList.remove("hidden");
+    uploadStatus.className = "text-xs font-bold text-center mt-3 text-blue-500";
+    uploadStatus.textContent = "Downloading Google Sheet responses...";
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+      const csvText = await response.text();
+
+      syncSheetBtn.textContent = "Parsing Data...";
+
+      // Feed the fetched text directly into your existing logic
+      await processCSV(csvText);
+
+      sheetUrlInput.value = ""; // Clear the input after success
+    } catch (err) {
+      showUploadError("Failed to fetch Sheet: " + err.message);
+    } finally {
+      syncSheetBtn.disabled = false;
+      syncSheetBtn.textContent = "Sync from Google Sheets";
+    }
+  });
+}
 
 // ==========================================
 // DIRECTORY READ, CACHE, & UI UPDATES
@@ -259,10 +304,12 @@ window.loadDirectory = async function () {
     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 font-bold">Error loading directory: ${error.message}</td></tr>`;
   }
 };
+// ==========================================
+// SEARCH, FILTER, SORT & PAGINATION LOGIC
+// ==========================================
+let currentPage = 1;
+const itemsPerPage = 15;
 
-// ==========================================
-// SEARCH, FILTER, AND SORT LOGIC
-// ==========================================
 function applyFiltersAndRender() {
   const searchVal = (
     document.getElementById("searchInput")?.value || ""
@@ -276,11 +323,9 @@ function applyFiltersAndRender() {
       s.name.toLowerCase().includes(searchVal) ||
       s.email.toLowerCase().includes(searchVal);
     const matchSection = sectionVal === "all" || s.section === sectionVal;
-
     let matchStatus = true;
     if (statusVal === "linked") matchStatus = s.isLinked;
     if (statusVal === "missing") matchStatus = !s.isLinked;
-
     return matchSearch && matchSection && matchStatus;
   });
 
@@ -288,21 +333,36 @@ function applyFiltersAndRender() {
   filteredData.sort((a, b) => {
     let valA = (a[currentSort.col] || "").toString().toLowerCase();
     let valB = (b[currentSort.col] || "").toString().toLowerCase();
-
     if (valA < valB) return currentSort.dir === "asc" ? -1 : 1;
     if (valA > valB) return currentSort.dir === "asc" ? 1 : -1;
     return 0;
   });
 
-  // 3. Render HTML
+  // 3. Pagination Logic
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
+  // 4. Render HTML
   const tbody = document.getElementById("userTableBody");
   tbody.innerHTML = "";
 
   if (filteredData.length === 0) {
     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 font-medium">No records match your filters.</td></tr>`;
   } else {
-    filteredData.forEach((data) => {
+    paginatedData.forEach((data) => {
       const statusHtml = `<span id="${data.pillId}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${data.ghStatusClass}">${data.ghStatusText}</span>`;
+
+      // Feature: Show GitHub URL if available
+      const repoLinkHtml = data.repoUrl
+        ? `<a href="${data.repoUrl}" target="_blank" class="text-[10px] font-mono text-blue-500 hover:underline block mt-1.5 truncate w-48" title="Visit Repository">🔗 ${data.repoUrl.replace("https://github.com/", "")}</a>`
+        : "";
 
       const tr = `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-100">
@@ -311,9 +371,13 @@ function applyFiltersAndRender() {
                         <div class="text-[10px] font-bold text-blue-500 uppercase tracking-wider mt-0.5">${data.section}</div>
                     </td>
                     <td class="px-6 py-4 text-slate-500 font-mono text-xs">${data.email}</td>
-                    <td class="px-6 py-4">${statusHtml}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="window.revokeStudent('${data.id}')" class="text-red-500 hover:text-red-700 font-medium text-xs border border-red-100 bg-red-50 px-3 py-1.5 rounded transition shadow-sm">Revoke</button>
+                    <td class="px-6 py-4 align-top">
+                      ${statusHtml}
+                      ${repoLinkHtml}
+                    </td>
+                    <td class="px-6 py-4 text-right align-top whitespace-nowrap space-x-1">
+                        <button onclick="window.viewAsStudent('${data.email}')" class="text-blue-600 hover:text-white border border-blue-200 bg-blue-50 hover:bg-blue-600 font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded transition shadow-sm">View As</button>
+                        <button onclick="window.revokeStudent('${data.id}')" class="text-red-500 hover:text-white font-bold text-[10px] uppercase tracking-wider border border-red-100 bg-red-50 hover:bg-red-500 px-3 py-1.5 rounded transition shadow-sm">Revoke</button>
                     </td>
                 </tr>
             `;
@@ -321,36 +385,73 @@ function applyFiltersAndRender() {
     });
   }
 
+  // 5. Update UI Controls
   const footerCount = document.getElementById("footerCount");
-  if (footerCount)
-    footerCount.textContent = `Showing ${filteredData.length} records`;
+  if (footerCount && filteredData.length > 0) {
+    footerCount.innerHTML = `Showing <strong class="text-slate-700">${startIndex + 1}-${Math.min(startIndex + itemsPerPage, filteredData.length)}</strong> of <strong class="text-slate-700">${filteredData.length}</strong> records`;
+  } else if (footerCount) {
+    footerCount.textContent = "0 records";
+  }
 
-  // 4. Update Header UI Arrows
+  const paginationContainer = document.getElementById("paginationControls");
+  if (paginationContainer) {
+    paginationContainer.innerHTML = `
+      <button onclick="window.prevPage()" class="px-3 py-1 bg-white border border-slate-300 rounded font-bold hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed" ${currentPage === 1 ? "disabled" : ""}>&larr; Prev</button>
+      <span class="px-3 py-1 text-slate-700 font-bold">Page ${currentPage} of ${totalPages || 1}</span>
+      <button onclick="window.nextPage()" class="px-3 py-1 bg-white border border-slate-300 rounded font-bold hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed" ${currentPage >= totalPages ? "disabled" : ""}>Next &rarr;</button>
+    `;
+  }
+
   document.getElementById("sort-name").textContent =
     currentSort.col === "name" ? (currentSort.dir === "asc" ? "↑" : "↓") : "";
   document.getElementById("sort-email").textContent =
     currentSort.col === "email" ? (currentSort.dir === "asc" ? "↑" : "↓") : "";
 }
 
-// Bind event listeners to UI inputs
-document
-  .getElementById("searchInput")
-  ?.addEventListener("input", applyFiltersAndRender);
-document
-  .getElementById("sectionFilter")
-  ?.addEventListener("change", applyFiltersAndRender);
-document
-  .getElementById("statusFilter")
-  ?.addEventListener("change", applyFiltersAndRender);
+// Ensure filters reset to Page 1 when used
+document.getElementById("searchInput")?.addEventListener("input", () => {
+  currentPage = 1;
+  applyFiltersAndRender();
+});
+document.getElementById("sectionFilter")?.addEventListener("change", () => {
+  currentPage = 1;
+  applyFiltersAndRender();
+});
+document.getElementById("statusFilter")?.addEventListener("change", () => {
+  currentPage = 1;
+  applyFiltersAndRender();
+});
+
+window.prevPage = function () {
+  if (currentPage > 1) {
+    currentPage--;
+    applyFiltersAndRender();
+  }
+};
+window.nextPage = function () {
+  currentPage++;
+  applyFiltersAndRender();
+};
 
 window.sortTable = function (colName) {
-  if (currentSort.col === colName) {
+  if (currentSort.col === colName)
     currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
-  } else {
+  else {
     currentSort.col = colName;
     currentSort.dir = "asc";
   }
+  currentPage = 1;
   applyFiltersAndRender();
+};
+
+// ==========================================
+// IMPERSONATION (VIEW AS)
+// ==========================================
+window.viewAsStudent = function (studentEmail) {
+  // Set the target email and mock our role so auth-guard allows us into the dashboard
+  localStorage.setItem("Adminerva_Impersonate", studentEmail);
+  localStorage.setItem("Adminerva_Mock_Role", "student");
+  window.location.href = "student-dashboard.html";
 };
 
 // ==========================================
