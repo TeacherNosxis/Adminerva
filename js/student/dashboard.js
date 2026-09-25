@@ -129,7 +129,7 @@ async function loadDashboardProfile(studentData) {
   const container = document.getElementById("commitListContainer");
   const overlay = document.getElementById("githubAuthOverlay");
 
-  // Run the new Token-Powered Diagnostic Engine
+  // Run the Diagnostic Engine
   verifyStudentSetup(studentData);
   overlay.classList.add("hidden");
 
@@ -150,14 +150,24 @@ async function loadDashboardProfile(studentData) {
 
   const defaultFilter = document.getElementById("timeFilter")?.value || "7d";
   const cacheRef = doc(db, "student_dashboard_cache", studentData.docId);
-  const cacheSnap = await getDoc(cacheRef);
 
-  if (cacheSnap.exists()) {
-    cachedCommitsData = cacheSnap.data().commits || [];
-    renderCommits(cachedCommitsData, defaultFilter);
-    renderChart(cachedCommitsData, defaultFilter);
+  // 🚨 THE FIX: Wrap the database call in a try/catch.
+  // If the student gets blocked by a Firebase Security Rule, the script will catch the error
+  // instead of crashing, allowing it to proceed and reveal the GitHub button below.
+  try {
+    const cacheSnap = await getDoc(cacheRef);
+    if (cacheSnap.exists()) {
+      cachedCommitsData = cacheSnap.data().commits || [];
+      renderCommits(cachedCommitsData, defaultFilter);
+      renderChart(cachedCommitsData, defaultFilter);
+    }
+  } catch (error) {
+    console.warn(
+      "Database read bypassed (Likely missing permissions). Continuing to UI load.",
+    );
   }
 
+  // Because the script didn't crash above, the student will now successfully see the button.
   if (!studentData.githubToken) {
     overlay.classList.remove("hidden");
     return;
