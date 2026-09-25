@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Analytics</a>
             <a href="repobank.html" class="${getStyle("repobank")}">Repobank</a>
             <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
-            <a href="temp-activity-grader.html" class="${getStyle("activity-grader")}">Manual Grader</a>
+            <a href="temp-grading.html" class="${getStyle("activity-grader")}">Manual Grader</a>
             <a href="temp-activity-gradebook.html" class="${getStyle("activity-gradebook")}">Activity Gradebook</a>
             <a href="gradebook.html" class="${getStyle("gradebook")}">AI Gradebook</a>
             ${adminDirLink}
