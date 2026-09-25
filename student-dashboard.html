@@ -11,16 +11,13 @@
     class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col hidden"
     id="pageBody"
   >
-    <!-- Unified Navigation -->
     <div id="adminerva-nav" data-module="student" data-page="dashboard"></div>
 
-    <!-- Main Content -->
     <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
       <header
         class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4"
       >
         <div>
-          <!-- Diagnostic Warning Banner -->
           <div
             id="studentWarningBanner"
             class="hidden mb-6 p-4 rounded-lg border shadow-sm flex items-start gap-3"
@@ -37,7 +34,6 @@
             <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
               Project Workspace
             </h1>
-            <!-- DYNAMIC SECTION SELECTOR -->
             <select
               id="sectionSelector"
               class="hidden text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold bg-blue-50 px-3 py-1.5 text-blue-700 cursor-pointer outline-none border"
@@ -56,12 +52,10 @@
       </header>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Column: Analytics & Commits -->
         <div class="lg:col-span-2 space-y-6">
           <div
             class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
           >
-            <!-- NEW: Flex header with Time Filter -->
             <div class="flex justify-between items-center mb-4">
               <h3
                 class="text-lg font-bold text-slate-800 flex items-center gap-2"
@@ -80,6 +74,28 @@
             </div>
 
             <div class="relative h-64 w-full">
+              <!-- NEW: GitHub Auth Overlay -->
+              <div
+                id="githubAuthOverlay"
+                class="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg hidden border border-slate-200 shadow-inner"
+              >
+                <span class="text-4xl mb-2">🐙</span>
+                <h4 class="font-bold text-slate-800 text-lg">
+                  Connect GitHub to Sync
+                </h4>
+                <p
+                  class="text-xs text-slate-500 mb-4 text-center px-4 max-w-sm"
+                >
+                  Link your GitHub account to bypass network rate limits and
+                  instantly load your repository analytics.
+                </p>
+                <button
+                  id="connectGithubBtn"
+                  class="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition text-sm shadow-md flex items-center gap-2"
+                >
+                  Connect Account
+                </button>
+              </div>
               <canvas id="commitChart"></canvas>
             </div>
           </div>
@@ -109,7 +125,6 @@
           </div>
         </div>
 
-        <!-- Right Column: Humanized Feedback -->
         <div class="space-y-6">
           <div
             class="bg-slate-800 p-6 rounded-xl shadow-md text-white border border-slate-700 relative overflow-hidden"
@@ -165,12 +180,9 @@
       </div>
     </main>
 
-    <!-- Core Scripts -->
     <script src="js/core/adminerva-nav.js"></script>
     <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/core/auth-guard.js"></script>
-
-    <!-- Page Specific Logic -->
     <script type="module" src="js/student/dashboard.js"></script>
   </body>
 </html>

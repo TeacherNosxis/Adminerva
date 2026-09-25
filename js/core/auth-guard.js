@@ -1,8 +1,14 @@
-import { auth } from "./firebase-core.js";
+import { auth, db } from "./firebase-core.js";
 import {
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const currentPath = window.location.pathname.toLowerCase();
 const isLoginPage = currentPath.includes("login.html");
@@ -13,7 +19,7 @@ const SUPER_ADMIN_EMAIL = "babaynike2013@gmail.com".toLowerCase();
 // 🚨 TIER 2: The Instructor (Can access grading and rosters)
 const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
     if (!isLoginPage) window.location.href = "login.html";
     return;
@@ -21,14 +27,42 @@ onAuthStateChanged(auth, (user) => {
 
   const userEmail = user.email.toLowerCase();
 
-  // 1. Determine absolute hardware role based strictly on the verified email
+  // 1. Strict Whitelist Enforcement
+  if (userEmail !== SUPER_ADMIN_EMAIL && userEmail !== TEACHER_EMAIL) {
+    try {
+      const studentQuery = query(
+        collection(db, "students"),
+        where("email", "==", userEmail),
+      );
+      const studentSnap = await getDocs(studentQuery);
+
+      const teacherQuery = query(
+        collection(db, "teachers"),
+        where("email", "==", userEmail),
+      );
+      const teacherSnap = await getDocs(teacherQuery);
+
+      if (studentSnap.empty && teacherSnap.empty) {
+        await signOut(auth);
+        window.location.href = "login.html?error=unauthorized";
+        return; // Halt execution
+      }
+    } catch (error) {
+      console.error("Database connection error:", error);
+      await signOut(auth);
+      window.location.href = "login.html?error=server";
+      return;
+    }
+  }
+
+  // 2. Determine absolute hardware role based strictly on the verified email
   let actualRole = "student";
   if (userEmail === SUPER_ADMIN_EMAIL) actualRole = "superadmin";
   else if (userEmail === TEACHER_EMAIL) actualRole = "teacher";
 
   let activeRole = actualRole;
 
-  // 2. The Shape-Shifter Logic (ONLY permitted for authorized admins/teachers)
+  // 3. The Shape-Shifter Logic (ONLY permitted for authorized admins/teachers)
   if (actualRole === "superadmin" || actualRole === "teacher") {
     const mockRole = localStorage.getItem("Adminerva_Mock_Role");
     if (mockRole) {
@@ -37,13 +71,12 @@ onAuthStateChanged(auth, (user) => {
     localStorage.setItem("Adminerva_Role", activeRole);
   } else {
     // 🔥 ANTI-HACK MEASURE: Force students back to their assigned role
-    // This overwrites any attempts to manually change localStorage to "teacher"
     localStorage.setItem("Adminerva_Role", "student");
     localStorage.removeItem("Adminerva_Mock_Role");
     activeRole = "student";
   }
 
-  // 3. Strict Routing Enforcement
+  // 4. Strict Routing Enforcement
   if (
     activeRole === "student" &&
     !currentPath.includes("student-") &&
@@ -60,7 +93,7 @@ onAuthStateChanged(auth, (user) => {
     window.location.href = "reporeviewDashboard.html";
   }
 
-  // 4. Security cleared: Display the UI
+  // 5. Security cleared: Display the UI
   const pageBody = document.getElementById("pageBody");
   if (pageBody) pageBody.classList.remove("hidden");
 

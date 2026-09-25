@@ -2,17 +2,23 @@ import { db, auth } from "../core/firebase-core.js";
 import {
   collection,
   getDocs,
+  doc,
+  getDoc,
+  setDoc,
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   onAuthStateChanged,
   signOut,
+  linkWithPopup,
+  GithubAuthProvider,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 let userProfiles = [];
 let currentChart = null;
 let currentStudentProfile = null;
+let cachedCommitsData = [];
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return (window.location.href = "login.html");
@@ -21,19 +27,21 @@ onAuthStateChanged(auth, async (user) => {
   const emailDisplay = document.getElementById("userEmailDisplay");
   if (emailDisplay) emailDisplay.textContent = user.email;
 
-  // Listen for Time Filter Changes
   const timeFilterDropdown = document.getElementById("timeFilter");
   if (timeFilterDropdown) {
     timeFilterDropdown.addEventListener("change", (e) => {
       if (currentStudentProfile) {
-        fetchGitHubData(
-          currentStudentProfile.repoUrl,
-          currentStudentProfile.githubUsername,
-          e.target.value,
-        );
+        // Just re-render the cache with the new time filter
+        renderCommits(cachedCommitsData, e.target.value);
+        renderChart(cachedCommitsData, e.target.value);
       }
     });
   }
+
+  // Bind the GitHub OAuth Link Button
+  document
+    .getElementById("connectGithubBtn")
+    .addEventListener("click", linkGithubAccount);
 
   try {
     const q = query(
@@ -51,7 +59,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     userProfiles = [];
-    snap.forEach((d) => userProfiles.push(d.data()));
+    snap.forEach((d) => userProfiles.push({ docId: d.id, ...d.data() }));
 
     const selector = document.getElementById("sectionSelector");
     if (selector) {
@@ -64,10 +72,9 @@ onAuthStateChanged(auth, async (user) => {
             `<option value="${index}">${profile.section}</option>`,
           );
         });
-
-        selector.addEventListener("change", (e) => {
-          loadDashboardProfile(userProfiles[e.target.value]);
-        });
+        selector.addEventListener("change", (e) =>
+          loadDashboardProfile(userProfiles[e.target.value]),
+        );
       } else {
         selector.classList.add("hidden");
       }
@@ -83,8 +90,10 @@ async function loadDashboardProfile(studentData) {
   currentStudentProfile = studentData;
   const subtitle = document.getElementById("repoSubtitle");
   const container = document.getElementById("commitListContainer");
+  const overlay = document.getElementById("githubAuthOverlay");
 
   verifyStudentSetup(studentData);
+  overlay.classList.add("hidden");
 
   if (currentChart) {
     currentChart.destroy();
@@ -101,100 +110,138 @@ async function loadDashboardProfile(studentData) {
 
   subtitle.innerHTML = `<strong>${studentData.section}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${studentData.githubUsername}</span> on <a href="${studentData.repoUrl}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${studentData.repoUrl}</a>`;
 
-  container.innerHTML = `
-        <div class="animate-pulse flex space-x-4">
-            <div class="flex-1 space-y-4 py-1">
-                <div class="h-4 bg-slate-200 rounded w-3/4"></div>
-                <div class="space-y-2">
-                    <div class="h-4 bg-slate-200 rounded"></div>
-                    <div class="h-4 bg-slate-200 rounded w-5/6"></div>
-                </div>
-            </div>
-        </div>`;
-
+  // 1. INSTANT CACHE LOAD: Read from Firebase first
   const defaultFilter = document.getElementById("timeFilter")?.value || "7d";
-  await fetchGitHubData(
+  const cacheRef = doc(db, "student_dashboard_cache", studentData.docId);
+  const cacheSnap = await getDoc(cacheRef);
+
+  if (cacheSnap.exists()) {
+    cachedCommitsData = cacheSnap.data().commits || [];
+    renderCommits(cachedCommitsData, defaultFilter);
+    renderChart(cachedCommitsData, defaultFilter);
+  }
+
+  // 2. CHECK TOKEN: If they haven't connected OAuth, show prompt and stop here
+  if (!studentData.githubToken) {
+    overlay.classList.remove("hidden");
+    return;
+  }
+
+  // 3. BACKGROUND SYNC: Use personal token to fetch updates
+  syncGitHubData(
     studentData.repoUrl,
     studentData.githubUsername,
-    defaultFilter,
+    studentData.githubToken,
+    cacheRef,
   );
 }
 
-async function fetchGitHubData(repoUrl, username, filter = "7d") {
-  const container = document.getElementById("commitListContainer");
-
-  // Calculate Target Date
-  const now = new Date();
-  let sinceDate = new Date();
-  if (filter === "24h") sinceDate.setHours(now.getHours() - 24);
-  else if (filter === "7d") sinceDate.setDate(now.getDate() - 7);
-  else if (filter === "30d") sinceDate.setMonth(now.getMonth() - 1);
-  else if (filter === "90d") sinceDate.setMonth(now.getMonth() - 3);
-
-  const sinceIso = sinceDate.toISOString();
-
+async function syncGitHubData(repoUrl, username, token, cacheRef) {
   try {
-    let owner, repo;
     const urlParts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
-    repo = urlParts.pop();
-    owner = urlParts.pop();
+    const repo = urlParts.pop();
+    const owner = urlParts.pop();
 
+    // Fetching up to 4 pages (400 commits) for the 90d view support
     let allCommits = [];
-    let page = 1;
-    let keepFetching = true;
-    const maxPages = filter === "90d" || filter === "30d" ? 4 : 1; // Fetch up to 400 commits for deep history
-
-    // Automated Pagination Loop to prevent "Flat Line" data clipping
-    while (keepFetching && page <= maxPages) {
+    for (let page = 1; page <= 4; page++) {
       const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(username)}&since=${sinceIso}&per_page=100&page=${page}`,
+        `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(username)}&per_page=100&page=${page}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+          },
+        },
       );
-
-      if (!response.ok) {
-        if (response.status === 404 && page === 1)
-          throw new Error("Repository is Private or Not Found.");
-        break;
-      }
+      if (!response.ok) break;
 
       const commits = await response.json();
       allCommits = allCommits.concat(commits);
-
-      if (commits.length < 100) keepFetching = false;
-      page++;
+      if (commits.length < 100) break;
     }
 
-    if (allCommits.length === 0) {
-      container.innerHTML =
-        "<p class='text-sm text-slate-500 font-bold'>No commits found in this timeframe.</p>";
-      renderChart([], filter);
-      return;
+    if (allCommits.length > 0) {
+      cachedCommitsData = allCommits;
+
+      // Save updated data to Firebase for the next instant load
+      await setDoc(
+        cacheRef,
+        { commits: allCommits, lastSynced: new Date().toISOString() },
+        { merge: true },
+      );
+
+      const filter = document.getElementById("timeFilter")?.value || "7d";
+      renderCommits(cachedCommitsData, filter);
+      renderChart(cachedCommitsData, filter);
     }
-
-    container.innerHTML = "";
-    allCommits.slice(0, 7).forEach((c) => {
-      const date = new Date(c.commit.author.date).toLocaleDateString(
-        undefined,
-        { month: "short", day: "numeric" },
-      );
-      container.insertAdjacentHTML(
-        "beforeend",
-        `
-            <div class="p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition group">
-                <div class="flex justify-between items-start mb-1">
-                    <a href="${c.html_url}" target="_blank" class="text-xs font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-700 transition">${c.sha.substring(0, 7)}</a>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${date}</span>
-                </div>
-                <p class="text-sm font-medium text-slate-800 break-words">${c.commit.message}</p>
-            </div>
-        `,
-      );
-    });
-
-    renderChart(allCommits, filter);
   } catch (err) {
-    container.innerHTML = `<p class="text-sm text-red-500 font-medium">${err.message}</p>`;
-    renderChart([], filter);
+    console.warn("Background sync failed, using cached data.", err);
   }
+}
+
+async function linkGithubAccount() {
+  const provider = new GithubAuthProvider();
+  provider.addScope("repo");
+
+  try {
+    const result = await linkWithPopup(auth.currentUser, provider);
+    const credential = GithubAuthProvider.credentialFromResult(result);
+    const token = credential.accessToken;
+
+    // Auto-capture their verified GitHub Username from the provider details
+    const verifiedUsername = result.user.reloadUserInfo.providerUserInfo.find(
+      (p) => p.providerId === "github.com",
+    ).screenName;
+
+    // Save token and verified username to Firestore
+    const docRef = doc(db, "students", currentStudentProfile.docId);
+    await setDoc(
+      docRef,
+      {
+        githubToken: token,
+        githubUsername: verifiedUsername, // Overwrites any typos they made in settings
+      },
+      { merge: true },
+    );
+
+    currentStudentProfile.githubToken = token;
+    currentStudentProfile.githubUsername = verifiedUsername;
+
+    document.getElementById("githubAuthOverlay").classList.add("hidden");
+    loadDashboardProfile(currentStudentProfile);
+  } catch (error) {
+    alert("GitHub Connection Failed: " + error.message);
+  }
+}
+
+function renderCommits(commits, filter) {
+  const container = document.getElementById("commitListContainer");
+  if (!commits || commits.length === 0) {
+    container.innerHTML =
+      "<p class='text-sm text-slate-500 font-bold'>No commits found in this timeframe.</p>";
+    return;
+  }
+
+  container.innerHTML = "";
+  commits.slice(0, 7).forEach((c) => {
+    const date = new Date(c.commit.author.date).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+      <div class="p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition group">
+          <div class="flex justify-between items-start mb-1">
+              <a href="${c.html_url}" target="_blank" class="text-xs font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-700 transition">${c.sha.substring(0, 7)}</a>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${date}</span>
+          </div>
+          <p class="text-sm font-medium text-slate-800 break-words">${c.commit.message}</p>
+      </div>
+    `,
+    );
+  });
 }
 
 function renderChart(commits, filter) {
@@ -202,7 +249,6 @@ function renderChart(commits, filter) {
   const labels = [];
   const dataMap = {};
 
-  // Generate strict timelines to guarantee proportional chart spacing
   if (filter === "24h") {
     for (let i = 23; i >= 0; i--) {
       let d = new Date(now.getTime() - i * 60 * 60 * 1000);
@@ -233,7 +279,15 @@ function renderChart(commits, filter) {
         filter === "24h"
           ? `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}-${cd.getHours()}`
           : `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}`;
-      if (dataMap[key] !== undefined) {
+
+      // Respect the time filter limit for rendering
+      let cutoff = new Date();
+      if (filter === "24h") cutoff.setHours(now.getHours() - 24);
+      else if (filter === "7d") cutoff.setDate(now.getDate() - 7);
+      else if (filter === "30d") cutoff.setMonth(now.getMonth() - 1);
+      else if (filter === "90d") cutoff.setMonth(now.getMonth() - 3);
+
+      if (cd >= cutoff && dataMap[key] !== undefined) {
         dataMap[key]++;
       }
     });
@@ -242,7 +296,6 @@ function renderChart(commits, filter) {
   const displayLabels = labels.map((l) => l.label);
   const dataPoints = labels.map((l) => dataMap[l.key]);
 
-  // Dynamic Chart Styling based on the timeline length
   let pointRadius = filter === "90d" ? 1 : filter === "30d" ? 3 : 5;
   let pointHoverRadius = filter === "90d" ? 4 : 7;
   let maxTicks =
@@ -313,9 +366,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ==========================================
-// STUDENT DIAGNOSTIC ENGINE
-// ==========================================
 async function verifyStudentSetup(studentData) {
   const banner = document.getElementById("studentWarningBanner");
   const title = document.getElementById("warningTitle");
@@ -338,75 +388,13 @@ async function verifyStudentSetup(studentData) {
     );
   }
 
-  try {
-    let owner, repo;
-    const urlParts = studentData.repoUrl
-      .replace(/\/$/, "")
-      .replace(".git", "")
-      .split("/");
-    repo = urlParts.pop();
-    owner = urlParts.pop();
-
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
+  if (!studentData.githubToken) {
+    return triggerWarning(
+      "bg-blue-50 border-blue-200 text-blue-800",
+      "GitHub Disconnected",
+      "Please connect your GitHub account via the prompt in your analytics panel to sync your data.",
     );
-
-    if (res.status === 404) {
-      return triggerWarning(
-        "bg-red-50 border-red-200 text-red-800",
-        "Repository Not Found",
-        "We cannot reach your code. Ensure your URL is spelled correctly and that the repository is set to <strong>Public</strong> on GitHub.",
-      );
-    }
-
-    if (res.status === 403) {
-      return triggerWarning(
-        "bg-slate-50 border-slate-200 text-slate-800",
-        "GitHub Rate Limit Reached",
-        "You have refreshed too many times. Please wait a few minutes before GitHub allows us to check your repository again.",
-      );
-    }
-
-    if (res.status === 409) {
-      return triggerWarning(
-        "bg-blue-50 border-blue-200 text-blue-800",
-        "Empty Repository",
-        "Your repository is successfully linked, but it is completely empty. Push your first code commit to see your analytics.",
-      );
-    }
-
-    if (res.ok) {
-      const commits = await res.json();
-
-      const ghUsername = (studentData.githubUsername || "")
-        .toLowerCase()
-        .trim();
-      const stuEmail = (studentData.email || "").toLowerCase().trim();
-      const stuName = (studentData.name || "").toLowerCase().trim();
-
-      const hasCommit = commits.some((c) => {
-        const login = (c.author?.login || "").toLowerCase();
-        const commitEmail = (c.commit?.author?.email || "").toLowerCase();
-        const commitName = (c.commit?.author?.name || "").toLowerCase();
-
-        if (ghUsername && login === ghUsername) return true;
-        if (stuEmail && commitEmail === stuEmail) return true;
-        if (stuName && commitName === stuName) return true;
-
-        return false;
-      });
-
-      if (!hasCommit && commits.length > 0) {
-        return triggerWarning(
-          "bg-amber-50 border-amber-200 text-amber-800",
-          "Identity Mismatch Detected",
-          `We see code in this repository, but none of it matches your configured GitHub username (<strong>${studentData.githubUsername}</strong>). If you wrote this code, please check for typos in your Settings.`,
-        );
-      }
-
-      banner.classList.add("hidden");
-    }
-  } catch (e) {
-    console.error("Diagnostic check failed:", e);
   }
+
+  banner.classList.add("hidden");
 }
