@@ -2,12 +2,15 @@ import { db } from "../core/firebase-core.js";
 import {
   collection,
   getDocs,
+  doc,
+  setDoc,
+  getDoc,
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-let repoGroups = {}; // Maps repoUrl -> { members: [], commits: [] }
-let studentStatsMap = {}; // Maps studentId -> { count, additions, deletions, patches, messages }
+let repoGroups = {};
+let studentStatsMap = {};
 
 window.showLoader = function (msg, subMsg = "") {
   document.getElementById("loaderMessage").textContent = msg;
@@ -17,6 +20,15 @@ window.showLoader = function (msg, subMsg = "") {
 window.hideLoader = function () {
   document.getElementById("globalLoader").classList.add("hidden");
 };
+
+function getRepoId(repoUrl) {
+  try {
+    const parts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
+    return `${parts[parts.length - 2]}_${parts[parts.length - 1]}`;
+  } catch (e) {
+    return "unknown_repo";
+  }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!db) return;
@@ -53,7 +65,6 @@ window.fetchGroupRepos = async function () {
   window.showLoader(`Fetching students...`);
 
   try {
-    // 1. Fetch Students and Group them by their Repository URL
     const qStudents = query(
       collection(db, "students"),
       where("section", "==", section),
@@ -69,14 +80,13 @@ window.fetchGroupRepos = async function () {
         ? student.repoUrl.trim().replace(/\/$/, "")
         : "unassigned";
 
-      if (!repoGroups[url])
-        repoGroups[url] = { members: [], apiError: null, rawCommits: [] };
+      if (!repoGroups[url]) repoGroups[url] = { members: [], apiError: null };
       repoGroups[url].members.push(student);
 
-      // Initialize empty stats for the student
       studentStatsMap[student.id] = {
         name: student.name,
         repoUrl: url,
+        githubUsername: (student.githubUsername || "").toLowerCase().trim(),
         count: 0,
         additions: 0,
         deletions: 0,
@@ -85,26 +95,33 @@ window.fetchGroupRepos = async function () {
       };
     });
 
-    // Remove unassigned if nobody is missing a repo URL
     const validRepoUrls = Object.keys(repoGroups).filter(
       (url) => url !== "unassigned" && url.includes("github.com"),
     );
 
-    // 2. Fetch GitHub Data per Repository (NOT per student)
     let processed = 0;
     for (const url of validRepoUrls) {
       processed++;
       window.showLoader(
-        `Fetching Repositories`,
+        `Syncing Repositories`,
         `Analyzing Group ${processed} of ${validRepoUrls.length}`,
       );
 
       try {
+        const repoId = getRepoId(url);
         const urlParts = url.replace(".git", "").split("/");
         const repo = urlParts.pop();
         const owner = urlParts.pop();
 
-        // Fetch up to 100 recent commits for the entire group repo
+        // 1. Load the SHA-based Cache from Firebase
+        const cacheRef = doc(db, "group_repo_cache", repoId);
+        const cacheSnap = await getDoc(cacheRef);
+        let commitsCache = cacheSnap.exists()
+          ? cacheSnap.data().commitsCache || {}
+          : {};
+        let updatedCache = false;
+
+        // 2. Fetch the CURRENT Top 100 List (Always fresh, ignores dates)
         const res = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
           {
@@ -116,18 +133,18 @@ window.fetchGroupRepos = async function () {
         );
 
         if (!res.ok) {
-          repoGroups[url].apiError = `HTTP ${res.status}`;
+          repoGroups[url].apiError =
+            res.status === 409 ? "Empty Repository" : `HTTP ${res.status}`;
           continue;
         }
 
-        const commits = await res.json();
+        const currentCommits = await res.json();
 
-        // 3. Distribute Commits to the matching Group Members
-        for (let c of commits) {
+        // 3. Process the current history line by line
+        for (let c of currentCommits) {
           const authorLogin = (c.author?.login || "").toLowerCase();
           const authorName = (c.commit?.author?.name || "").toLowerCase();
 
-          // Find which student in this group made the commit
           const member = repoGroups[url].members.find(
             (m) =>
               (m.githubUsername || "").toLowerCase().trim() === authorLogin ||
@@ -138,38 +155,71 @@ window.fetchGroupRepos = async function () {
             const stats = studentStatsMap[member.id];
             stats.count++;
 
-            // Only fetch deeper file details (diffs/lines) for a max of 10 commits per student to save API limits
-            if (stats.count <= 10) {
+            let commitDetail = commitsCache[c.sha];
+
+            // If SHA is missing from cache, fetch deep details and cache it
+            // Limit to top 15 deep fetches per student to avoid massive payload/rate limits
+            if (!commitDetail && stats.count <= 15) {
               const detailRes = await fetch(
                 `https://api.github.com/repos/${owner}/${repo}/commits/${c.sha}`,
                 {
                   headers: { Authorization: `Bearer ${ghToken}` },
                 },
               );
+
               if (detailRes.ok) {
                 const detail = await detailRes.json();
-                if (detail.stats) {
-                  stats.additions += detail.stats.additions;
-                  stats.deletions += detail.stats.deletions;
-                }
-                stats.messages.push(
-                  `${new Date(c.commit.author.date).toLocaleDateString()} - ${c.commit.message}`,
-                );
-
-                stats.patches += `\n\n### COMMIT: "${c.commit.message}"\n`;
-                if (detail.files)
+                let patchData = "";
+                if (detail.files) {
                   detail.files.forEach((file) => {
                     if (file.patch)
-                      stats.patches += `--- ${file.filename} ---\n${file.patch}\n`;
+                      patchData += `--- ${file.filename} ---\n${file.patch}\n`;
                   });
+                }
+
+                commitDetail = {
+                  message: c.commit.message,
+                  date: c.commit.author.date,
+                  additions: detail.stats?.additions || 0,
+                  deletions: detail.stats?.deletions || 0,
+                  // Limit patch string to prevent exceeding Firestore's 1MB document limit
+                  patch: patchData.substring(0, 3500),
+                };
+
+                commitsCache[c.sha] = commitDetail;
+                updatedCache = true;
               }
-            } else {
-              // If they have more than 10 commits, just record the message
-              stats.messages.push(
-                `${new Date(c.commit.author.date).toLocaleDateString()} - ${c.commit.message}`,
-              );
+            } else if (!commitDetail) {
+              // Fallback for commits beyond the deep fetch limit
+              commitDetail = {
+                message: c.commit.message,
+                date: c.commit.author.date,
+                additions: 0,
+                deletions: 0,
+                patch: "",
+              };
+            }
+
+            // 4. Apply the confirmed data to the UI
+            if (commitDetail) {
+              const dateStr = new Date(commitDetail.date).toLocaleDateString();
+              stats.messages.push(`${dateStr} - ${commitDetail.message}`);
+              stats.additions += commitDetail.additions;
+              stats.deletions += commitDetail.deletions;
+              if (commitDetail.patch) {
+                stats.patches += `\n\n### COMMIT: "${commitDetail.message}"\n${commitDetail.patch}`;
+              }
             }
           }
+        }
+
+        // 5. Save the updated cache back to Firebase if new SHAs were found
+        if (updatedCache) {
+          await setDoc(
+            cacheRef,
+            { repoUrl: url, commitsCache: commitsCache },
+            { merge: true },
+          );
         }
       } catch (err) {
         repoGroups[url].apiError = "Network Error";
@@ -236,7 +286,7 @@ function renderGroupsUI() {
   });
 
   if (container.innerHTML === "") {
-    container.innerHTML = `<div class="col-span-full py-8 text-center text-gray-500 font-bold">No valid repositories found for this section. Ensure students have a repoUrl in the database.</div>`;
+    container.innerHTML = `<div class="col-span-full py-8 text-center text-gray-500 font-bold">No valid repositories found for this section.</div>`;
   }
 }
 
