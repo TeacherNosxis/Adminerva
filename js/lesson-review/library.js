@@ -12,6 +12,17 @@ import {
 let libraryData = [];
 let activeFolderId = null;
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initFirebase();
 });
@@ -139,17 +150,21 @@ function renderFolders() {
       ? "bg-blue-100 text-blue-900 font-bold"
       : "bg-white text-gray-700 hover:bg-gray-100";
 
+    // 🔒 Security Patch: Neutralize folder names and IDs
+    const safeId = escapeHTML(folder.id);
+    const safeName = escapeHTML(folder.name);
+
     folderList.insertAdjacentHTML(
       "beforeend",
       `
-            <div onclick="selectFolder('${folder.id}')" class="group flex justify-between items-center w-full p-3 rounded text-sm cursor-pointer border border-transparent ${bgClass}">
+            <div onclick="selectFolder('${safeId}')" class="group flex justify-between items-center w-full p-3 rounded text-sm cursor-pointer border border-transparent ${bgClass}">
                 <div class="flex items-center gap-2 truncate">
                     <span>📁</span>
-                    <span class="truncate">${folder.name}</span>
+                    <span class="truncate">${safeName}</span>
                 </div>
                 <div class="group-hover-show flex gap-2">
-                    <button onclick="renameFolder(event, '${folder.id}')" class="text-gray-400 hover:text-blue-600" title="Rename">✏️</button>
-                    <button onclick="deleteFolder(event, '${folder.id}')" class="text-gray-400 hover:text-red-600" title="Delete">🗑️</button>
+                    <button onclick="renameFolder(event, '${safeId}')" class="text-gray-400 hover:text-blue-600" title="Rename">✏️</button>
+                    <button onclick="deleteFolder(event, '${safeId}')" class="text-gray-400 hover:text-red-600" title="Delete">🗑️</button>
                 </div>
             </div>
         `,
@@ -163,8 +178,10 @@ window.selectFolder = function (folderId) {
 
   const folder = libraryData.find((f) => f.id === folderId);
   if (folder) {
+    // 🔒 Security Patch
     document.getElementById("activeFolderTitle").innerHTML =
-      `<span>📂</span> ${folder.name}`;
+      `<span>📂</span> ${escapeHTML(folder.name)}`;
+
     document.getElementById("documentWorkspace").classList.remove("hidden");
     document.getElementById("documentWorkspace").classList.add("flex");
     document.getElementById("driveToolbar").classList.remove("hidden");
@@ -242,6 +259,17 @@ function renderDocuments(documentsArray) {
   }
 
   documentsArray.forEach((doc, index) => {
+    // 🔒 Security Patch: Sanitize the document title and formatted date
+    const safeTitle = escapeHTML(doc.title);
+    const safeDate = escapeHTML(formatDate(doc.updatedAt));
+
+    // 🔒 Security Patch: Flatten newlines, escape single quotes, and escape HTML entities so the alert string doesn't break
+    const safePreview = escapeHTML(doc.text.substring(0, 500))
+      .replace(/(\r\n|\n|\r)/gm, " ")
+      .replace(/'/g, "\\'")
+      .replace(/"/g, "&quot;")
+      .replace(/`/g, "\\`");
+
     docList.insertAdjacentHTML(
       "beforeend",
       `
@@ -249,11 +277,11 @@ function renderDocuments(documentsArray) {
                 <div class="col-span-6 flex items-center gap-3 truncate">
                     <span class="text-xl">📄</span>
                     <div class="truncate">
-                        <p class="font-semibold text-gray-800 text-sm truncate cursor-pointer hover:text-blue-600" onclick="alert('PREVIEW:\\n\\n' + \`${doc.text.replace(/"/g, "'").substring(0, 500)}...\`)">${doc.title}</p>
+                        <p class="font-semibold text-gray-800 text-sm truncate cursor-pointer hover:text-blue-600" onclick="alert('PREVIEW:\\n\\n${safePreview}...')">${safeTitle}</p>
                     </div>
                 </div>
                 <div class="col-span-4 text-sm text-gray-500">
-                    ${formatDate(doc.updatedAt)}
+                    ${safeDate}
                 </div>
                 <div class="col-span-2 text-right flex justify-end gap-3 group-hover-show">
                     <button onclick="renameDocument(${index})" class="text-gray-400 hover:text-blue-600" title="Rename">✏️</button>

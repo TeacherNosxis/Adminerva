@@ -15,6 +15,17 @@ import {
 const SUPER_ADMIN_EMAIL = "babaynike2013@gmail.com".toLowerCase();
 const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // ==========================================
 // STATE MANAGEMENT & CACHE
 // ==========================================
@@ -59,7 +70,8 @@ if (dropzone && fileInput) {
   fileInput.addEventListener("change", (e) => {
     if (e.target.files.length > 0) {
       selectedCsvFile = e.target.files[0];
-      dropzone.innerHTML = `<span class="text-3xl block mb-2">✅</span><p class="text-sm font-bold text-green-600">${selectedCsvFile.name}</p>`;
+      // Note: selectedCsvFile.name is safe here as it's provided by the browser file system, but we escape it just in case
+      dropzone.innerHTML = `<span class="text-3xl block mb-2">✅</span><p class="text-sm font-bold text-green-600">${escapeHTML(selectedCsvFile.name)}</p>`;
       uploadBtn.disabled = false;
     }
   });
@@ -222,7 +234,6 @@ if (syncSheetBtn) {
 
       syncSheetBtn.textContent = "Parsing Data...";
 
-      // Feed the fetched text directly into your existing logic
       await processCSV(csvText);
     } catch (err) {
       showUploadError("Failed to fetch Sheet: " + err.message);
@@ -274,9 +285,10 @@ window.loadDirectory = async function () {
     if (secFilter) {
       secFilter.innerHTML = `<option value="all">All Sections</option>`;
       [...uniqueSections].sort().forEach((sec) => {
+        // 🔒 Security Patch: Sanitize section names for dropdowns
         secFilter.insertAdjacentHTML(
           "beforeend",
-          `<option value="${sec}">${sec}</option>`,
+          `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
         );
       });
     }
@@ -292,9 +304,10 @@ window.loadDirectory = async function () {
     });
   } catch (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 font-bold">Error loading directory: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 font-bold">Error loading directory: ${escapeHTML(error.message)}</td></tr>`;
   }
 };
+
 // ==========================================
 // SEARCH, FILTER, SORT & PAGINATION LOGIC
 // ==========================================
@@ -348,27 +361,44 @@ function applyFiltersAndRender() {
     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400 font-medium">No records match your filters.</td></tr>`;
   } else {
     paginatedData.forEach((data) => {
-      const statusHtml = `<span id="${data.pillId}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${data.ghStatusClass}">${data.ghStatusText}</span>`;
+      // 🔒 Security Patch: Sanitize all variables before injecting into innerHTML/insertAdjacentHTML
+      const safePillId = escapeHTML(data.pillId);
+      const safeStatusClass = escapeHTML(data.ghStatusClass);
+      const safeStatusText = escapeHTML(data.ghStatusText);
+      const safeName = escapeHTML(data.name);
+      const safeSection = escapeHTML(data.section);
+      const safeEmail = escapeHTML(data.email);
+      const safeId = escapeHTML(data.id);
 
-      // Feature: Show GitHub URL if available
-      const repoLinkHtml = data.repoUrl
-        ? `<a href="${data.repoUrl}" target="_blank" class="text-[10px] font-mono text-blue-500 hover:underline block mt-1.5 truncate w-48" title="Visit Repository">🔗 ${data.repoUrl.replace("https://github.com/", "")}</a>`
-        : "";
+      const statusHtml = `<span id="${safePillId}" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${safeStatusClass}">${safeStatusText}</span>`;
+
+      // Feature: Show GitHub URL if available safely
+      let repoLinkHtml = "";
+      if (data.repoUrl) {
+        const safeRepoUrl = escapeHTML(data.repoUrl);
+        let displayUrl = data.repoUrl.replace("https://github.com/", "");
+        try {
+          const parsed = new URL(data.repoUrl);
+          displayUrl = parsed.pathname.substring(1);
+        } catch (e) {}
+
+        repoLinkHtml = `<a href="${safeRepoUrl}" target="_blank" class="text-[10px] font-mono text-blue-500 hover:underline block mt-1.5 truncate w-48" title="Visit Repository">🔗 ${escapeHTML(displayUrl)}</a>`;
+      }
 
       const tr = `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                     <td class="px-6 py-4">
-                        <div class="font-medium text-slate-800">${data.name}</div>
-                        <div class="text-[10px] font-bold text-blue-500 uppercase tracking-wider mt-0.5">${data.section}</div>
+                        <div class="font-medium text-slate-800">${safeName}</div>
+                        <div class="text-[10px] font-bold text-blue-500 uppercase tracking-wider mt-0.5">${safeSection}</div>
                     </td>
-                    <td class="px-6 py-4 text-slate-500 font-mono text-xs">${data.email}</td>
+                    <td class="px-6 py-4 text-slate-500 font-mono text-xs">${safeEmail}</td>
                     <td class="px-6 py-4 align-top">
                       ${statusHtml}
                       ${repoLinkHtml}
                     </td>
                     <td class="px-6 py-4 text-right align-top whitespace-nowrap space-x-1">
-                        <button onclick="window.viewAsStudent('${data.email}')" class="text-blue-600 hover:text-white border border-blue-200 bg-blue-50 hover:bg-blue-600 font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded transition shadow-sm">View As</button>
-                        <button onclick="window.revokeStudent('${data.id}')" class="text-red-500 hover:text-white font-bold text-[10px] uppercase tracking-wider border border-red-100 bg-red-50 hover:bg-red-500 px-3 py-1.5 rounded transition shadow-sm">Revoke</button>
+                        <button onclick="window.viewAsStudent('${safeEmail}')" class="text-blue-600 hover:text-white border border-blue-200 bg-blue-50 hover:bg-blue-600 font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded transition shadow-sm">View As</button>
+                        <button onclick="window.revokeStudent('${safeId}')" class="text-red-500 hover:text-white font-bold text-[10px] uppercase tracking-wider border border-red-100 bg-red-50 hover:bg-red-500 px-3 py-1.5 rounded transition shadow-sm">Revoke</button>
                     </td>
                 </tr>
             `;
@@ -458,13 +488,23 @@ async function verifyRepoStatusCache(stu, token) {
   }
 
   try {
+    // 🔒 Security Patch: Native URL parsing to sanitize URL substrings
     let owner, repo;
-    const urlParts = stu.repoUrl
-      .replace(/\/$/, "")
-      .replace(".git", "")
-      .split("/");
-    repo = urlParts.pop();
-    owner = urlParts.pop();
+    try {
+      const parsedUrl = new URL(stu.repoUrl);
+      const urlParts = parsedUrl.pathname
+        .replace(/\/$/, "")
+        .replace(".git", "")
+        .split("/");
+      repo = urlParts.pop();
+      owner = urlParts.pop();
+    } catch (e) {
+      stu.ghStatusClass = "bg-red-100 text-red-700";
+      stu.ghStatusText = "Invalid URL";
+      stu.verified = true;
+      updateDOMStatus(stu);
+      return;
+    }
 
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`,
@@ -504,8 +544,8 @@ async function verifyRepoStatusCache(stu, token) {
 function updateDOMStatus(stu) {
   const pill = document.getElementById(stu.pillId);
   if (pill) {
-    pill.className = `inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${stu.ghStatusClass}`;
-    pill.textContent = stu.ghStatusText;
+    pill.className = `inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${escapeHTML(stu.ghStatusClass)}`;
+    pill.textContent = stu.ghStatusText; // textContent natively mitigates XSS
   }
 }
 

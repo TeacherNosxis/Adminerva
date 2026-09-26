@@ -21,9 +21,25 @@ window.hideLoader = function () {
   document.getElementById("globalLoader").classList.add("hidden");
 };
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// 🔒 Security Patch: Native URL parsing to sanitize URL substrings
 function getRepoId(repoUrl) {
   try {
-    const parts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
+    const parsedUrl = new URL(repoUrl);
+    const parts = parsedUrl.pathname
+      .replace(/\/$/, "")
+      .replace(".git", "")
+      .split("/");
     return `${parts[parts.length - 2]}_${parts[parts.length - 1]}`;
   } catch (e) {
     return "unknown_repo";
@@ -49,7 +65,7 @@ async function loadSections() {
       .forEach((sec) =>
         select.insertAdjacentHTML(
           "beforeend",
-          `<option value="${sec}">${sec}</option>`,
+          `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
         ),
       );
   } catch (e) {
@@ -105,7 +121,13 @@ window.fetchGroupRepos = async function () {
     const fetchPromises = validRepoUrls.map(async (url) => {
       try {
         const repoId = getRepoId(url);
-        const urlParts = url.replace(".git", "").split("/");
+
+        // 🔒 Security Patch: Native URL parser logic
+        const parsedUrl = new URL(url);
+        const urlParts = parsedUrl.pathname
+          .replace(/\/$/, "")
+          .replace(".git", "")
+          .split("/");
         const repo = urlParts.pop();
         const owner = urlParts.pop();
 
@@ -143,14 +165,13 @@ window.fetchGroupRepos = async function () {
         // ==========================================
         // 🚀 THE FAST-PATH: INSTANT CACHE HIT
         // ==========================================
-        // If the newest commit SHA hasn't changed, instantly load the UI data from Firebase and skip all math
         if (
           cachedData.latestSha === currentCommits[0].sha &&
           cachedData.studentStats
         ) {
           repoGroups[url].members.forEach((m) => {
             if (cachedData.studentStats[m.id]) {
-              studentStatsMap[m.id] = cachedData.studentStats[m.id]; // Instant restore
+              studentStatsMap[m.id] = cachedData.studentStats[m.id];
             }
           });
           processed++;
@@ -165,8 +186,6 @@ window.fetchGroupRepos = async function () {
         // 🐢 THE SLOW-PATH: CACHE MISS / REBUILD
         // ==========================================
         let updatedCache = false;
-
-        // We need a temporary map so we don't mess up the global one until we are done calculating
         let tempStats = {};
         repoGroups[url].members.forEach((m) => {
           tempStats[m.id] = { ...studentStatsMap[m.id] };
@@ -188,7 +207,6 @@ window.fetchGroupRepos = async function () {
 
             let commitDetail = commitsCache[c.sha];
 
-            // Deep fetch missing SHAs (Max 10 per student to protect limits)
             if (!commitDetail && stats.count <= 10) {
               const detailRes = await fetch(
                 `https://api.github.com/repos/${owner}/${repo}/commits/${c.sha}`,
@@ -212,7 +230,7 @@ window.fetchGroupRepos = async function () {
                   date: c.commit.author.date,
                   additions: detail.stats?.additions || 0,
                   deletions: detail.stats?.deletions || 0,
-                  patch: patchData.substring(0, 3500), // Safety cap for Firebase size limits
+                  patch: patchData.substring(0, 3500),
                 };
 
                 commitsCache[c.sha] = commitDetail;
@@ -228,7 +246,6 @@ window.fetchGroupRepos = async function () {
               };
             }
 
-            // Append calculated data
             if (commitDetail) {
               const dateStr = new Date(commitDetail.date).toLocaleDateString();
               stats.messages.push(`${dateStr} - ${commitDetail.message}`);
@@ -241,12 +258,10 @@ window.fetchGroupRepos = async function () {
           }
         }
 
-        // Apply rebuilt data to the global UI map
         repoGroups[url].members.forEach((m) => {
           studentStatsMap[m.id] = tempStats[m.id];
         });
 
-        // Save everything back to Firebase so the NEXT load is instant
         await setDoc(
           cacheRef,
           {
@@ -273,7 +288,6 @@ window.fetchGroupRepos = async function () {
       }
     });
 
-    // Execute all parallel promises
     await Promise.all(fetchPromises);
     renderGroupsUI();
   } catch (e) {
@@ -290,9 +304,18 @@ function renderGroupsUI() {
   Object.entries(repoGroups).forEach(([url, groupData]) => {
     if (url === "unassigned") return;
 
-    const groupName = url.split("/").pop().replace(".git", "");
+    // 🔒 Security Patch: Wrap groupName and URLs with escapeHTML
+    let groupName = "Unknown Repo";
+    try {
+      const parsedUrl = new URL(url);
+      groupName = parsedUrl.pathname.split("/").pop().replace(".git", "");
+    } catch (e) {}
+
+    groupName = escapeHTML(groupName);
+    const safeUrl = escapeHTML(url);
+
     const errorBadge = groupData.apiError
-      ? `<span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded border border-red-300">API Error: ${groupData.apiError}</span>`
+      ? `<span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded border border-red-300">API Error: ${escapeHTML(groupData.apiError)}</span>`
       : "";
 
     let membersHtml = "";
@@ -300,12 +323,16 @@ function renderGroupsUI() {
       const stats = studentStatsMap[student.id];
       const hasCommits = stats.count > 0;
 
+      // 🔒 Security Patch: Sanitize student credentials
+      const safeName = escapeHTML(student.name);
+      const safeGithub = escapeHTML(student.githubUsername || "?");
+
       membersHtml += `
         <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition px-2 rounded">
           <div>
             <div class="font-bold text-gray-800 text-sm flex items-center gap-2">
-              ${student.name} 
-              <span class="text-[10px] text-gray-400 font-normal">(@${student.githubUsername || "?"})</span>
+              ${safeName} 
+              <span class="text-[10px] text-gray-400 font-normal">(@${safeGithub})</span>
             </div>
             <div class="text-[10px] font-mono mt-1 ${hasCommits ? "text-gray-600" : "text-red-500 font-bold"}">
                Total Commits: ${stats.count}
@@ -323,7 +350,7 @@ function renderGroupsUI() {
         <div class="bg-gray-50 border-b border-gray-200 p-4 rounded-t-lg flex justify-between items-center">
           <div>
             <h3 class="font-bold text-gray-800 truncate w-64" title="${groupName}">${groupName}</h3>
-            <a href="${url}" target="_blank" class="text-[10px] text-blue-500 hover:underline break-all">${url}</a>
+            <a href="${safeUrl}" target="_blank" class="text-[10px] text-blue-500 hover:underline break-all">${safeUrl}</a>
           </div>
           ${errorBadge}
         </div>
@@ -352,9 +379,15 @@ window.openStudentDetails = function (studentId) {
   document.getElementById("detAdded").textContent = "+" + stats.additions;
   document.getElementById("detDeleted").textContent = "-" + stats.deletions;
 
-  document.getElementById("detCommitList").innerHTML = stats.messages
-    .map((m) => `<li>${m}</li>`)
-    .join("");
+  // 🔒 Security Patch: Create DOM nodes strictly as text content instead of innerHTML string mapping
+  const commitList = document.getElementById("detCommitList");
+  commitList.innerHTML = "";
+  stats.messages.forEach((msg) => {
+    const li = document.createElement("li");
+    li.textContent = msg; // textContent forces the browser to ignore executable HTML tags
+    commitList.appendChild(li);
+  });
+
   document.getElementById("detCodeBlock").textContent =
     stats.patches || "No detailed file changes available.";
 

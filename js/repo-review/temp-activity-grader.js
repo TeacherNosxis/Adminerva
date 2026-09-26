@@ -20,6 +20,17 @@ window.hideLoader = function () {
   document.getElementById("globalLoader").classList.add("hidden");
 };
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!db) return;
   loadSections();
@@ -44,7 +55,7 @@ async function loadSections() {
       .forEach((sec) =>
         select.insertAdjacentHTML(
           "beforeend",
-          `<option value="${sec}">${sec}</option>`,
+          `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
         ),
       );
   } catch (e) {
@@ -95,12 +106,20 @@ window.fetchSectionCommits = async function () {
       }
 
       try {
-        const urlParts = student.repoUrl
-          .replace(/\/$/, "")
-          .replace(".git", "")
-          .split("/");
-        const repo = urlParts.pop();
-        const owner = urlParts.pop();
+        // 🔒 Security Patch: Native URL parsing to sanitize URL substrings
+        let repo, owner;
+        try {
+          const parsedUrl = new URL(student.repoUrl);
+          const urlParts = parsedUrl.pathname
+            .replace(/\/$/, "")
+            .replace(".git", "")
+            .split("/");
+          repo = urlParts.pop();
+          owner = urlParts.pop();
+        } catch (e) {
+          commitDataMap[student.id].error = "Invalid Repo URL";
+          continue;
+        }
 
         // Fetching latest 15 commits generally, rather than strict date bounding
         const response = await fetch(
@@ -170,28 +189,34 @@ function renderGradingTable() {
     const ghData = commitDataMap[student.id];
     const dbGrade = firestoreGradesMap[student.id];
     const currentScore = dbGrade ? dbGrade.score : "";
-    const maxScore = document.getElementById("maxScoreInput").value;
+
+    // 🔒 Security Patch: Sanitize all text before placing it into the DOM
+    const maxScore = escapeHTML(document.getElementById("maxScoreInput").value);
+    const safeName = escapeHTML(student.name);
+    const safeUrl = escapeHTML(student.repoUrl || "N/A");
+    const safeError = escapeHTML(ghData.error || "");
+    const safeStudentId = escapeHTML(student.id);
 
     let reviewBtn =
       ghData.count > 0
-        ? `<button onclick="openDetails('${student.id}')" class="bg-gray-100 border border-gray-300 font-semibold px-3 py-1.5 rounded text-xs hover:bg-gray-200 shadow-sm">📄 Inspect</button>`
+        ? `<button onclick="openDetails('${safeStudentId}')" class="bg-gray-100 border border-gray-300 font-semibold px-3 py-1.5 rounded text-xs hover:bg-gray-200 shadow-sm">📄 Inspect</button>`
         : `<span class="text-gray-400 text-xs italic">No code to view</span>`;
 
     const tr = `
         <tr class="border-b hover:bg-gray-50">
             <td class="py-3 px-2 align-middle">
-                <div class="font-bold text-gray-800 text-sm">${student.name}</div>
-                <a href="${student.repoUrl}" target="_blank" class="text-[10px] text-blue-600 hover:underline truncate w-40 block">${student.repoUrl || "N/A"}</a>
+                <div class="font-bold text-gray-800 text-sm">${safeName}</div>
+                <a href="${safeUrl}" target="_blank" class="text-[10px] text-blue-600 hover:underline truncate w-40 block">${safeUrl}</a>
             </td>
             <td class="py-3 px-2 text-center align-middle font-bold ${ghData.error ? "text-red-500" : "text-green-600"}">
-                ${ghData.error || ghData.count}
+                ${safeError || ghData.count}
             </td>
             <td class="py-3 px-2 text-center align-middle">${reviewBtn}</td>
             <td class="py-3 px-2 align-middle">
                 <div class="flex items-center gap-2">
-                    <input type="number" id="score_${student.id}" value="${currentScore}" class="w-16 p-1.5 border rounded text-center font-bold focus:ring-blue-500 ${currentScore !== "" ? "bg-green-50 border-green-300" : ""}" placeholder="0">
+                    <input type="number" id="score_${safeStudentId}" value="${currentScore}" class="w-16 p-1.5 border rounded text-center font-bold focus:ring-blue-500 ${currentScore !== "" ? "bg-green-50 border-green-300" : ""}" placeholder="0">
                     <span class="text-sm text-gray-500 font-bold">/ ${maxScore}</span>
-                    <button onclick="saveManualGrade('${student.id}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 shadow-sm">Save</button>
+                    <button onclick="saveManualGrade('${safeStudentId}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 shadow-sm">Save</button>
                 </div>
             </td>
         </tr>
@@ -242,9 +267,18 @@ window.openDetails = function (studentId) {
 
   document.getElementById("detailsTitle").textContent =
     `${student.name}'s Recent Code`;
-  document.getElementById("detCommitList").innerHTML = data.allMsgs
-    ? data.allMsgs.map((m) => `<li>${m}</li>`).join("")
-    : "";
+
+  // 🔒 Security Patch: Create DOM nodes strictly as text content to neutralize executable scripts
+  const commitList = document.getElementById("detCommitList");
+  commitList.innerHTML = "";
+  if (data.allMsgs) {
+    data.allMsgs.forEach((msg) => {
+      const li = document.createElement("li");
+      li.textContent = msg;
+      commitList.appendChild(li);
+    });
+  }
+
   document.getElementById("detCodeBlock").textContent =
     data.patches || "No readable code changes recorded.";
   document.getElementById("detailsModal").classList.remove("hidden");

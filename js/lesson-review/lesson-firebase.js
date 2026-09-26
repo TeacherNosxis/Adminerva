@@ -9,6 +9,17 @@ import {
   getDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // initFirebase is now a simple wrapper or can be called immediately since db is ready
 window.initFirebase = function () {
   if (window.loadLibraryFolders) {
@@ -40,18 +51,22 @@ window.loadLibraryFolders = async function () {
 
     libraryData.forEach((folder) => {
       const docCount = folder.documents ? folder.documents.length : 0;
+      // 🔒 Security Patch: Sanitize folder inputs
+      const safeId = escapeHTML(folder.id);
+      const safeName = escapeHTML(folder.name);
+
       container.insertAdjacentHTML(
         "beforeend",
         `
                 <label class="flex items-center gap-2 cursor-pointer group">
-                    <input type="checkbox" value="${folder.id}" class="folder-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 bg-white">
-                    <span class="text-sm font-bold text-blue-900 group-hover:text-blue-700 transition">📁 ${folder.name} <span class="text-[10px] text-gray-500 font-normal">(${docCount} docs)</span></span>
+                    <input type="checkbox" value="${safeId}" class="folder-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 bg-white">
+                    <span class="text-sm font-bold text-blue-900 group-hover:text-blue-700 transition">📁 ${safeName} <span class="text-[10px] text-gray-500 font-normal">(${docCount} docs)</span></span>
                 </label>
             `,
       );
     });
   } catch (e) {
-    container.innerHTML = `<div class="text-xs text-red-500 italic">Failed to load library: ${e.message}</div>`;
+    container.innerHTML = `<div class="text-xs text-red-500 italic">Failed to load library: ${escapeHTML(e.message)}</div>`;
   }
 };
 
@@ -238,9 +253,11 @@ window.openLoadPlanModal = async function () {
         .reverse()
         .forEach((sy) => {
           const selected = sy === currentSelection ? "selected" : "";
+          // 🔒 Security Patch: Sanitize SY options
+          const safeSy = escapeHTML(sy);
           syFilter.insertAdjacentHTML(
             "beforeend",
-            `<option value="${sy}" ${selected}>SY: ${sy}</option>`,
+            `<option value="${safeSy}" ${selected}>SY: ${safeSy}</option>`,
           );
         });
     }
@@ -250,7 +267,7 @@ window.openLoadPlanModal = async function () {
     container.innerHTML = "";
 
     if (allPlans.length === 0) {
-      container.innerHTML = `<div class="text-center py-12"><p class="text-gray-500 font-bold">No plans found for School Year ${activeSY}.</p></div>`;
+      container.innerHTML = `<div class="text-center py-12"><p class="text-gray-500 font-bold">No plans found for School Year ${escapeHTML(activeSY)}.</p></div>`;
       return;
     }
 
@@ -301,14 +318,21 @@ window.openLoadPlanModal = async function () {
                 );
               });
 
+              // 🔒 Security Patch: Escape all strings before DOM injection
+              const safeWeekStr = escapeHTML(data.safeWeek);
+              const safeDateStr = escapeHTML(shortDate);
+              const safeId = escapeHTML(data.id);
+              // Securely escape the JSON object before embedding it into the onclick attribute
+              const safeDataObjStr = escapeHTML(JSON.stringify(data));
+
               rowsHTML += `
                         <tr class="border-b border-gray-100 hover:bg-blue-50 transition">
-                            <td class="px-4 py-3 font-bold text-blue-900 w-1/4">${data.safeWeek}</td>
-                            <td class="px-4 py-3 text-xs text-gray-600 font-medium">🗓️ ${shortDate}</td>
+                            <td class="px-4 py-3 font-bold text-blue-900 w-1/4">${safeWeekStr}</td>
+                            <td class="px-4 py-3 text-xs text-gray-600 font-medium">🗓️ ${safeDateStr}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-2">
-                                    <button onclick='loadSpecificPlan(${JSON.stringify(data).replace(/'/g, "&#39;")})' class="px-3 py-1.5 bg-blue-600 text-white font-bold text-[10px] rounded hover:bg-blue-700 shadow-sm transition">Load</button>
-                                    <button onclick="deleteLessonPlan('${data.id}')" class="px-2 py-1.5 bg-red-50 text-red-600 font-bold text-[10px] rounded hover:bg-red-100 transition" title="Delete">✖</button>
+                                    <button onclick='loadSpecificPlan(${safeDataObjStr})' class="px-3 py-1.5 bg-blue-600 text-white font-bold text-[10px] rounded hover:bg-blue-700 shadow-sm transition">Load</button>
+                                    <button onclick="deleteLessonPlan('${safeId}')" class="px-2 py-1.5 bg-red-50 text-red-600 font-bold text-[10px] rounded hover:bg-red-100 transition" title="Delete">✖</button>
                                 </div>
                             </td>
                         </tr>
@@ -318,7 +342,7 @@ window.openLoadPlanModal = async function () {
             subjectAccordionsHTML += `
                     <details class="group/sub border border-gray-200 rounded-md mb-3 overflow-hidden shadow-sm" open>
                         <summary class="flex justify-between items-center bg-gray-50 p-3 cursor-pointer select-none hover:bg-gray-100 transition">
-                            <span class="font-bold text-sm text-gray-800">📘 ${subjectGrade}</span>
+                            <span class="font-bold text-sm text-gray-800">📘 ${escapeHTML(subjectGrade)}</span>
                             <span class="text-gray-400 group-open/sub:rotate-180 transition-transform">▼</span>
                         </summary>
                         <div class="bg-white"><table class="w-full text-left"><tbody>${rowsHTML}</tbody></table></div>
@@ -331,7 +355,7 @@ window.openLoadPlanModal = async function () {
           `
                 <details class="group/main mb-4 bg-white border border-blue-200 rounded-lg shadow-sm" ${isTermOpen}>
                     <summary class="flex justify-between items-center font-extrabold text-blue-900 uppercase tracking-widest cursor-pointer select-none p-4 bg-blue-50 hover:bg-blue-100 transition rounded-t-lg border-b border-blue-100">
-                        <div class="flex items-center gap-2"><span class="text-lg">📁</span><span>${term}</span></div>
+                        <div class="flex items-center gap-2"><span class="text-lg">📁</span><span>${escapeHTML(term)}</span></div>
                         <span class="text-blue-500 group-open/main:rotate-180 transition-transform">▼</span>
                     </summary>
                     <div class="p-4 bg-white rounded-b-lg">${subjectAccordionsHTML}</div>
@@ -340,7 +364,7 @@ window.openLoadPlanModal = async function () {
         );
       });
   } catch (e) {
-    container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">Error: ${e.message}</div>`;
+    container.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">Error: ${escapeHTML(e.message)}</div>`;
   }
 };
 
@@ -463,24 +487,29 @@ window.openArchiveManager = async function () {
       );
       const icon = item.collection === "lesson_plans" ? "📘" : "🖥️";
 
+      // 🔒 Security Patch: Escape archive data
+      const safeTitle = escapeHTML(item.title);
+      const safeCollection = escapeHTML(item.collection);
+      const safeId = escapeHTML(item.id);
+
       container.insertAdjacentHTML(
         "beforeend",
         `
                 <div class="p-3 border rounded-lg bg-gray-50 flex justify-between items-center">
                     <div>
-                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><span>${icon}</span> ${item.title}</h4>
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><span>${icon}</span> ${safeTitle}</h4>
                         <p class="text-[10px] ${daysLeft <= 3 ? "text-red-600" : "text-amber-600"} font-bold mt-1">Permanently deletes in ${daysLeft} days</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="restoreDocument('${item.collection}', '${item.id}')" class="px-3 py-1.5 bg-green-50 text-green-700 font-bold text-xs rounded border border-green-200 hover:bg-green-100 transition shadow-sm">♻️ Restore</button>
-                        <button onclick="hardDeleteDocument('${item.collection}', '${item.id}')" class="px-3 py-1.5 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-700 transition shadow-sm">🗑️ Eradicate</button>
+                        <button onclick="restoreDocument('${safeCollection}', '${safeId}')" class="px-3 py-1.5 bg-green-50 text-green-700 font-bold text-xs rounded border border-green-200 hover:bg-green-100 transition shadow-sm">♻️ Restore</button>
+                        <button onclick="hardDeleteDocument('${safeCollection}', '${safeId}')" class="px-3 py-1.5 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-700 transition shadow-sm">🗑️ Eradicate</button>
                     </div>
                 </div>
             `,
       );
     });
   } catch (e) {
-    container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error: ${e.message}</p>`;
+    container.innerHTML = `<p class="text-red-500 font-bold text-center py-8">Error: ${escapeHTML(e.message)}</p>`;
   }
 };
 

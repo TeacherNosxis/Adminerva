@@ -20,6 +20,18 @@ let firestoreGradesMap = {}; // Maps studentId -> saved firebase grades
 
 let activeStartDateStr = "";
 let activeEndDateStr = "";
+
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // ==========================================
 // DYNAMIC QUOTA MAPPING
 // ==========================================
@@ -63,10 +75,14 @@ function getQuarter(monthStr) {
   return "Q4";
 }
 
-// Helper to generate a unique repo ID from the GitHub URL
+// 🔒 Security Patch: Native URL parsing to sanitize URL substrings
 function getRepoId(repoUrl) {
   try {
-    const parts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
+    const parsedUrl = new URL(repoUrl);
+    const parts = parsedUrl.pathname
+      .replace(/\/$/, "")
+      .replace(".git", "")
+      .split("/");
     return `${parts[parts.length - 2]}_${parts[parts.length - 1]}`;
   } catch (e) {
     return "unknown_repo";
@@ -76,9 +92,9 @@ function getRepoId(repoUrl) {
 function buildFeedbackHtml(gradeData, maxScore) {
   let html = `<div class="space-y-1">`;
 
-  // NEW: Flexbox header to show Score and Token Usage side-by-side
+  // Flexbox header to show Score and Token Usage side-by-side
   html += `<div class="flex justify-between items-end border-b pb-1 mb-2">`;
-  html += `  <div class="font-extrabold text-lg text-gray-800">Total: ${gradeData.total_score} /${maxScore}</div>`;
+  html += `  <div class="font-extrabold text-lg text-gray-800">Total: ${escapeHTML(gradeData.total_score.toString())} /${escapeHTML(maxScore.toString())}</div>`;
   if (gradeData.tokensUsed) {
     html += `  <div class="text-[10px] font-bold text-gray-400 bg-gray-100 border border-gray-200 shadow-inner px-2 py-1 rounded" title="API Tokens Consumed">🪙 ${gradeData.tokensUsed.toLocaleString()} Tokens</div>`;
   }
@@ -86,12 +102,28 @@ function buildFeedbackHtml(gradeData, maxScore) {
 
   if (gradeData.breakdown) {
     gradeData.breakdown.forEach((b) => {
-      html += `<div class="text-gray-700 font-semibold">${b.criterion}: ${b.score}/${b.max}</div>`;
+      // 🔒 Security Patch: Sanitize dynamically generated AI breakdown keys
+      const safeCriterion = escapeHTML(b.criterion);
+      const safeScore = escapeHTML(b.score.toString());
+      const safeMax = escapeHTML(b.max.toString());
+      html += `<div class="text-gray-700 font-semibold">${safeCriterion}: ${safeScore}/${safeMax}</div>`;
     });
   }
-  html += `<div class="mt-4"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Feedback based on criteria:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${(gradeData.feedback_criteria || "None").replace(/\n/g, "<br>")}</span></div>`;
-  html += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Additional feedback:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${(gradeData.additional_feedback || "None").replace(/\n/g, "<br>")}</span></div>`;
-  html += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Optional Suggestion:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${(gradeData.optional_suggestion || "None").replace(/\n/g, "<br>")}</span></div>`;
+
+  // 🔒 Security Patch: Apply escapeHTML *before* injecting <br> tags so scripts are stripped but newlines function normally
+  const safeFeedback = escapeHTML(
+    gradeData.feedback_criteria || "None",
+  ).replace(/\n/g, "<br>");
+  const safeAdditional = escapeHTML(
+    gradeData.additional_feedback || "None",
+  ).replace(/\n/g, "<br>");
+  const safeSuggestion = escapeHTML(
+    gradeData.optional_suggestion || "None",
+  ).replace(/\n/g, "<br>");
+
+  html += `<div class="mt-4"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Feedback based on criteria:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${safeFeedback}</span></div>`;
+  html += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Additional feedback:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${safeAdditional}</span></div>`;
+  html += `<div class="mt-2"><strong class="text-gray-800 uppercase text-[10px] tracking-wider">Optional Suggestion:</strong><br><span class="text-gray-600 text-sm leading-relaxed">${safeSuggestion}</span></div>`;
   html += `</div>`;
   return html;
 }
@@ -121,6 +153,7 @@ async function initRubric() {
       const docSnap = await getDoc(doc(db, "templates", activeId));
       if (docSnap.exists()) {
         activeTemplate = { id: docSnap.id, ...docSnap.data() };
+        // 🔒 Security Patch: Use textContent for template name rendering
         rubricLabel.textContent = activeTemplate.name;
         rubricLabel.classList.replace("text-red-600", "text-purple-600");
         return;
@@ -298,7 +331,8 @@ async function loadSections() {
     [...uniqueSections].sort().forEach((sec) => {
       select.insertAdjacentHTML(
         "beforeend",
-        `<option value="${sec}">${sec}</option>`,
+        // 🔒 Security Patch: Neutralize dynamically rendered sections
+        `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
       );
     });
 
@@ -367,7 +401,7 @@ window.fetchSectionCommits = async function () {
       processed++;
       window.showLoader(
         `Fetching GitHub Data...\n`,
-        `Checking repos: ${processed} of ${currentStudents.length}`,
+        `Checking repos: ${processed} of${currentStudents.length}`,
       );
 
       commitDataMap[student.id] = {
@@ -386,13 +420,21 @@ window.fetchSectionCommits = async function () {
       }
 
       try {
+        // 🔒 Security Patch: Strict URL validation prior to fetching
         let owner, repo;
-        const urlParts = student.repoUrl
-          .replace(/\/$/, "")
-          .replace(".git", "")
-          .split("/");
-        repo = urlParts.pop();
-        owner = urlParts.pop();
+        try {
+          const parsedUrl = new URL(student.repoUrl);
+          const urlParts = parsedUrl.pathname
+            .replace(/\/$/, "")
+            .replace(".git", "")
+            .split("/");
+          repo = urlParts.pop();
+          owner = urlParts.pop();
+        } catch (e) {
+          commitDataMap[student.id].error = "Invalid Repo URL";
+          commitDataMap[student.id].latestMsg = "Check URL formatting.";
+          continue;
+        }
 
         const response = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?since=${activeStartDateStr}&until=${activeEndDateStr}`,
@@ -528,20 +570,27 @@ function renderGradingTable() {
     let gradeBtnTxt = "Grade via AI";
     let publishBtnHtml = "";
 
+    // 🔒 Security Patch: Sanitize all values before constructing innerHTML templates
+    const safeStudentId = escapeHTML(student.id);
+    const safeName = escapeHTML(student.name);
+    const safeGithubUsername = escapeHTML(student.githubUsername);
+    const safeLatestMsg = escapeHTML(ghData.latestMsg);
+    const safeError = escapeHTML(ghData.error || "");
+
     let actionBtns =
       ghData.count > 0
         ? `<div class="flex flex-col gap-1.5 w-full">
-            <button onclick="openDetails('${student.id}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
-            <button onclick="gradeCode('${student.id}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>${dbGrade ? `<button onclick="openEditModal('${student.id}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left w-full">✏️ Manual Edit</button>` : ""}
+            <button onclick="openDetails('${safeStudentId}')" class="bg-gray-100 text-gray-700 border border-gray-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-gray-200 transition shadow-sm text-left">📄 View Code</button>
+            <button onclick="gradeCode('${safeStudentId}')" class="bg-purple-100 text-purple-700 border border-purple-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-purple-600 hover:text-white transition shadow-sm text-left">🤖 ${gradeBtnTxt}</button>${dbGrade ? `<button onclick="openEditModal('${safeStudentId}')" class="bg-amber-100 text-amber-700 border border-amber-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-amber-600 hover:text-white transition shadow-sm text-left w-full">✏️ Manual Edit</button>` : ""}
            </div>`
         : `<span class="text-[10px] text-gray-400 font-bold block text-center">No Data</span>`;
 
     if (dbGrade) {
       feedbackHtml = `
           <div class="mb-1 flex items-center gap-2">
-              <strong class="text-purple-700 text-sm">Score: ${dbGrade.score}/${dbGrade.maxScore}</strong>
+              <strong class="text-purple-700 text-sm">Score: ${escapeHTML(dbGrade.score.toString())}/${escapeHTML(dbGrade.maxScore.toString())}</strong>
           </div>
-          <button onclick="openFeedbackModal('${student.id}')" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold flex items-center gap-1 mt-1 transition">
+          <button onclick="openFeedbackModal('${safeStudentId}')" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold flex items-center gap-1 mt-1 transition">
               💬 Read Full Feedback
           </button>
       `;
@@ -549,29 +598,29 @@ function renderGradingTable() {
       if (dbGrade.publishedToGithub) {
         publishBtnHtml = `<span class="bg-green-100 text-green-700 border border-green-300 font-bold px-2 py-1 rounded text-[10px] block text-center mt-2 shadow-sm">✅ Published</span>`;
       } else if (dbGrade.commitSha) {
-        publishBtnHtml = `<button onclick="publishSingle('${student.id}')" class="w-full bg-blue-100 text-blue-700 border border-blue-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-blue-600 hover:text-white transition shadow-sm mt-2">🚀 Publish</button>`;
+        publishBtnHtml = `<button onclick="publishSingle('${safeStudentId}')" class="w-full bg-blue-100 text-blue-700 border border-blue-300 font-semibold px-2 py-1 rounded text-[10px] hover:bg-blue-600 hover:text-white transition shadow-sm mt-2">🚀 Publish</button>`;
       }
     }
 
     let commitDisplay = ghData.error
-      ? `<span class="text-red-500 text-[10px] font-bold leading-tight block">${ghData.error}</span>`
+      ? `<span class="text-red-500 text-[10px] font-bold leading-tight block">${safeError}</span>`
       : `<span class="${ghData.count === 0 ? "text-red-500" : "text-green-600"} font-bold text-sm">${ghData.count}</span>`;
 
     const tr = `
         <tr class="border-b hover:bg-gray-50">
             <td class="py-2 px-2 align-top">
-                <div class="font-bold text-gray-800 text-xs">${student.name}</div>
-                <div class="text-[10px] text-gray-500 truncate w-32" title="${student.githubUsername}">${student.githubUsername}</div>
+                <div class="font-bold text-gray-800 text-xs">${safeName}</div>
+                <div class="text-[10px] text-gray-500 truncate w-32" title="${safeGithubUsername}">${safeGithubUsername}</div>
             </td>
             <td class="py-2 px-2 text-center align-top">${commitDisplay}</td>
             <td class="py-2 px-2 text-center align-top text-[10px] font-mono whitespace-nowrap"><span class="text-green-600">+${ghData.additions}</span><br><span class="text-red-500">-${ghData.deletions}</span></td>
             <td class="py-2 px-2 text-[10px] text-gray-600 align-top">
-                <div class="max-h-16 overflow-y-auto leading-snug">${ghData.latestMsg}</div>
+                <div class="max-h-16 overflow-y-auto leading-snug">${safeLatestMsg}</div>
             </td>
-            <td class="py-2 px-2 align-top" id="fb-${student.id}">${feedbackHtml}</td>
+            <td class="py-2 px-2 align-top" id="fb-${safeStudentId}">${feedbackHtml}</td>
             <td class="py-2 px-2 align-top">
                 ${actionBtns}
-                <div id="pub-${student.id}">${publishBtnHtml}</div>
+                <div id="pub-${safeStudentId}">${publishBtnHtml}</div>
             </td>
         </tr>
     `;
@@ -588,10 +637,13 @@ window.openFeedbackModal = function (studentId) {
 
   if (!gradeRec || !student) return;
 
+  // 🔒 Security Patch: Render via textContent
   document.getElementById("aiStudentName").textContent =
     `Past feedback for: ${student.name}`;
   document.getElementById("aiScore").textContent = gradeRec.score;
   document.getElementById("aiScoreMax").textContent = `/${gradeRec.maxScore}`;
+
+  // The feedback components are already sanitized during buildFeedbackHtml execution
   document.getElementById("aiFeedback").innerHTML = gradeRec.feedback;
 
   document.getElementById("aiModal").classList.remove("hidden");
@@ -607,9 +659,18 @@ window.openDetails = function (studentId) {
   document.getElementById("detCommits").textContent = data.count;
   document.getElementById("detAdded").textContent = "+" + data.additions;
   document.getElementById("detDeleted").textContent = "-" + data.deletions;
-  document.getElementById("detCommitList").innerHTML = data.allMsgs
-    ? data.allMsgs.map((m) => `<li>${m}</li>`).join("")
-    : "";
+
+  // 🔒 Security Patch: Convert list to textContent node injection to kill XSS vectors inside commit messages
+  const commitList = document.getElementById("detCommitList");
+  commitList.innerHTML = "";
+  if (data.allMsgs) {
+    data.allMsgs.forEach((msg) => {
+      const li = document.createElement("li");
+      li.textContent = msg;
+      commitList.appendChild(li);
+    });
+  }
+
   document.getElementById("detCodeBlock").textContent =
     data.patches || "No readable code changes recorded.";
 
@@ -641,16 +702,21 @@ window.openEditModal = function (studentId) {
 
   if (ai.breakdown) {
     ai.breakdown.forEach((b, index) => {
+      // 🔒 Security Patch: Sanitize generated breakdown parameters
+      const safeCriterion = escapeHTML(b.criterion);
+      const safeScore = escapeHTML(b.score.toString());
+      const safeMax = escapeHTML(b.max.toString());
+
       container.insertAdjacentHTML(
         "beforeend",
         `
             <div class="flex items-center justify-between bg-white p-2 border rounded shadow-sm">
-                <label class="text-xs font-bold text-gray-700 w-2/3 truncate pr-2" title="${b.criterion}">${b.criterion}</label>
+                <label class="text-xs font-bold text-gray-700 w-2/3 truncate pr-2" title="${safeCriterion}">${safeCriterion}</label>
                 <div class="flex items-center gap-1 w-1/3 justify-end">
-                    <input type="number" id="editCrit_${index}" value="${b.score}" max="${b.max}" min="0" onchange="recalculateTotal()" class="w-16 p-1 border rounded text-center font-bold text-purple-700 focus:ring-purple-500">
-                    <span class="text-xs text-gray-500 font-bold">/ ${b.max}</span>
-                    <input type="hidden" id="editCritName_${index}" value="${b.criterion}">
-                    <input type="hidden" id="editCritMax_${index}" value="${b.max}">
+                    <input type="number" id="editCrit_${index}" value="${safeScore}" max="${safeMax}" min="0" onchange="recalculateTotal()" class="w-16 p-1 border rounded text-center font-bold text-purple-700 focus:ring-purple-500">
+                    <span class="text-xs text-gray-500 font-bold">/ ${safeMax}</span>
+                    <input type="hidden" id="editCritName_${index}" value="${safeCriterion}">
+                    <input type="hidden" id="editCritMax_${index}" value="${safeMax}">
                 </div>
             </div>
         `,
@@ -1054,19 +1120,22 @@ let pendingPublishAction = null;
 
 async function postCommentToGithub(student, gradeRec) {
   const ghToken = localStorage.getItem("Adminerva_github_token");
-  let owner, repo;
 
+  // 🔒 Security Patch: Strict URL evaluation
+  let owner, repo;
   try {
-    const cleanUrl = student.repoUrl
-      .trim()
+    const parsedUrl = new URL(student.repoUrl);
+    const urlParts = parsedUrl.pathname
       .replace(/\/$/, "")
-      .replace(".git", "");
-    const urlParts = cleanUrl.split("/");
+      .replace(".git", "")
+      .split("/");
     repo = urlParts.pop();
     owner = urlParts.pop();
     if (!owner || !repo) throw new Error("Invalid URL format");
   } catch (e) {
-    throw new Error(`Could not parse owner/repo from URL: ${student.repoUrl}`);
+    throw new Error(
+      `Could not parse owner/repo from URL: ${escapeHTML(student.repoUrl)}`,
+    );
   }
 
   const monthNames = [
@@ -1106,9 +1175,19 @@ async function postCommentToGithub(student, gradeRec) {
     commentBody += `**Additional feedback:**\n${ai.additional_feedback}\n\n`;
     commentBody += `**Optional Suggestion:**\n${ai.optional_suggestion}\n\n`;
   } else {
-    const mdFeedback = gradeRec.feedback
-      .replace(/<br>/g, "\n")
-      .replace(/<[^>]*>?/gm, "");
+    // 🔒 Security Patch: Safe HTML stripping using DOMParser instead of vulnerable Regex
+    let mdFeedback = "";
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(
+        gradeRec.feedback.replace(/<br\s*\/?>/gi, "\n"),
+        "text/html",
+      );
+      mdFeedback = doc.body.textContent || "";
+    } catch (e) {
+      mdFeedback = "Feedback content could not be parsed securely.";
+    }
+
     commentBody += `**Total: ${gradeRec.score} / ${gradeRec.maxScore}**\n\n${mdFeedback}\n\n`;
   }
 
@@ -1177,12 +1256,17 @@ window.publishSingle = function (studentId) {
 
   pendingPublishAction = { type: "single", studentId: studentId };
 
+  // 🔒 Security Patch: Sanitize student.name
   document.getElementById("publishConfirmWarning").innerHTML =
-    `You are about to publish the AutoGrader report for <strong class="text-gray-900">${student.name}</strong>. <br><br>Once published, GitHub will instantly email this student the feedback and score below.`;
+    `You are about to publish the AutoGrader report for <strong class="text-gray-900">${escapeHTML(student.name)}</strong>. <br><br>Once published, GitHub will instantly email this student the feedback and score below.`;
+
   document.getElementById("publishConfirmScore").textContent =
     `${gradeRec.score} / ${gradeRec.maxScore}`;
+
+  // The feedback components are already sanitized during buildFeedbackHtml execution
   document.getElementById("publishConfirmFeedback").innerHTML =
     gradeRec.feedback;
+
   document.getElementById("publishConfirmPreview").classList.remove("hidden");
   document.getElementById("executePublishBtn").onclick = executePublish;
   document.getElementById("publishConfirmModal").classList.remove("hidden");
@@ -1201,8 +1285,10 @@ window.publishAllGrades = function () {
 
   pendingPublishAction = { type: "bulk", queue: pendingQueue };
 
+  // 🔒 Security Patch: pendingQueue.length is natively safe as an integer, no escaping needed
   document.getElementById("publishConfirmWarning").innerHTML =
     `You are about to batch publish AutoGrader reports to <strong class="text-red-600 text-lg">${pendingQueue.length} student repositories</strong>.<br><br>⚠️ <strong class="text-gray-900">WARNING:</strong> GitHub will instantly blast an email to all ${pendingQueue.length} students containing their individual feedback. Are you absolutely sure the grades are finalized?`;
+
   document.getElementById("publishConfirmPreview").classList.add("hidden");
   document.getElementById("executePublishBtn").onclick = executePublish;
   document.getElementById("publishConfirmModal").classList.remove("hidden");

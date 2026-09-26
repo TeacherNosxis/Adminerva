@@ -96,7 +96,7 @@ Custom Instructions: ${window.cachedCustomInstructions}`;
       aiReply = result.candidates[0].content.parts[0].text.trim();
     } else {
       const response = await fetch(
-        "http://localhost:3000/api/generate-lesson",
+        "https://localhost:3000/api/generate-lesson",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -373,7 +373,7 @@ Reference Text:\n${window.cachedCompiledText.substring(0, 25000)}`;
     } else {
       // 🚀 THE FIX: Restored Local Proxy block so it doesn't crash if engineMode !== "cloud"
       const response = await fetch(
-        "http://localhost:3000/api/generate-lesson",
+        "https://localhost:3000/api/generate-lesson",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

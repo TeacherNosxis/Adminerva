@@ -10,6 +10,17 @@ let mySubjects = [];
 let myEvents = [];
 let isEditing = false;
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // --- FIREBASE INITIALIZATION & FETCH ---
 async function initFirebase() {
   if (!db) {
@@ -156,30 +167,27 @@ window.toggleEditMode = async function () {
 
 // --- TIME CALCULATIONS ---
 window.autoFillEndTime = function (dateStr, startInputElement) {
-  if (!dateStr) return; // Exit if no time is selected
+  if (!dateStr) return;
 
-  // Find the row we are currently editing
   const row = startInputElement.closest("tr");
   if (!row) return;
 
-  // Find the end-time input in this exact row
   const endInput = row.querySelector(".time-end");
   if (!endInput) return;
 
-  // Calculate +50 mins based on Flatpickr's explicit data
+  // ⏱️ UPDATED: 45-minute interval logic
   const [hours, minutes] = dateStr.split(":").map(Number);
   const date = new Date();
-  date.setHours(hours, minutes + 50, 0, 0);
+  date.setHours(hours, minutes + 45, 0, 0);
 
   const endHours = String(date.getHours()).padStart(2, "0");
   const endMinutes = String(date.getMinutes()).padStart(2, "0");
   const finalTime = `${endHours}:${endMinutes}`;
 
-  // Command the Flatpickr End-Time UI to visually update
   if (endInput._flatpickr) {
-    endInput._flatpickr.setDate(finalTime, true); // 'true' forces a hard UI refresh
+    endInput._flatpickr.setDate(finalTime, true);
   } else {
-    endInput.value = finalTime; // Fallback
+    endInput.value = finalTime;
   }
 };
 
@@ -195,11 +203,10 @@ function formatTimeToAMPM(time24) {
 
 // --- TABLE RENDERING & DATA MANAGEMENT ---
 window.addRow = function (type) {
-  const savedJson = getTableDataFromDOM(); // Gets clean 24h data
+  const savedJson = getTableDataFromDOM();
   let inheritedStartTime = "";
   let inheritedEndTime = "";
 
-  // Directly use the last row's end time from the cleaned data
   if (savedJson.length > 0) {
     const lastRow = savedJson[savedJson.length - 1];
     if (lastRow.endTime) {
@@ -207,12 +214,12 @@ window.addRow = function (type) {
     }
   }
 
-  // Safely calculate the +50 mins based on the inherited 24h time
+  // ⏱️ UPDATED: 45-minute interval logic
   if (inheritedStartTime && inheritedStartTime.includes(":")) {
     const [hours, minutes] = inheritedStartTime.split(":").map(Number);
     if (!isNaN(hours) && !isNaN(minutes)) {
       const date = new Date();
-      date.setHours(hours, minutes + 50, 0, 0);
+      date.setHours(hours, minutes + 45, 0, 0);
 
       const endHours = String(date.getHours()).padStart(2, "0");
       const endMinutes = String(date.getMinutes()).padStart(2, "0");
@@ -269,8 +276,6 @@ function renderTable() {
     tr.className = "border-b hover:bg-gray-50 transition group";
     tr.dataset.rowType = row.type;
 
-    // CRITICAL FIX: Changed type="time" to type="text" to bypass Chrome's ugly native picker.
-    // Flatpickr will automatically attach to these text inputs.
     const timeInputHtml = isEditing
       ? `<div class="flex flex-col gap-1 items-center justify-center">
                    <input type="text" class="time-start w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-700 text-center cursor-pointer bg-white" value="${row.startTime || ""}" placeholder="Start Time">
@@ -287,7 +292,8 @@ function renderTable() {
       if (isEditing) {
         let options = `<option value="">-- Select Event --</option>`;
         myEvents.forEach((e) => {
-          options += `<option value="${e}" ${row.eventName === e ? "selected" : ""}>${e}</option>`;
+          const safeE = escapeHTML(e); // 🔒 Security Patch
+          options += `<option value="${safeE}" ${row.eventName === e ? "selected" : ""}>${safeE}</option>`;
         });
         tr.innerHTML = `
                     <td class="p-2 border-r bg-gray-50 align-middle text-center w-[15%]">${timeInputHtml}</td>
@@ -297,10 +303,11 @@ function renderTable() {
                     <td class="p-2 text-center align-middle"><button onclick="deleteRow(${rowIndex})" class="text-red-400 hover:text-red-600 font-bold px-2 transition">✖</button></td>
                 `;
       } else {
+        const safeEventName = escapeHTML(row.eventName || "UNASSIGNED EVENT"); // 🔒 Security Patch
         tr.innerHTML = `
                     <td class="p-3 border-r bg-gray-50 text-center align-middle w-[15%]">${timeInputHtml}</td>
                     <td colspan="5" class="p-3 border-r align-middle bg-amber-50 border-y border-amber-200 text-center shadow-inner">
-                        <span class="font-extrabold text-amber-700 text-sm uppercase tracking-widest">${row.eventName || "UNASSIGNED EVENT"}</span>
+                        <span class="font-extrabold text-amber-700 text-sm uppercase tracking-widest">${safeEventName}</span>
                     </td>
                     <td class="p-3 text-center align-middle text-gray-300">-</td>
                 `;
@@ -331,8 +338,6 @@ function renderTable() {
     tbody.appendChild(tr);
   });
 
-  // --- FLATPICKR INITIALIZATION ---
-  // This runs after all rows are drawn on the screen
   if (isEditing) {
     flatpickr(".time-start", {
       enableTime: true,
@@ -342,7 +347,6 @@ function renderTable() {
       altFormat: "h:i K",
       minuteIncrement: 5,
       onChange: function (selectedDates, dateStr, instance) {
-        // Pass Flatpickr's exact time string directly to the math function!
         window.autoFillEndTime(dateStr, instance.element);
       },
     });
@@ -359,18 +363,41 @@ function renderTable() {
 }
 
 function buildCellEdit(dayPrefix, savedData = {}) {
-  let secHtml = `<select class="w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-800 mb-1 ${dayPrefix}-sec bg-white"><option value="">-- Section --</option>${mySections.map((s) => `<option value="${s}" ${savedData.sec === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
-  let subHtml = `<select class="w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 text-gray-600 ${dayPrefix}-sub bg-white"><option value="">-- Subject --</option>${mySubjects.map((s) => `<option value="${s}" ${savedData.sub === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
-  let eventHtml = `<select class="w-full p-1 border border-amber-300 rounded text-[10px] focus:ring-amber-500 text-amber-700 bg-amber-50 mt-1 ${dayPrefix}-evt"><option value="">-- Periodic Event --</option>${myEvents.map((e) => `<option value="${e}" ${savedData.evt === e ? "selected" : ""}>${e}</option>`).join("")}</select>`;
+  // 🔒 Security Patch: Sanitize generated options
+  const secOptions = mySections
+    .map((s) => {
+      const safeS = escapeHTML(s);
+      return `<option value="${safeS}" ${savedData.sec === s ? "selected" : ""}>${safeS}</option>`;
+    })
+    .join("");
+
+  const subOptions = mySubjects
+    .map((s) => {
+      const safeS = escapeHTML(s);
+      return `<option value="${safeS}" ${savedData.sub === s ? "selected" : ""}>${safeS}</option>`;
+    })
+    .join("");
+
+  const evtOptions = myEvents
+    .map((e) => {
+      const safeE = escapeHTML(e);
+      return `<option value="${safeE}" ${savedData.evt === e ? "selected" : ""}>${safeE}</option>`;
+    })
+    .join("");
+
+  let secHtml = `<select class="w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 font-bold text-gray-800 mb-1 ${dayPrefix}-sec bg-white"><option value="">-- Section --</option>${secOptions}</select>`;
+  let subHtml = `<select class="w-full p-1 border border-gray-300 rounded text-xs focus:ring-blue-500 text-gray-600 ${dayPrefix}-sub bg-white"><option value="">-- Subject --</option>${subOptions}</select>`;
+  let eventHtml = `<select class="w-full p-1 border border-amber-300 rounded text-[10px] focus:ring-amber-500 text-amber-700 bg-amber-50 mt-1 ${dayPrefix}-evt"><option value="">-- Periodic Event --</option>${evtOptions}</select>`;
   return `<div class="flex flex-col">${secHtml}${subHtml}${eventHtml}</div>`;
 }
 
 function buildCellView(savedData = {}) {
+  // 🔒 Security Patch: Sanitize viewed selections
   if (savedData.evt)
-    return `<div class="flex flex-col bg-amber-50 border border-amber-200 p-2 rounded shadow-sm text-center h-full justify-center"><span class="font-extrabold text-amber-700 text-[10px] uppercase tracking-wider">${savedData.evt}</span></div>`;
+    return `<div class="flex flex-col bg-amber-50 border border-amber-200 p-2 rounded shadow-sm text-center h-full justify-center"><span class="font-extrabold text-amber-700 text-[10px] uppercase tracking-wider">${escapeHTML(savedData.evt)}</span></div>`;
   if (!savedData.sec && !savedData.sub)
     return `<span class="text-gray-300 text-xs italic">-</span>`;
-  return `<div class="flex flex-col bg-blue-50 border border-blue-100 p-2 rounded shadow-sm"><span class="font-bold text-blue-900 text-xs">${savedData.sec || ""}</span><span class="text-gray-600 text-[11px]">${savedData.sub || ""}</span></div>`;
+  return `<div class="flex flex-col bg-blue-50 border border-blue-100 p-2 rounded shadow-sm"><span class="font-bold text-blue-900 text-xs">${escapeHTML(savedData.sec || "")}</span><span class="text-gray-600 text-[11px]">${escapeHTML(savedData.sub || "")}</span></div>`;
 }
 
 function getTableDataFromDOM() {
@@ -379,7 +406,6 @@ function getTableDataFromDOM() {
   rows.forEach((tr) => {
     const type = tr.dataset.rowType;
 
-    // Target Flatpickr's original input holding the raw 24h data, fallback to standard if not active
     let startInput =
       tr.querySelector(".time-start.flatpickr-input") ||
       tr.querySelector(".time-start");

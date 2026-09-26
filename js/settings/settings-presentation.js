@@ -4,6 +4,17 @@ import {
   setDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const safeSet = (id, val) => {
   if (document.getElementById(id))
     document.getElementById(id).value = val || "";
@@ -68,7 +79,6 @@ window.clearSlideBackground = function () {
   }
 };
 
-// ... (Keep the renderSlideSequence, addSlideToTemplate, removeSlideFromTemplate, updateSlideSequence functions identical to before) ...
 function renderSlideSequence() {
   const container = document.getElementById("slideTemplateSequence");
   if (!container) return;
@@ -87,12 +97,17 @@ function renderSlideSequence() {
       { val: "closing", text: "Closing & Values" },
       { val: "blank", text: "Blank Slide" },
     ];
+
+    // 🔒 Security Patch: Sanitize dropdown options
     let optionsHtml = slideTypes
-      .map(
-        (opt) =>
-          `<option value="${opt.val}" ${slide.type === opt.val ? "selected" : ""}>${opt.text}</option>`,
-      )
+      .map((opt) => {
+        const safeVal = escapeHTML(opt.val);
+        const safeText = escapeHTML(opt.text);
+        const isSelected = slide.type === opt.val ? "selected" : "";
+        return `<option value="${safeVal}" ${isSelected}>${safeText}</option>`;
+      })
       .join("");
+
     const html = `
             <div class="flex items-center gap-3 bg-gray-50 border border-gray-200 p-2 rounded-lg shadow-sm slide-row">
                 <div class="cursor-move text-gray-400 px-2 font-bold select-none">⋮⋮</div>
@@ -104,14 +119,17 @@ function renderSlideSequence() {
     container.insertAdjacentHTML("beforeend", html);
   });
 }
+
 window.addSlideToTemplate = function () {
   slideSequence.push({ type: "blank", label: "Blank Slide" });
   renderSlideSequence();
 };
+
 window.removeSlideFromTemplate = function (index) {
   slideSequence.splice(index, 1);
   renderSlideSequence();
 };
+
 window.updateSlideSequence = function () {
   const rows = document.querySelectorAll(".slide-row");
   const newSequence = [];

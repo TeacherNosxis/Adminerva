@@ -10,6 +10,17 @@ let activeTemplateId = null;
 let editingTemplate = null;
 let sections = [];
 
+// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const DEFAULT_TEMPLATES = [
   {
     id: "default_pct",
@@ -198,15 +209,17 @@ function renderSectionsEditor() {
   const container = document.getElementById("sectionsContainer");
   container.innerHTML = "";
   sections.forEach((sec, index) => {
+    const safeName = escapeHTML(sec.name);
+    const safeUrl = escapeHTML(sec.url);
     const html = `
             <div class="section-row bg-white border border-gray-200 rounded p-3 flex flex-col md:flex-row gap-3 items-start shadow-sm">
                 <div class="w-full md:w-1/4">
                     <label class="block text-[10px] font-bold text-gray-500 uppercase">Section Name</label>
-                    <input type="text" class="sec-name w-full p-1.5 text-sm border-b focus:border-blue-500 outline-none" value="${sec.name}" placeholder="e.g. IT-301">
+                    <input type="text" class="sec-name w-full p-1.5 text-sm border-b focus:border-blue-500 outline-none" value="${safeName}" placeholder="e.g. IT-301">
                 </div>
                 <div class="w-full md:flex-1">
                     <label class="block text-[10px] font-bold text-gray-500 uppercase">Google Sheet Link</label>
-                    <input type="text" class="sec-url w-full p-1.5 text-sm border-b focus:border-blue-500 outline-none" value="${sec.url}">
+                    <input type="text" class="sec-url w-full p-1.5 text-sm border-b focus:border-blue-500 outline-none" value="${safeUrl}">
                 </div>
                 <button onclick="removeSection(${index})" class="text-red-400 hover:text-red-600 p-2 md:mt-4 transition opacity-50 hover:opacity-100">🗑️</button>
             </div>
@@ -245,7 +258,7 @@ function renderTemplateDropdown() {
   templates.forEach((t) => {
     const opt = document.createElement("option");
     opt.value = t.id;
-    opt.textContent = t.name;
+    opt.textContent = t.name; // textContent handles escaping natively
     if (t.id === editingTemplate.id) opt.selected = true;
     select.appendChild(opt);
   });
@@ -326,11 +339,13 @@ function renderTemplateEditor() {
 
   editingTemplate.criteria.forEach((crit, index) => {
     totalWeight += Number(crit.weight || 0);
+    const safeName = escapeHTML(crit.name);
+    const safeDesc = escapeHTML(crit.description);
     const html = `
             <div class="criterion-row bg-white border border-gray-200 rounded p-3 flex flex-col md:flex-row gap-3 items-start shadow-sm">
                 <div class="w-full md:w-1/4">
                     <label class="block text-[10px] font-bold text-gray-500 uppercase">Criterion Name</label>
-                    <input type="text" class="crit-name w-full p-1.5 text-sm border-b focus:border-purple-500 outline-none" value="${crit.name}" onchange="updateTemplatePreview()">
+                    <input type="text" class="crit-name w-full p-1.5 text-sm border-b focus:border-purple-500 outline-none" value="${safeName}" onchange="updateTemplatePreview()">
                 </div>
                 <div class="w-full md:w-1/6">
                     <label class="block text-[10px] font-bold text-gray-500 uppercase">${editingTemplate.scoringType === "percentage" ? "Weight %" : "Points"}</label>
@@ -338,7 +353,7 @@ function renderTemplateEditor() {
                 </div>
                 <div class="w-full md:flex-1">
                     <label class="block text-[10px] font-bold text-gray-500 uppercase">AI Prompt</label>
-                    <input type="text" class="crit-desc w-full p-1.5 text-sm border-b focus:border-purple-500 outline-none" value="${crit.description}" onchange="updateTemplatePreview()">
+                    <input type="text" class="crit-desc w-full p-1.5 text-sm border-b focus:border-purple-500 outline-none" value="${safeDesc}" onchange="updateTemplatePreview()">
                 </div>
                 <button onclick="removeCriterion(${index})" class="text-red-400 hover:text-red-600 p-2 md:mt-4">🗑️</button>
             </div>
@@ -437,9 +452,11 @@ window.generateReport = async function () {
   window.globalCommitData = {};
 
   try {
+    // 🔒 Security Patch: Strict URL validation
     let owner, repo;
     try {
-      const urlParts = repoUrl
+      const parsedUrl = new URL(repoUrl);
+      const urlParts = parsedUrl.pathname
         .replace(/\/$/, "")
         .replace(".git", "")
         .split("/");
@@ -447,7 +464,7 @@ window.generateReport = async function () {
       owner = urlParts.pop();
       if (!owner || !repo) throw new Error();
     } catch (err) {
-      throw new Error("Failed to parse GitHub URL.");
+      throw new Error("Failed to parse GitHub URL securely.");
     }
 
     let students = [];
@@ -544,8 +561,14 @@ async function processCommits(owner, repo, commits, token) {
 }
 
 function createRowHTML(name, gitUser, count, additions, deletions, lastMsg) {
-  const safeGitUser = gitUser.replace(/'/g, "\\'");
-  const idSafeUser = gitUser.replace(/[^a-zA-Z0-9]/g, "_");
+  // 🔒 Security Patch: Completely neutralize all user variables before dropping them into the DOM
+  const safeName = escapeHTML(name);
+  const safeGitUser = escapeHTML(gitUser);
+  const idSafeUser = escapeHTML(gitUser.replace(/[^a-zA-Z0-9]/g, "_"));
+  const safeLastMsg = escapeHTML(lastMsg);
+  const safeAdd = escapeHTML(additions.toString());
+  const safeDel = escapeHTML(deletions.toString());
+  const safeCount = escapeHTML(count.toString());
 
   // Check LocalStorage for saved grades based on Year/Month/Week/Repo
   const storageKey = getGradeStorageKey(gitUser);
@@ -557,7 +580,7 @@ function createRowHTML(name, gitUser, count, additions, deletions, lastMsg) {
   if (savedDataStr) {
     const savedData = JSON.parse(savedDataStr);
     feedbackHtml = `
-            <div class="mb-1"><strong class="text-purple-700">Score: ${savedData.score}</strong></div>
+            <div class="mb-1"><strong class="text-purple-700">Score: ${escapeHTML(savedData.score)}</strong></div>
             <div class="text-gray-700 leading-relaxed text-xs">${savedData.feedback}</div>
         `;
     gradeBtnText = "Regrade via AI";
@@ -573,11 +596,11 @@ function createRowHTML(name, gitUser, count, additions, deletions, lastMsg) {
 
   return `
         <tr class="border-b hover:bg-gray-50">
-            <td class="py-3 px-4 text-gray-800 font-medium">${name}</td>
-            <td class="py-3 px-4 text-gray-500 text-sm">${gitUser}</td>
-            <td class="py-3 px-4 font-bold ${count === 0 ? "text-red-500" : "text-green-600"}">${count}</td>
-            <td class="py-3 px-4 text-sm font-mono"><span class="text-green-500">+${additions}</span> | <span class="text-red-500">-${deletions}</span></td>
-            <td class="py-3 px-4 text-xs text-gray-600 truncate max-w-xs" title="${lastMsg}">${lastMsg}</td>
+            <td class="py-3 px-4 text-gray-800 font-medium">${safeName}</td>
+            <td class="py-3 px-4 text-gray-500 text-sm">${safeGitUser}</td>
+            <td class="py-3 px-4 font-bold ${count === 0 ? "text-red-500" : "text-green-600"}">${safeCount}</td>
+            <td class="py-3 px-4 text-sm font-mono"><span class="text-green-500">+${safeAdd}</span> | <span class="text-red-500">-${safeDel}</span></td>
+            <td class="py-3 px-4 text-xs text-gray-600 truncate max-w-xs" title="${safeLastMsg}">${safeLastMsg}</td>
             <td class="py-3 px-4 text-xs text-gray-700" id="feedback-${idSafeUser}">${feedbackHtml}</td>
             <td class="py-3 px-4">${actionButtons}</td>
         </tr>
@@ -599,24 +622,30 @@ function renderTable(students, commitData) {
       allMsgs: [],
       patches: "",
     };
-    resultsBody.innerHTML += createRowHTML(
-      student.Name,
-      gitUser,
-      data.count,
-      data.additions,
-      data.deletions,
-      data.lastMsg,
-    );
-  });
-  for (const [gitUser, data] of Object.entries(commitData)) {
-    if (!processedGitUsers.has(gitUser))
-      resultsBody.innerHTML += createRowHTML(
-        `Not in Sheet`,
+    resultsBody.insertAdjacentHTML(
+      "beforeend",
+      createRowHTML(
+        student.Name,
         gitUser,
         data.count,
         data.additions,
         data.deletions,
         data.lastMsg,
+      ),
+    );
+  });
+  for (const [gitUser, data] of Object.entries(commitData)) {
+    if (!processedGitUsers.has(gitUser))
+      resultsBody.insertAdjacentHTML(
+        "beforeend",
+        createRowHTML(
+          `Not in Sheet`,
+          gitUser,
+          data.count,
+          data.additions,
+          data.deletions,
+          data.lastMsg,
+        ),
       );
   }
 }
@@ -632,9 +661,15 @@ window.openDetailsModal = function (gitUser) {
   document.getElementById("detCommits").textContent = userData.count;
   document.getElementById("detAdded").textContent = "+" + userData.additions;
   document.getElementById("detDeleted").textContent = "-" + userData.deletions;
-  document.getElementById("detCommitList").innerHTML = userData.allMsgs
-    .map((msg) => `<li>${msg}</li>`)
-    .join("");
+
+  // 🔒 Security Patch: Convert HTML injection to textContent node injection
+  const commitList = document.getElementById("detCommitList");
+  commitList.innerHTML = "";
+  userData.allMsgs.forEach((msg) => {
+    const li = document.createElement("li");
+    li.textContent = msg;
+    commitList.appendChild(li);
+  });
 
   const codeBlock = document.getElementById("detCodeBlock");
   codeBlock.textContent = userData.patches || "No raw code changes recorded.";
@@ -736,15 +771,20 @@ Respond strictly in valid JSON format: {"score": <number>, "feedback_summary": "
 
     document.getElementById("aiScore").textContent = gradeData.score;
     document.getElementById("aiScoreMax").textContent = `/${maxScore}`;
-    const formattedFeedback = gradeData.feedback_summary.replace(/\n/g, "<br>");
+
+    // 🔒 Security Patch: Sanitize AI output before rendering HTML tags
+    const formattedFeedback = escapeHTML(gradeData.feedback_summary).replace(
+      /\n/g,
+      "<br>",
+    );
     document.getElementById("aiFeedback").innerHTML = formattedFeedback;
 
     // Display in table immediately
-    const idSafeUser = gitUser.replace(/[^a-zA-Z0-9]/g, "_");
+    const idSafeUser = escapeHTML(gitUser.replace(/[^a-zA-Z0-9]/g, "_"));
     const dashboardCell = document.getElementById(`feedback-${idSafeUser}`);
     if (dashboardCell) {
       dashboardCell.innerHTML = `
-                <div class="mb-1"><strong class="text-purple-700">Score: ${gradeData.score}/${maxScore}</strong></div>
+                <div class="mb-1"><strong class="text-purple-700">Score: ${escapeHTML(gradeData.score.toString())}/${escapeHTML(maxScore.toString())}</strong></div>
                 <div class="text-gray-700 leading-relaxed text-xs">${formattedFeedback}</div>
             `;
     }
