@@ -6,10 +6,14 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
     />
-    <title>Adminerva | AI-Powered GitHub AutoGrader</title>
+    <title>Adminerva | Code Tracking Workspace</title>
+    <meta property="og:title" content="Adminerva | Code Tracking Workspace" />
+    <meta
+      property="og:description"
+      content="Track student progress and isolate individual contributions in group repositories for instructor evaluation."
+    />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      /* Custom gradient for the hero text */
       .text-gradient {
         background-clip: text;
         -webkit-background-clip: text;
@@ -18,7 +22,6 @@
     </style>
   </head>
   <body class="bg-slate-50 font-sans text-slate-800 flex flex-col min-h-screen">
-    <!-- Navigation -->
     <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 items-center">
@@ -39,7 +42,6 @@
       </div>
     </nav>
 
-    <!-- Hero Section -->
     <main
       class="flex-grow flex flex-col items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-16 sm:py-24"
     >
@@ -47,21 +49,21 @@
         <h1
           class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900"
         >
-          Grade code. <br />
+          Push code. <br />
           <span
             class="bg-gradient-to-r from-blue-600 to-indigo-600 text-gradient"
-            >Track progress automatically.</span
+            >Showcase your development.</span
           >
         </h1>
         <p
           class="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto px-2"
         >
-          Adminerva isolates individual student commits in group GitHub
-          repositories, evaluates their intent, and generates structured AI
-          feedback based on your Universal Programming Standard.
+          Adminerva connects directly to your GitHub workspace to isolate your
+          individual commits and structure your project data, allowing your
+          instructor to thoroughly review your logic, intent, and personal
+          contributions.
         </p>
 
-        <!-- Call to Action Buttons -->
         <div
           class="flex flex-col sm:flex-row gap-4 justify-center pt-4 sm:pt-6 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto"
         >
@@ -80,7 +82,6 @@
         </div>
       </div>
 
-      <!-- Quick Feature Cards -->
       <div
         class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl w-full mt-16 sm:mt-24 text-left"
       >
@@ -92,22 +93,22 @@
           </div>
           <h3 class="text-lg font-bold mb-2">Individual Isolation</h3>
           <p class="text-sm text-slate-600">
-            Fair grading for group work. Adminerva filters weekly code patches
-            by exact GitHub usernames so students are graded solely on their own
-            contributions.
+            Fair evaluation for group work. Adminerva filters weekly code
+            patches by exact GitHub usernames, ensuring your instructor can
+            accurately assess your specific contributions.
           </p>
         </div>
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <div
             class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mb-4 text-xl"
           >
-            🤖
+            🔍
           </div>
-          <h3 class="text-lg font-bold mb-2">Intent-Driven AI</h3>
+          <h3 class="text-lg font-bold mb-2">In-Depth Code Review</h3>
           <p class="text-sm text-slate-600">
-            The AI reads the student's commit messages alongside their code,
-            evaluating their logic, problem-solving progress, and intent, not
-            just syntax.
+            Submit meaningful commits. The platform structures your code history
+            and commit messages, giving your instructor full visibility into
+            your problem-solving process.
           </p>
         </div>
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -118,14 +119,14 @@
           </div>
           <h3 class="text-lg font-bold mb-2">Cloud Synced</h3>
           <p class="text-sm text-slate-600">
-            CSV roster deduplication, real-time historical grade syncing, and
-            dynamic rubric updates powered by Firebase Firestore.
+            Your repository metrics, commit history, and instructor feedback are
+            synced securely to the cloud in real-time, allowing instant access
+            from any device.
           </p>
         </div>
       </div>
     </main>
 
-    <!-- Footer -->
     <footer
       class="bg-white border-t border-slate-200 py-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500 mt-auto"
     >
