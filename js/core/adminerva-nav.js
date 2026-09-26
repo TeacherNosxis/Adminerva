@@ -13,7 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let rightSide = "";
   let logoBlock = "";
 
-  // Added whitespace-nowrap and slightly larger padding for mobile touch targets
   const getStyle = (pageId) =>
     activePage === pageId
       ? "text-white border-b-2 border-cyan-400 pb-1.5 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] whitespace-nowrap"
@@ -28,7 +27,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="text-lg sm:text-xl leading-none">⚙️</span>
         </a>`;
 
-  // Responsive Logo: Scales down slightly on mobile to prevent overflow
   const adminLogoBlock = `
         <div class="relative group cursor-pointer py-1">
             <div class="flex items-center gap-2 sm:gap-3 font-bold transition">
@@ -57,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     rightSide = `
             <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
-            <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20">Sign Out</button>
+            <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
         `;
     logoBlock = `
             <div class="flex items-center gap-2 sm:gap-3 font-bold">
@@ -79,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="flex items-center">
                 ${settingsIcon}
                 <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
-                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1">Sign Out</button>
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
                     <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
                 </div>
             </div>
@@ -96,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="flex items-center">
                 ${settingsIcon}
                 <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
-                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1">Sign Out</button>
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
                     <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
                 </div>
             </div>
@@ -107,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
     rightSide = `
             <div class="flex items-center">
                 <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
-                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1">Sign Out</button>
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
                     <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
                 </div>
             </div>
@@ -136,4 +134,31 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         </div>
     </nav>`;
+
+  // ✨ NEW: Centralized, Touch-Safe Sign Out Listener
+  document.addEventListener("click", async (e) => {
+    // `.closest()` ensures that even a sloppy thumb tap registers correctly
+    const signOutTarget = e.target.closest("#signOutBtn");
+    
+    if (signOutTarget) {
+        e.preventDefault();
+        signOutTarget.textContent = "Signing out...";
+        signOutTarget.classList.add("opacity-50", "pointer-events-none");
+        
+        try {
+            // Dynamically load Firebase Auth so it doesn't crash on pages missing the import
+            const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
+            const auth = getAuth();
+            await signOut(auth);
+        } catch (err) {
+            console.warn("Sign out background process skipped or failed.", err);
+        } finally {
+            // Guaranteed local wipe and forced redirect, regardless of Firebase connection
+            localStorage.removeItem("Adminerva_Role");
+            localStorage.removeItem("Adminerva_Mock_Role");
+            localStorage.removeItem("Adminerva_Impersonate");
+            window.location.href = "login.html";
+        }
+    }
+  });
 });
