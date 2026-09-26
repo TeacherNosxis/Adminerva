@@ -5,7 +5,8 @@ import {
   where,
   getDocs,
   doc,
-  updateDoc
+  updateDoc,
+  addDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 window.initFirebase = function () {
@@ -92,16 +93,31 @@ window.saveSecuritySettings = async function () {
     const user = auth.currentUser;
     if (user) {
       const email = user.email.toLowerCase();
-      const teacherQuery = query(collection(db, "teachers"), where("email", "==", email));
+      const teacherQuery = query(
+        collection(db, "teachers"),
+        where("email", "==", email),
+      );
       const snap = await getDocs(teacherQuery);
-      
+
       if (!snap.empty) {
+        // Profile exists, update it
         const docId = snap.docs[0].id;
         await updateDoc(doc(db, "teachers", docId), {
           githubToken: githubToken,
           geminiKey: geminiKey,
           aiModel: aiModel,
-          engineMode: engineMode
+          engineMode: engineMode,
+        });
+      } else {
+        // ✨ THE FIX: Profile doesn't exist, so we create one for this admin
+        await addDoc(collection(db, "teachers"), {
+          email: email,
+          role: "admin",
+          githubToken: githubToken,
+          geminiKey: geminiKey,
+          aiModel: aiModel,
+          engineMode: engineMode,
+          createdAt: new Date().toISOString(),
         });
       }
     }
@@ -120,22 +136,40 @@ window.saveSecuritySettings = async function () {
 
 window.loadSecuritySettings = async function () {
   // First, load immediately from local storage so the UI doesn't look empty
-  safeSet("firebaseConfigInput", localStorage.getItem("Adminerva_firebase_config") || "");
-  safeSet("adminGithubToken", localStorage.getItem("Adminerva_github_token") || "");
-  safeSet("adminGeminiKey", localStorage.getItem("Adminerva_gemini_token") || "");
-  safeSet("adminAiModel", localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash");
-  safeSet("globalAiEngine", localStorage.getItem("Adminerva_engine_mode") || "cloud");
+  safeSet(
+    "firebaseConfigInput",
+    localStorage.getItem("Adminerva_firebase_config") || "",
+  );
+  safeSet(
+    "adminGithubToken",
+    localStorage.getItem("Adminerva_github_token") || "",
+  );
+  safeSet(
+    "adminGeminiKey",
+    localStorage.getItem("Adminerva_gemini_token") || "",
+  );
+  safeSet(
+    "adminAiModel",
+    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash",
+  );
+  safeSet(
+    "globalAiEngine",
+    localStorage.getItem("Adminerva_engine_mode") || "cloud",
+  );
 
   // Then, silently pull the master keys from the cloud and override local storage
   auth.onAuthStateChanged(async (user) => {
     if (user) {
       const email = user.email.toLowerCase();
-      const teacherQuery = query(collection(db, "teachers"), where("email", "==", email));
+      const teacherQuery = query(
+        collection(db, "teachers"),
+        where("email", "==", email),
+      );
       const snap = await getDocs(teacherQuery);
-      
+
       if (!snap.empty) {
         const cloudData = snap.docs[0].data();
-        
+
         if (cloudData.githubToken) {
           localStorage.setItem("Adminerva_github_token", cloudData.githubToken);
           safeSet("adminGithubToken", cloudData.githubToken);
