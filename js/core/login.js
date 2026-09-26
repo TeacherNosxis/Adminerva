@@ -50,21 +50,17 @@ const handleOAuthLogin = async (provider, providerType) => {
 
     // Role verification against Firestore
     let matchedStudentDocId = null;
+    let matchedTeacherDocId = null;
+    const isEducator = (email === SUPER_ADMIN_EMAIL || email === TEACHER_EMAIL);
 
-    if (email !== SUPER_ADMIN_EMAIL && email !== TEACHER_EMAIL) {
+    if (!isEducator) {
       const studentQuery = query(
         collection(db, "students"),
         where("email", "==", email),
       );
       const studentSnap = await getDocs(studentQuery);
 
-      const teacherQuery = query(
-        collection(db, "teachers"),
-        where("email", "==", email),
-      );
-      const teacherSnap = await getDocs(teacherQuery);
-
-      if (studentSnap.empty && teacherSnap.empty) {
+      if (studentSnap.empty) {
         await signOut(auth);
 
         if (errBox) {
@@ -81,14 +77,21 @@ const handleOAuthLogin = async (provider, providerType) => {
         }
         return;
       }
-
-      if (!studentSnap.empty) {
-        matchedStudentDocId = studentSnap.docs[0].id;
+      matchedStudentDocId = studentSnap.docs[0].id;
+    } else {
+      // Look up Educator Document
+      const teacherQuery = query(
+        collection(db, "teachers"),
+        where("email", "==", email),
+      );
+      const teacherSnap = await getDocs(teacherQuery);
+      if (!teacherSnap.empty) {
+        matchedTeacherDocId = teacherSnap.docs[0].id;
       }
     }
 
-    // If logged in via GitHub, seamlessly save token & username to student profile
-    if (providerType === "github" && matchedStudentDocId) {
+    // Auto-save GitHub credentials for BOTH students and teachers
+    if (providerType === "github") {
       const credential = GithubAuthProvider.credentialFromResult(result);
       const token = credential?.accessToken;
       const ghUsername =
@@ -101,10 +104,11 @@ const handleOAuthLogin = async (provider, providerType) => {
 
       if (Object.keys(updatePayload).length > 0) {
         try {
-          await updateDoc(
-            doc(db, "students", matchedStudentDocId),
-            updatePayload,
-          );
+          if (matchedStudentDocId) {
+            await updateDoc(doc(db, "students", matchedStudentDocId), updatePayload);
+          } else if (matchedTeacherDocId) {
+            await updateDoc(doc(db, "teachers", matchedTeacherDocId), updatePayload);
+          }
         } catch (e) {
           console.warn("Could not auto-save GitHub credentials:", e);
         }
@@ -112,11 +116,8 @@ const handleOAuthLogin = async (provider, providerType) => {
     }
 
     // Role routing
-    if (email === SUPER_ADMIN_EMAIL) {
-      localStorage.setItem("Adminerva_Role", "superadmin");
-      window.location.href = "reporeviewDashboard.html";
-    } else if (email === TEACHER_EMAIL) {
-      localStorage.setItem("Adminerva_Role", "teacher");
+    if (isEducator) {
+      localStorage.setItem("Adminerva_Role", email === SUPER_ADMIN_EMAIL ? "superadmin" : "teacher");
       window.location.href = "reporeviewDashboard.html";
     } else {
       localStorage.setItem("Adminerva_Role", "student");

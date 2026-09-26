@@ -1,8 +1,11 @@
-import { db } from "../core/firebase-core.js";
+import { auth, db } from "../core/firebase-core.js";
 import {
+  collection,
+  query,
+  where,
+  getDocs,
   doc,
-  getDoc,
-  setDoc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 window.initFirebase = function () {
@@ -39,7 +42,7 @@ window.saveSecuritySettings = async function () {
   }
 
   try {
-    // 🚀 1. FIREBASE VALIDATION
+    // 1. FIREBASE VALIDATION
     if (fbConfigStr) {
       try {
         const fbJson = JSON.parse(fbConfigStr);
@@ -53,7 +56,7 @@ window.saveSecuritySettings = async function () {
       }
     }
 
-    // 🚀 2. GEMINI API LIVE CONNECTION TEST
+    // 2. GEMINI API LIVE CONNECTION TEST
     if (geminiKey) {
       const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${encodeURIComponent(geminiKey)}`;
       const testResponse = await fetch(testUrl, {
@@ -78,15 +81,33 @@ window.saveSecuritySettings = async function () {
       }
     }
 
-    // 🚀 3. SAVE IF VALIDATIONS PASS
+    // 3. SAVE TO LOCAL STORAGE (To keep other scripts working smoothly)
     localStorage.setItem("Adminerva_firebase_config", fbConfigStr);
     localStorage.setItem("Adminerva_github_token", githubToken);
     localStorage.setItem("Adminerva_gemini_token", geminiKey);
     localStorage.setItem("Adminerva_ai_model", aiModel);
     localStorage.setItem("Adminerva_engine_mode", engineMode);
 
+    // 4. SYNC TO CLOUD (Firestore)
+    const user = auth.currentUser;
+    if (user) {
+      const email = user.email.toLowerCase();
+      const teacherQuery = query(collection(db, "teachers"), where("email", "==", email));
+      const snap = await getDocs(teacherQuery);
+      
+      if (!snap.empty) {
+        const docId = snap.docs[0].id;
+        await updateDoc(doc(db, "teachers", docId), {
+          githubToken: githubToken,
+          geminiKey: geminiKey,
+          aiModel: aiModel,
+          engineMode: engineMode
+        });
+      }
+    }
+
     alert(
-      "✅ Connections Verified & Settings Saved! Refresh the page to apply changes.",
+      "✅ Settings Verified & Saved to the Cloud! You can now use these credentials on any device.",
     );
   } catch (error) {
     alert("❌ Save Aborted: " + error.message);
@@ -97,25 +118,41 @@ window.saveSecuritySettings = async function () {
   }
 };
 
-window.loadSecuritySettings = function () {
-  safeSet(
-    "firebaseConfigInput",
-    localStorage.getItem("Adminerva_firebase_config") || "",
-  );
-  safeSet(
-    "adminGithubToken",
-    localStorage.getItem("Adminerva_github_token") || "",
-  );
-  safeSet(
-    "adminGeminiKey",
-    localStorage.getItem("Adminerva_gemini_token") || "",
-  );
-  safeSet(
-    "adminAiModel",
-    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash",
-  );
-  safeSet(
-    "globalAiEngine",
-    localStorage.getItem("Adminerva_engine_mode") || "cloud",
-  );
+window.loadSecuritySettings = async function () {
+  // First, load immediately from local storage so the UI doesn't look empty
+  safeSet("firebaseConfigInput", localStorage.getItem("Adminerva_firebase_config") || "");
+  safeSet("adminGithubToken", localStorage.getItem("Adminerva_github_token") || "");
+  safeSet("adminGeminiKey", localStorage.getItem("Adminerva_gemini_token") || "");
+  safeSet("adminAiModel", localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash");
+  safeSet("globalAiEngine", localStorage.getItem("Adminerva_engine_mode") || "cloud");
+
+  // Then, silently pull the master keys from the cloud and override local storage
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      const email = user.email.toLowerCase();
+      const teacherQuery = query(collection(db, "teachers"), where("email", "==", email));
+      const snap = await getDocs(teacherQuery);
+      
+      if (!snap.empty) {
+        const cloudData = snap.docs[0].data();
+        
+        if (cloudData.githubToken) {
+          localStorage.setItem("Adminerva_github_token", cloudData.githubToken);
+          safeSet("adminGithubToken", cloudData.githubToken);
+        }
+        if (cloudData.geminiKey) {
+          localStorage.setItem("Adminerva_gemini_token", cloudData.geminiKey);
+          safeSet("adminGeminiKey", cloudData.geminiKey);
+        }
+        if (cloudData.aiModel) {
+          localStorage.setItem("Adminerva_ai_model", cloudData.aiModel);
+          safeSet("adminAiModel", cloudData.aiModel);
+        }
+        if (cloudData.engineMode) {
+          localStorage.setItem("Adminerva_engine_mode", cloudData.engineMode);
+          safeSet("globalAiEngine", cloudData.engineMode);
+        }
+      }
+    }
+  });
 };
