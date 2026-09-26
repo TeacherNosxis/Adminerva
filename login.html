@@ -2,35 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>Adminerva | Secure Gateway</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body
-    class="bg-slate-900 h-screen flex flex-col items-center justify-center font-sans text-slate-300"
+    class="bg-slate-900 min-h-screen flex flex-col items-center justify-center font-sans text-slate-300 p-4"
   >
     <div
-      class="bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full mx-4"
+      class="bg-slate-800 p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full mx-auto"
     >
-      <div class="text-center mb-8">
-        <!-- Restored Custom Logo Asset -->
+      <div class="text-center mb-6 sm:mb-8">
         <img
           src="assets/New Adminerva logo.png"
           alt="Adminerva Logo"
-          class="h-16 mx-auto mb-4 object-contain mix-blend-lighten drop-shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:scale-105 transition-transform duration-300"
+          class="h-14 sm:h-16 mx-auto mb-3 sm:mb-4 object-contain mix-blend-lighten drop-shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:scale-105 transition-transform duration-300"
         />
         <span
-          class="text-3xl font-black text-white tracking-wider flex items-center justify-center gap-2 mb-2"
+          class="text-2xl sm:text-3xl font-black text-white tracking-wider flex items-center justify-center gap-2 mb-1 sm:mb-2"
         >
           ADMINERVA
         </span>
-        <p class="text-sm text-slate-400 font-medium">Secure Gateway</p>
+        <p class="text-xs sm:text-sm text-slate-400 font-medium">
+          Secure Gateway
+        </p>
       </div>
 
-      <div id="loginForm" class="space-y-4">
+      <div id="loginForm" class="space-y-3 sm:space-y-4">
         <button
           id="googleLoginBtn"
-          class="w-full bg-white hover:bg-gray-100 text-gray-800 font-bold py-3 px-4 rounded-lg transition shadow flex items-center justify-center gap-3"
+          class="w-full bg-white hover:bg-gray-100 text-gray-800 font-bold py-3.5 sm:py-3 px-4 rounded-lg transition shadow flex items-center justify-center gap-3 text-sm sm:text-base"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -55,7 +59,7 @@
 
         <button
           id="githubLoginBtn"
-          class="w-full bg-[#24292F] hover:bg-[#1a1e22] text-white font-bold py-3 px-4 rounded-lg transition shadow flex items-center justify-center gap-3"
+          class="w-full bg-[#24292F] hover:bg-[#1a1e22] text-white font-bold py-3.5 sm:py-3 px-4 rounded-lg transition shadow flex items-center justify-center gap-3 text-sm sm:text-base"
         >
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -66,22 +70,23 @@
           </svg>
           Continue with GitHub
         </button>
+
         <!-- The Error Box -->
         <div
           id="loginErrorBox"
-          class="hidden mt-6 bg-red-900/30 border border-red-500/50 rounded-lg p-5 text-center shadow-lg"
+          class="hidden mt-6 bg-red-900/30 border border-red-500/50 rounded-lg p-4 sm:p-5 text-center shadow-lg"
         >
           <div class="text-red-500 text-3xl mb-2">⛔</div>
           <h3
-            class="text-red-400 font-black text-lg uppercase tracking-wider mb-1"
+            class="text-red-400 font-black text-base sm:text-lg uppercase tracking-wider mb-1"
           >
             Access Denied
           </h3>
-          <p class="text-slate-300 text-sm font-medium mb-4">
+          <p class="text-slate-300 text-xs sm:text-sm font-medium mb-4">
             Your email address is not recognized by the system.
           </p>
           <div
-            class="bg-slate-900/80 p-4 rounded text-xs text-slate-400 border border-slate-700/50 text-left"
+            class="bg-slate-900/80 p-3 sm:p-4 rounded text-[10px] sm:text-xs text-slate-400 border border-slate-700/50 text-left"
           >
             <span class="block text-slate-200 font-bold mb-1"
               >Required Action:</span
@@ -94,7 +99,6 @@
       </div>
     </div>
 
-    <!-- Centralized login script handles everything -->
     <script type="module" src="js/core/login.js"></script>
   </body>
 </html>

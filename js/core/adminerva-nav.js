@@ -13,30 +13,30 @@ document.addEventListener("DOMContentLoaded", () => {
   let rightSide = "";
   let logoBlock = "";
 
+  // Added whitespace-nowrap and slightly larger padding for mobile touch targets
   const getStyle = (pageId) =>
     activePage === pageId
-      ? "text-white border-b-2 border-cyan-400 pb-1 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
-      : "text-gray-400 hover:text-cyan-300 transition-colors duration-300";
+      ? "text-white border-b-2 border-cyan-400 pb-1.5 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] whitespace-nowrap"
+      : "text-gray-400 hover:text-cyan-300 transition-colors duration-300 pb-1.5 whitespace-nowrap";
 
-  // 🚀 Directory remains restricted to Super Admins
   const adminDirLink = isSuperAdmin
     ? `<a href="users.html" class="${getStyle("directory")}">Directory</a>`
     : "";
 
-  // 🚀 Settings Icon is now available to ALL Instructors
   const settingsIcon = `
-        <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center mr-4" title="Global Settings">
-            <span class="text-xl leading-none">⚙️</span>
+        <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2 sm:p-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center mr-2 sm:mr-4" title="Global Settings">
+            <span class="text-lg sm:text-xl leading-none">⚙️</span>
         </a>`;
 
+  // Responsive Logo: Scales down slightly on mobile to prevent overflow
   const adminLogoBlock = `
         <div class="relative group cursor-pointer py-1">
-            <div class="flex items-center gap-3 text-xl font-bold transition">
-                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-10 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
-                <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity">▼</span>
+            <div class="flex items-center gap-2 sm:gap-3 font-bold transition">
+                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-8 sm:h-10 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                <span class="tracking-widest font-extrabold text-lg sm:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
+                <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity hidden sm:inline">▼</span>
             </div>
-            <div class="absolute left-0 top-full w-64 hidden group-hover:block z-[100] pt-3">
+            <div class="absolute left-0 top-full w-56 sm:w-64 hidden group-hover:block z-[100] pt-3">
                 <div class="bg-gray-900/95 backdrop-blur-xl rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-cyan-900/50 overflow-hidden">
                     <div class="px-4 py-2 bg-gray-800/50 border-b border-gray-700/50 text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Adminerva Modules</div>
                     <a href="reporeviewDashboard.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 border-b border-gray-800 transition-all flex items-center gap-2">
@@ -56,17 +56,16 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="student-settings.html" class="${getStyle("settings")}">Settings</a>
         `;
     rightSide = `
-            <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4"></span>
-            <button id="signOutBtn" class="text-sm px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20">Sign Out</button>
+            <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
+            <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20">Sign Out</button>
         `;
     logoBlock = `
-            <div class="flex items-center gap-3 text-xl font-bold">
-                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-10 w-auto object-contain mix-blend-lighten drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                <span class="tracking-widest font-extrabold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
+            <div class="flex items-center gap-2 sm:gap-3 font-bold">
+                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-8 sm:h-10 w-auto object-contain mix-blend-lighten drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                <span class="tracking-widest font-extrabold text-lg sm:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
             </div>
         `;
   } else if (activeModule === "educator" || activeModule === "repo") {
-    // 🚀 Added Manual Grader to navigation
     centerLinks = `
             <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Analytics</a>
             <a href="repobank.html" class="${getStyle("repobank")}">Repobank</a>
@@ -76,13 +75,12 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="gradebook.html" class="${getStyle("gradebook")}">AI Gradebook</a>
             ${adminDirLink}
         `;
-    // 🚀 Vertically stacked Role under Sign Out
     rightSide = `
             <div class="flex items-center">
                 ${settingsIcon}
-                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-4 h-10">
-                    <button id="signOutBtn" class="text-sm text-gray-300 hover:text-white font-bold transition leading-none">Sign Out</button>
-                    <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1">Sign Out</button>
+                    <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
                 </div>
             </div>
         `;
@@ -94,24 +92,23 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="schedule.html" class="${getStyle("schedule")}">Teacher's Schedule</a>
             <a href="library.html" class="${getStyle("library")}">Reference Library</a>
         `;
-    // Applied the same stacked profile view to the Lesson planner module
     rightSide = `
             <div class="flex items-center">
                 ${settingsIcon}
-                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-4 h-10">
-                    <button id="signOutBtn" class="text-sm text-gray-300 hover:text-white font-bold transition leading-none">Sign Out</button>
-                    <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1">Sign Out</button>
+                    <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
                 </div>
             </div>
         `;
     logoBlock = adminLogoBlock;
   } else if (activeModule === "settings") {
-    centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide">System Configuration</span>`;
+    centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide hidden sm:block">System Configuration</span>`;
     rightSide = `
             <div class="flex items-center">
-                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-4 h-10">
-                    <button id="signOutBtn" class="text-sm text-gray-300 hover:text-white font-bold transition leading-none">Sign Out</button>
-                    <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1">Sign Out</button>
+                    <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
                 </div>
             </div>
     `;
@@ -120,10 +117,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   navContainer.innerHTML = `
     <nav class="bg-gray-900/95 backdrop-blur-md text-white shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative z-50 border-b border-cyan-900/50 sticky top-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-            ${logoBlock}
-            <div class="hidden md:flex gap-6 text-sm font-bold tracking-wide items-center">${centerLinks}</div>
-            <div class="flex items-center">${rightSide}</div>
+        <div class="max-w-7xl mx-auto">
+            <!-- Top Row: Always visible -->
+            <div class="flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
+                ${logoBlock}
+                <div class="hidden lg:flex gap-6 text-sm font-bold tracking-wide items-center">${centerLinks}</div>
+                <div class="flex items-center">${rightSide}</div>
+            </div>
+            
+            <!-- Bottom Row: Mobile / Tablet Only (Horizontal Scroll) -->
+            ${
+              centerLinks
+                ? `
+            <div class="lg:hidden flex overflow-x-auto px-4 pb-3 pt-1 gap-5 text-xs font-bold whitespace-nowrap border-t border-gray-800 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                ${centerLinks}
+            </div>`
+                : ""
+            }
         </div>
     </nav>`;
 });

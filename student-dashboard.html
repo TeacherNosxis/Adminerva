@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>Dashboard | Student Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,39 +16,48 @@
   >
     <div id="adminerva-nav" data-module="student" data-page="dashboard"></div>
 
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    <main
+      class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8"
+    >
       <header
-        class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4"
+        class="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4"
       >
-        <div>
+        <div class="w-full sm:w-auto">
           <div
             id="studentWarningBanner"
             class="hidden mb-6 p-4 rounded-lg border shadow-sm flex items-start gap-3"
           >
-            <span id="warningIcon" class="text-2xl">⚠️</span>
+            <span id="warningIcon" class="text-2xl mt-0.5">⚠️</span>
             <div>
-              <h3 id="warningTitle" class="font-bold text-sm">
+              <h3 id="warningTitle" class="font-bold text-sm sm:text-base">
                 Action Required
               </h3>
-              <p id="warningMessage" class="text-xs mt-1"></p>
+              <p id="warningMessage" class="text-xs sm:text-sm mt-1"></p>
             </div>
           </div>
-          <div class="flex items-center gap-4 flex-wrap">
-            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+          <div
+            class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-wrap"
+          >
+            <h1
+              class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+            >
               Project Workspace
             </h1>
             <select
               id="sectionSelector"
-              class="hidden text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold bg-blue-50 px-3 py-1.5 text-blue-700 cursor-pointer outline-none border"
+              class="hidden w-full sm:w-auto text-base sm:text-sm border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold bg-blue-50 px-3 py-2.5 sm:py-1.5 text-blue-700 cursor-pointer outline-none border"
             ></select>
           </div>
-          <p class="text-slate-500 mt-2 font-medium" id="repoSubtitle">
+          <p
+            class="text-sm sm:text-base text-slate-500 mt-2 font-medium"
+            id="repoSubtitle"
+          >
             Connecting to repository...
           </p>
         </div>
         <a
           href="student-settings.html"
-          class="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 transition sm:hidden"
+          class="inline-flex justify-center items-center w-full sm:w-auto gap-2 text-base sm:text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-4 py-3 sm:py-2 rounded-lg border border-blue-100 transition sm:hidden"
         >
           ⚙️ Open Settings
         </a>
@@ -54,17 +66,19 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
           <div
-            class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
+            class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200"
           >
-            <div class="flex justify-between items-center mb-4">
+            <div
+              class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4"
+            >
               <h3
-                class="text-lg font-bold text-slate-800 flex items-center gap-2"
+                class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2"
               >
                 <span class="text-blue-500">📈</span> Contribution Analytics
               </h3>
               <select
                 id="timeFilter"
-                class="text-xs border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold bg-slate-50 px-2 py-1.5 text-slate-700 cursor-pointer outline-none border transition"
+                class="w-full sm:w-auto text-base sm:text-xs border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold bg-slate-50 px-2 py-2.5 sm:py-1.5 text-slate-700 cursor-pointer outline-none border transition"
               >
                 <option value="24h">Last 24 Hours</option>
                 <option value="7d" selected>Last 7 Days</option>
@@ -73,25 +87,23 @@
               </select>
             </div>
 
-            <div class="relative h-64 w-full">
-              <!-- NEW: GitHub Auth Overlay -->
+            <div class="relative h-56 sm:h-64 w-full">
+              <!-- GitHub Auth Overlay -->
               <div
                 id="githubAuthOverlay"
-                class="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg hidden border border-slate-200 shadow-inner"
+                class="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg hidden border border-slate-200 shadow-inner p-4 text-center"
               >
-                <span class="text-4xl mb-2">🐙</span>
-                <h4 class="font-bold text-slate-800 text-lg">
+                <span class="text-4xl sm:text-5xl mb-2">🐙</span>
+                <h4 class="font-bold text-slate-800 text-base sm:text-lg">
                   Connect GitHub to Sync
                 </h4>
-                <p
-                  class="text-xs text-slate-500 mb-4 text-center px-4 max-w-sm"
-                >
+                <p class="text-xs sm:text-sm text-slate-500 mb-4 px-2 max-w-sm">
                   Link your GitHub account to bypass network rate limits and
                   instantly load your repository analytics.
                 </p>
                 <button
                   id="connectGithubBtn"
-                  class="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition text-sm shadow-md flex items-center gap-2"
+                  class="bg-slate-900 text-white w-full sm:w-auto px-6 py-3 sm:py-2 rounded-lg font-bold hover:bg-slate-800 transition text-base sm:text-sm shadow-md flex justify-center items-center gap-2"
                 >
                   Connect Account
                 </button>
@@ -101,10 +113,10 @@
           </div>
 
           <div
-            class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
+            class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200"
           >
             <h3
-              class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"
+              class="text-base sm:text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"
             >
               <span class="text-slate-400">💻</span> Recent Commits
             </h3>
@@ -127,18 +139,18 @@
 
         <div class="space-y-6">
           <div
-            class="bg-slate-800 p-6 rounded-xl shadow-md text-white border border-slate-700 relative overflow-hidden"
+            class="bg-slate-800 p-5 sm:p-6 rounded-xl shadow-md text-white border border-slate-700 relative overflow-hidden"
           >
             <div
               class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"
             ></div>
             <h3
-              class="text-lg font-bold mb-2 flex items-center gap-2 relative z-10"
+              class="text-base sm:text-lg font-bold mb-2 flex items-center gap-2 relative z-10"
             >
               <span>🔍</span> Project Snapshot
             </h3>
             <p
-              class="text-xs text-slate-400 mb-4 pb-4 border-b border-slate-700 relative z-10 font-medium"
+              class="text-xs sm:text-sm text-slate-400 mb-4 pb-4 border-b border-slate-700 relative z-10 font-medium"
             >
               Instructor's overview of your structural progress.
             </p>
@@ -153,15 +165,15 @@
           </div>
 
           <div
-            class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"
+            class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200"
           >
             <h3
-              class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2"
+              class="text-base sm:text-lg font-bold text-slate-800 mb-1 flex items-center gap-2"
             >
               <span>📋</span> Assessment Feedback
             </h3>
             <p
-              class="text-xs text-slate-500 mb-4 font-medium uppercase tracking-wider"
+              class="text-[10px] sm:text-xs text-slate-500 mb-4 font-medium uppercase tracking-wider"
             >
               Latest Instructor Evaluation
             </p>
@@ -169,7 +181,7 @@
               <div
                 class="p-5 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center"
               >
-                <span class="text-2xl block mb-2 opacity-50">📬</span>
+                <span class="text-3xl block mb-2 opacity-50">📬</span>
                 <p class="text-sm text-slate-500 font-medium">
                   No evaluations have been published for this repository yet.
                 </p>

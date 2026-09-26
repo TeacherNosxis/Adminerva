@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>RepoReview - AutoGrader</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -27,25 +30,32 @@
     <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Workspace -->
-    <div class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1">
-      <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+    <div class="max-w-screen-2xl mx-auto w-full p-4 sm:p-6 mt-2 sm:mt-4 flex-1">
+      <div
+        class="bg-white p-5 sm:p-6 rounded-lg shadow-md border border-gray-200"
+      >
         <div
-          class="flex justify-between items-end mb-6 pb-4 border-b border-gray-200"
+          class="flex flex-col md:flex-row md:justify-between items-start md:items-end gap-5 mb-6 pb-4 border-b border-gray-200"
         >
-          <div>
-            <h2 class="text-2xl font-bold text-gray-800">Weekly AutoGrader</h2>
-            <div class="flex items-center gap-3 mt-1">
-              <p class="text-sm text-gray-500 flex items-center gap-2">
+          <div class="w-full md:w-auto">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
+              Weekly AutoGrader
+            </h2>
+            <div
+              class="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 sm:mt-1 w-full"
+            >
+              <p
+                class="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-2"
+              >
                 Active Rubric:
                 <span
                   id="activeRubricLabel"
-                  class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200"
+                  class="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 max-w-[150px] sm:max-w-xs truncate"
                   >Loading...</span
                 >
               </p>
-              <!-- NEW: AI Quota Tracker -->
               <div
-                class="bg-gray-100 border border-gray-300 text-xs font-bold text-gray-600 px-3 py-1 rounded shadow-sm flex items-center gap-1.5"
+                class="bg-gray-100 border border-gray-300 text-[10px] sm:text-xs font-bold text-gray-600 px-2 sm:px-3 py-1 rounded shadow-sm flex items-center gap-1.5"
               >
                 <span>🤖 AI Daily Usage:</span>
                 <span id="aiQuotaDisplay" class="text-purple-700 font-extrabold"
@@ -54,11 +64,10 @@
               </div>
             </div>
           </div>
-          <!-- Replace the existing button with this -->
           <button
             onclick="publishAllGrades()"
             id="publishAllBtn"
-            class="opacity-50 cursor-not-allowed pointer-events-none bg-green-600 text-white px-5 py-2 rounded font-bold transition shadow flex items-center gap-2"
+            class="opacity-50 cursor-not-allowed pointer-events-none bg-green-600 text-white w-full md:w-auto px-5 py-3.5 sm:py-2 rounded font-bold transition shadow flex justify-center items-center gap-2 text-sm"
           >
             <span>🚀</span> Publish All to GitHub
           </button>
@@ -66,35 +75,38 @@
 
         <!-- Filters & Date Selection -->
         <div
-          class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border border-gray-200"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border border-gray-200"
         >
           <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >Class Section</label
             >
             <select
               id="sectionSelect"
-              class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"
+              class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm font-semibold focus:ring-purple-500 bg-white"
             ></select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >Year</label
             >
             <select
               id="yearSelect"
               onchange="updateDateScope()"
-              class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"
+              class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm font-semibold focus:ring-purple-500 bg-white"
             ></select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >Month</label
             >
             <select
               id="monthSelect"
               onchange="updateDateScope()"
-              class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"
+              class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm font-semibold focus:ring-purple-500 bg-white"
             >
               <option value="0">January</option>
               <option value="1">February</option>
@@ -111,13 +123,14 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >Week</label
             >
             <select
               id="weekSelect"
               onchange="updateDateScope()"
-              class="w-full p-2 border rounded font-semibold focus:ring-purple-500 bg-white"
+              class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm font-semibold focus:ring-purple-500 bg-white"
             >
               <option value="1">Week 1 (1st - 7th)</option>
               <option value="2">Week 2 (8th - 14th)</option>
@@ -126,7 +139,7 @@
             </select>
           </div>
           <div
-            class="bg-white border border-gray-300 p-2 rounded text-center shadow-sm"
+            class="sm:col-span-2 lg:col-span-1 bg-white border border-gray-300 p-3 sm:p-2 rounded text-center shadow-sm"
           >
             <span
               class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
@@ -134,50 +147,52 @@
             >
             <span
               id="dateScopeDisplay"
-              class="text-xs font-bold text-gray-800"
+              class="text-xs sm:text-sm font-bold text-gray-800"
             ></span>
           </div>
         </div>
 
         <button
           onclick="fetchSectionCommits()"
-          class="bg-blue-600 text-white px-6 py-2.5 rounded font-bold hover:bg-blue-700 shadow-sm transition"
+          class="w-full sm:w-auto bg-blue-600 text-white px-6 py-3.5 sm:py-2.5 rounded font-bold hover:bg-blue-700 shadow-sm transition text-sm sm:text-base"
         >
           Fetch GitHub Commits
         </button>
 
         <!-- Grading Table -->
-        <div class="mt-8 overflow-x-auto border rounded-lg shadow-sm">
-          <table class="min-w-full bg-white">
+        <div
+          class="mt-6 sm:mt-8 overflow-x-auto w-full touch-pan-x border rounded-lg shadow-sm"
+        >
+          <table class="min-w-[800px] w-full bg-white">
             <thead class="bg-gray-100 border-b-2 border-gray-200">
               <tr>
                 <th
-                  class="py-2 px-2 text-left text-xs font-bold text-gray-600 uppercase w-[15%]"
+                  class="py-3 px-3 text-left text-[10px] sm:text-xs font-bold text-gray-600 uppercase w-[15%]"
                 >
                   Student
                 </th>
                 <th
-                  class="py-2 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[5%]"
+                  class="py-3 px-2 text-center text-[10px] sm:text-xs font-bold text-gray-600 uppercase w-[5%]"
                 >
                   Commits
                 </th>
                 <th
-                  class="py-2 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[8%]"
+                  class="py-3 px-2 text-center text-[10px] sm:text-xs font-bold text-gray-600 uppercase w-[8%]"
                 >
                   Lines
                 </th>
                 <th
-                  class="py-2 px-2 text-left text-xs font-bold text-gray-600 uppercase w-[17%]"
+                  class="py-3 px-3 text-left text-[10px] sm:text-xs font-bold text-gray-600 uppercase w-[17%]"
                 >
                   Latest Msg
                 </th>
                 <th
-                  class="py-2 px-2 text-left text-xs font-bold text-gray-600 uppercase w-[45%]"
+                  class="py-3 px-3 text-left text-[10px] sm:text-xs font-bold text-gray-600 uppercase w-[45%]"
                 >
                   AI Score & Feedback
                 </th>
                 <th
-                  class="py-2 px-2 text-center text-xs font-bold text-gray-600 uppercase w-[10%]"
+                  class="py-3 px-2 text-center text-[10px] sm:text-xs font-bold text-gray-600 uppercase w-[10%]"
                 >
                   Actions
                 </th>
@@ -185,7 +200,10 @@
             </thead>
             <tbody id="gradingTableBody">
               <tr>
-                <td colspan="6" class="py-8 text-center text-gray-400 italic">
+                <td
+                  colspan="6"
+                  class="py-8 text-center text-gray-400 italic text-sm"
+                >
                   Select a section and fetch commits to begin.
                 </td>
               </tr>
@@ -195,11 +213,10 @@
       </div>
     </div>
 
-    <!-- GLOBAL LOADING OVERLAY -->
     <!-- GLOBAL LOADING OVERLAY (Floating Toast) -->
     <div
       id="globalLoader"
-      class="hidden fixed bottom-6 right-6 bg-gray-900 shadow-2xl rounded-xl z-[100] items-center gap-4 p-4 min-w-[300px] border border-gray-700"
+      class="hidden fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 bg-gray-900 shadow-2xl rounded-xl z-[100] items-center justify-center sm:justify-start gap-4 p-4 min-w-[280px] sm:min-w-[300px] border border-gray-700"
     >
       <div
         class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-400 border-solid flex-shrink-0"
@@ -221,74 +238,90 @@
     <!-- STUDENT DETAILS MODAL -->
     <div
       id="detailsModal"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4"
     >
       <div
-        class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+        class="bg-white rounded-t-xl sm:rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden"
       >
-        <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-800" id="detailsTitle">
+        <div
+          class="p-4 sm:p-5 border-b bg-gray-50 flex justify-between items-center"
+        >
+          <h2
+            class="text-lg sm:text-xl font-bold text-gray-800"
+            id="detailsTitle"
+          >
             Commit Details
           </h2>
           <button
             onclick="closeDetailsModal()"
-            class="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+            class="text-gray-400 hover:text-gray-600 text-3xl sm:text-2xl font-bold px-2"
           >
             &times;
           </button>
         </div>
-        <div class="p-6 overflow-y-auto flex-1 bg-white">
-          <div class="grid grid-cols-3 gap-4 mb-6 text-center shadow-sm">
+        <div class="p-4 sm:p-6 overflow-y-auto flex-1 bg-white">
+          <div
+            class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 text-center shadow-sm"
+          >
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
               <div
-                class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1"
+                class="text-[10px] sm:text-xs text-gray-500 uppercase font-bold tracking-wider mb-1"
               >
                 Total Commits
               </div>
-              <div class="text-2xl font-bold text-gray-800" id="detCommits">
+              <div
+                class="text-xl sm:text-2xl font-bold text-gray-800"
+                id="detCommits"
+              >
                 0
               </div>
             </div>
             <div class="bg-green-50 p-3 rounded-lg border border-green-200">
               <div
-                class="text-xs text-green-600 uppercase font-bold tracking-wider mb-1"
+                class="text-[10px] sm:text-xs text-green-600 uppercase font-bold tracking-wider mb-1"
               >
                 Lines Added
               </div>
-              <div class="text-2xl font-bold text-green-700" id="detAdded">
+              <div
+                class="text-xl sm:text-2xl font-bold text-green-700"
+                id="detAdded"
+              >
                 +0
               </div>
             </div>
             <div class="bg-red-50 p-3 rounded-lg border border-red-200">
               <div
-                class="text-xs text-red-600 uppercase font-bold tracking-wider mb-1"
+                class="text-[10px] sm:text-xs text-red-600 uppercase font-bold tracking-wider mb-1"
               >
                 Lines Deleted
               </div>
-              <div class="text-2xl font-bold text-red-700" id="detDeleted">
+              <div
+                class="text-xl sm:text-2xl font-bold text-red-700"
+                id="detDeleted"
+              >
                 -0
               </div>
             </div>
           </div>
           <h3
-            class="font-bold text-gray-800 mb-2 uppercase text-xs tracking-wider border-b pb-2"
+            class="font-bold text-gray-800 mb-2 uppercase text-[10px] sm:text-xs tracking-wider border-b pb-2"
           >
             Commit History
           </h3>
           <ul
             id="detCommitList"
-            class="list-disc list-inside text-sm text-gray-700 mb-6 space-y-1 bg-gray-50 p-4 rounded border shadow-inner max-h-48 overflow-y-auto"
+            class="list-disc list-inside text-xs sm:text-sm text-gray-700 mb-6 space-y-2 sm:space-y-1 bg-gray-50 p-4 rounded border shadow-inner max-h-48 overflow-y-auto"
           ></ul>
           <div class="flex justify-between items-center mb-2 border-b pb-2">
             <h3
-              class="font-bold text-gray-800 uppercase text-xs tracking-wider"
+              class="font-bold text-gray-800 uppercase text-[10px] sm:text-xs tracking-wider"
             >
               Raw Code Changes
             </h3>
           </div>
           <pre
             id="detCodeBlock"
-            class="bg-gray-900 text-green-400 p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap font-mono shadow-inner border border-gray-700"
+            class="bg-gray-900 text-green-400 p-4 rounded text-[10px] sm:text-xs overflow-x-auto whitespace-pre-wrap font-mono shadow-inner border border-gray-700"
           ></pre>
         </div>
       </div>
@@ -299,34 +332,34 @@
       id="aiModal"
       class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
     >
-      <!-- Added max-h-[90vh] and flex-col to keep it on screen -->
       <div
-        class="bg-white p-6 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+        class="bg-white p-5 sm:p-6 rounded-xl sm:rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
       >
         <h2
-          class="text-xl font-bold mb-1 text-purple-700 flex items-center gap-2 flex-shrink-0"
+          class="text-lg sm:text-xl font-bold mb-1 text-purple-700 flex items-center gap-2 flex-shrink-0"
         >
           🤖 AI Code Review
         </h2>
         <p
           id="aiStudentName"
-          class="text-sm text-gray-500 mb-4 pb-3 border-b flex-shrink-0"
+          class="text-xs sm:text-sm text-gray-500 mb-4 pb-3 border-b flex-shrink-0"
         ></p>
 
-        <!-- Added overflow-y-auto so the text scrolls inside the box -->
         <div id="aiContent" class="overflow-y-auto flex-1 pr-2 mb-4">
           <div
-            class="text-5xl font-extrabold text-center mb-2 text-gray-800 mt-2"
+            class="text-4xl sm:text-5xl font-extrabold text-center mb-2 text-gray-800 mt-2"
           >
             <span id="aiScore"></span
-            ><span id="aiScoreMax" class="text-2xl text-gray-400">/100</span>
+            ><span id="aiScoreMax" class="text-xl sm:text-2xl text-gray-400"
+              >/100</span
+            >
           </div>
           <div
             class="bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-inner mb-2 mt-4"
           >
             <div
               id="aiFeedback"
-              class="text-gray-700 leading-relaxed text-sm"
+              class="text-gray-700 leading-relaxed text-xs sm:text-sm"
             ></div>
           </div>
         </div>
@@ -336,45 +369,49 @@
         >
           <button
             onclick="closeAiModal()"
-            class="bg-gray-200 text-gray-800 px-6 py-2 rounded font-bold transition hover:bg-gray-300"
+            class="w-full sm:w-auto justify-center bg-gray-200 text-gray-800 px-6 py-3 sm:py-2 rounded font-bold transition hover:bg-gray-300 text-sm"
           >
             Close
           </button>
         </div>
       </div>
     </div>
+
     <!-- PUBLISH CONFIRMATION MODAL -->
     <div
       id="publishConfirmModal"
       class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
     >
       <div
-        class="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden flex flex-col"
+        class="bg-white rounded-xl sm:rounded-lg shadow-2xl max-w-lg w-full overflow-hidden flex flex-col"
       >
-        <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-red-600 flex items-center gap-2">
+        <div
+          class="p-4 sm:p-5 border-b bg-gray-50 flex justify-between items-center"
+        >
+          <h2
+            class="text-lg sm:text-xl font-bold text-red-600 flex items-center gap-2"
+          >
             ⚠️ Confirm Publication
           </h2>
           <button
             onclick="closePublishConfirmModal()"
-            class="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+            class="text-gray-400 hover:text-gray-600 text-3xl sm:text-2xl font-bold px-2"
           >
             &times;
           </button>
         </div>
-        <div class="p-6 overflow-y-auto max-h-[65vh]">
+        <div class="p-5 sm:p-6 overflow-y-auto max-h-[65vh]">
           <p
             id="publishConfirmWarning"
-            class="text-sm text-gray-700 leading-relaxed mb-4"
+            class="text-xs sm:text-sm text-gray-700 leading-relaxed mb-4"
           ></p>
 
-          <!-- Preview box (Only shows for individual publish) -->
           <div
             id="publishConfirmPreview"
             class="hidden bg-gray-50 p-4 rounded border border-gray-200 text-sm shadow-inner mt-4"
           >
             <div
-              class="mb-3 font-extrabold text-gray-800 text-lg border-b pb-2"
+              class="mb-3 font-extrabold text-gray-800 text-base sm:text-lg border-b pb-2"
             >
               Score:
               <span id="publishConfirmScore" class="text-purple-600"></span>
@@ -390,52 +427,58 @@
             ></div>
           </div>
         </div>
-        <div class="p-4 border-t bg-gray-100 flex justify-end gap-3">
+        <div
+          class="p-4 border-t bg-gray-100 flex flex-col sm:flex-row justify-end gap-3"
+        >
           <button
             onclick="closePublishConfirmModal()"
-            class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 transition shadow-sm"
+            class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-white border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 transition shadow-sm text-sm"
           >
             Cancel
           </button>
           <button
             id="executePublishBtn"
-            class="bg-red-600 text-white px-6 py-2 rounded font-bold shadow hover:bg-red-700 transition flex items-center gap-2"
+            class="w-full sm:w-auto justify-center bg-red-600 text-white px-6 py-3 sm:py-2 rounded font-bold shadow hover:bg-red-700 transition flex items-center gap-2 text-sm"
           >
-            <span>🚀</span> Yes, Publish to GitHub
+            <span>🚀</span> Yes, Publish
           </button>
         </div>
       </div>
     </div>
+
     <!-- EDIT GRADE MODAL -->
     <div
       id="editGradeModal"
       class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
     >
       <div
-        class="bg-white rounded-lg shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh]"
+        class="bg-white rounded-xl sm:rounded-lg shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh]"
       >
-        <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-            ✏️ Manual Grade Override
+        <div
+          class="p-4 sm:p-5 border-b bg-gray-50 flex justify-between items-center"
+        >
+          <h2
+            class="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2"
+          >
+            ✏️ Manual Override
           </h2>
-          <!-- Total Score is now Read-Only at the top -->
-          <div class="text-2xl font-extrabold text-purple-700">
-            Total: <span id="editTotalScoreDisplay">0</span>
-            <span class="text-gray-400 text-lg"
+          <div class="text-lg sm:text-2xl font-extrabold text-purple-700">
+            <span class="hidden sm:inline">Total: </span
+            ><span id="editTotalScoreDisplay">0</span>
+            <span class="text-gray-400 text-sm sm:text-lg"
               >/ <span id="editMaxScoreDisplay">100</span></span
             >
           </div>
         </div>
-        <div class="p-6 overflow-y-auto flex-1 space-y-6">
+        <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5 sm:space-y-6">
           <input type="hidden" id="editStudentId" />
           <input type="hidden" id="editMaxScore" />
 
-          <!-- Dynamic Criteria Section -->
           <div
             class="bg-gray-50 p-4 rounded border border-gray-200 shadow-inner"
           >
             <h3
-              class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3 border-b pb-2"
+              class="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider mb-3 border-b pb-2"
             >
               Criteria Scores
             </h3>
@@ -447,53 +490,54 @@
             </div>
           </div>
 
-          <!-- Clean Textarea Section (No HTML required) -->
           <div class="space-y-4">
             <div>
               <label
-                class="block text-xs font-bold text-gray-700 uppercase mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-700 uppercase mb-1"
                 >Feedback based on criteria</label
               >
               <textarea
                 id="editFeedbackCriteria"
                 rows="3"
-                class="w-full p-3 border rounded text-sm bg-white focus:ring-purple-500"
+                class="w-full p-3 sm:p-3 border rounded text-base sm:text-sm bg-white focus:ring-purple-500"
               ></textarea>
             </div>
             <div>
               <label
-                class="block text-xs font-bold text-gray-700 uppercase mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-700 uppercase mb-1"
                 >Additional Feedback</label
               >
               <textarea
                 id="editAdditionalFeedback"
                 rows="2"
-                class="w-full p-3 border rounded text-sm bg-white focus:ring-purple-500"
+                class="w-full p-3 sm:p-3 border rounded text-base sm:text-sm bg-white focus:ring-purple-500"
               ></textarea>
             </div>
             <div>
               <label
-                class="block text-xs font-bold text-gray-700 uppercase mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-700 uppercase mb-1"
                 >Optional Suggestion</label
               >
               <textarea
                 id="editOptionalSuggestion"
                 rows="2"
-                class="w-full p-3 border rounded text-sm bg-white focus:ring-purple-500"
+                class="w-full p-3 sm:p-3 border rounded text-base sm:text-sm bg-white focus:ring-purple-500"
               ></textarea>
             </div>
           </div>
         </div>
-        <div class="p-4 border-t bg-gray-100 flex justify-end gap-3">
+        <div
+          class="p-4 border-t bg-gray-100 flex flex-col sm:flex-row justify-end gap-3"
+        >
           <button
             onclick="closeEditModal()"
-            class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 transition shadow-sm"
+            class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-white border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 transition shadow-sm text-sm"
           >
             Cancel
           </button>
           <button
             onclick="saveEditedGrade()"
-            class="bg-purple-600 text-white px-6 py-2 rounded font-bold shadow hover:bg-purple-700 transition"
+            class="w-full sm:w-auto bg-purple-600 text-white px-6 py-3 sm:py-2 rounded font-bold shadow hover:bg-purple-700 transition text-sm justify-center flex"
           >
             Save Override
           </button>

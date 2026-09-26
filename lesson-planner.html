@@ -2,21 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>LessonReview - AI Curriculum Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-      /* HIDE PRINT WRAPPER ON THE COMPUTER SCREEN */
       @media screen {
         #printDocumentWrapper {
           display: none !important;
         }
       }
-
-      /* SHOW PRINT WRAPPER AND HIDE APP UI ON THE PRINTER */
       @media print {
-        /* 1. CLEANLY HIDE ALL WEB UI ELEMENTS */
         body > nav,
         #adminerva-nav,
         body > div.max-w-screen-2xl,
@@ -25,23 +24,17 @@
         body > #loadPlanModal {
           display: none !important;
         }
-
-        /* 2. RESTORE PROPER DOCUMENT FLOW FOR PRINT WRAPPER */
         #printDocumentWrapper {
           display: block !important;
           position: relative !important;
           width: 100% !important;
           background: white !important;
         }
-
-        /* FORCE GLOBAL ARIAL NARROW & FONT SIZE */
         #printDocumentWrapper,
         #printDocumentWrapper * {
           visibility: visible !important;
           font-family: "Arial Narrow", Arial, sans-serif !important;
         }
-
-        /* 3. FORCE TABLE LINES AND PADDING */
         .print-table {
           width: 100% !important;
           border-collapse: collapse !important;
@@ -53,7 +46,7 @@
           padding: 6px 8px !important;
           vertical-align: top !important;
           text-align: left;
-          font-size: 10pt !important; /* Force 10pt size */
+          font-size: 10pt !important;
         }
         .print-table th {
           text-align: center !important;
@@ -61,19 +54,13 @@
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
-
-        /* 4. FIX THE MASSIVE PAGE GAP (Allow rows to split across pages naturally) */
         .print-table tr {
           page-break-inside: auto !important;
           break-inside: auto !important;
         }
-
-        /* 5. STOP HEADERS FROM REPEATING ON EVERY PAGE */
         .print-table thead {
           display: table-row-group !important;
         }
-
-        /* 6. TIGHTEN TOP HEADER TEXT SPACING */
         #printDocumentWrapper h2,
         #printDocumentWrapper p {
           margin: 0 !important;
@@ -81,8 +68,6 @@
           line-height: 1.2 !important;
         }
       }
-
-      /* Hide the print wrapper from the normal screen */
       #printDocumentWrapper {
         display: none;
       }
@@ -92,55 +77,57 @@
     <div id="adminerva-nav" data-module="lesson" data-page="planner"></div>
     <script src="js/core/adminerva-nav.js"></script>
 
-    <!-- Main Workspace (Full Width Stack) -->
+    <!-- Main Workspace -->
     <div
-      class="max-w-screen-2xl mx-auto w-full p-6 mt-2 flex-1 flex flex-col gap-6"
+      class="max-w-screen-2xl mx-auto w-full p-4 sm:p-6 mt-2 flex-1 flex flex-col gap-4 sm:gap-6"
     >
-      <!-- TOP SECTION: Configuration Banner (Full Width) -->
+      <!-- TOP SECTION: Configuration Banner -->
       <div
-        class="w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200"
+        class="w-full bg-white p-5 sm:p-6 rounded-lg shadow-sm border border-gray-200"
       >
-        <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">
+        <h2
+          class="text-lg sm:text-xl font-bold text-gray-800 border-b pb-2 mb-4"
+        >
           Lesson Configuration
         </h2>
 
         <!-- NEW STREAMLINED 5-COLUMN GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-          <!-- 1. School Year (Kept for AI/Printing) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >School Year</label
             >
             <input
               type="text"
               id="lpSchoolYear"
               value="2026-2027"
-              class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
             />
           </div>
 
-          <!-- 2. Target Grade (Kept for AI/Printing) -->
           <div>
-            <label class="block text-xs font-bold text-blue-700 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-blue-700 uppercase mb-1"
               >Target Grade</label
             >
             <select
               id="lpGradeLevel"
-              class="w-full p-2 border rounded text-sm bg-blue-50 border-blue-200 focus:ring-blue-500 shadow-sm font-bold"
+              class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-blue-50 border-blue-200 focus:ring-blue-500 shadow-sm font-bold"
             >
               <option value="Grade 11">Grade 11 (5 Sessions)</option>
               <option value="Grade 12">Grade 12 (4 Sessions)</option>
             </select>
           </div>
 
-          <!-- 3. Academic Term (Combined) -->
           <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >Academic Term</label
             >
             <select
               id="lpAcademicTerm"
-              class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
             >
               <option value="FIRST SEMESTER/FIRST QUARTER">
                 FIRST SEMESTER/FIRST QUARTER
@@ -157,14 +144,14 @@
             </select>
           </div>
 
-          <!-- 4. Course Week (Absolute Anchor) -->
           <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >Course Week</label
             >
             <select
               id="lpCourseWeek"
-              class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
             >
               <option value="Week 1">Week 1</option>
               <option value="Week 2">Week 2</option>
@@ -179,63 +166,59 @@
             </select>
           </div>
 
-          <!-- 5. Physical Dates (Manual String) -->
-          <div>
-            <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+          <div class="sm:col-span-2 md:col-span-1">
+            <label
+              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
               >Physical Dates</label
             >
             <select
               id="lpDateRange"
-              class="w-full p-2 border border-gray-300 rounded text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
-            >
-              <!-- Javascript will automatically inject the dates here -->
-            </select>
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+            ></select>
           </div>
         </div>
 
-        <!-- Custom Instructions & Folders Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
           <div>
             <label
-              class="block text-xs font-extrabold text-blue-700 uppercase mb-2"
+              class="block text-[10px] sm:text-xs font-extrabold text-blue-700 uppercase mb-2"
               >Custom Instructions / Lab Details</label
             >
             <textarea
               id="lpCustomInstructions"
               rows="4"
-              class="w-full p-3 border border-blue-200 rounded text-sm bg-blue-50 focus:ring-blue-500 shadow-inner"
+              class="w-full p-3 sm:p-3 border border-blue-200 rounded text-base sm:text-sm bg-blue-50 focus:ring-blue-500 shadow-inner"
               placeholder="E.g., Make Session 4-6 a hands-on laboratory performance task involving an e-wallet calculator app..."
             ></textarea>
           </div>
           <div>
             <label
-              class="block text-xs font-extrabold text-blue-700 uppercase mb-2"
+              class="block text-[10px] sm:text-xs font-extrabold text-blue-700 uppercase mb-2"
               >Select Reference Folders</label
             >
             <div
               id="libraryFolderContainer"
-              class="bg-blue-50 border border-blue-200 rounded p-3 h-28 overflow-y-auto space-y-2 shadow-inner flex flex-wrap gap-4"
-            >
-              <!-- Checkboxes injected via JS -->
-            </div>
+              class="bg-blue-50 border border-blue-200 rounded p-3 h-32 sm:h-28 overflow-y-auto space-y-2 shadow-inner flex flex-wrap gap-4"
+            ></div>
           </div>
         </div>
-        <div class="flex flex-wrap gap-3 mt-4">
+
+        <div class="flex flex-col sm:flex-row flex-wrap gap-3 mt-5 sm:mt-4">
           <button
             onclick="initiateGenerationFlow()"
-            class="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2"
+            class="w-full sm:w-auto sm:flex-1 bg-blue-600 text-white font-bold py-3.5 sm:py-3 px-4 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2"
           >
             ✨ Generate with AI
           </button>
           <button
             onclick="generateBlankPlan()"
-            class="bg-emerald-600 text-white font-bold py-3 px-6 rounded hover:bg-emerald-700 shadow-md transition flex items-center gap-2"
+            class="w-full sm:w-auto bg-emerald-600 text-white font-bold py-3.5 sm:py-3 px-6 rounded hover:bg-emerald-700 shadow-md transition flex justify-center items-center gap-2"
           >
             📝 Create from scratch
           </button>
           <button
             onclick="openLoadPlanModal()"
-            class="bg-purple-600 text-white font-bold py-3 px-6 rounded hover:bg-purple-700 shadow-md transition flex items-center gap-2"
+            class="w-full sm:w-auto bg-purple-600 text-white font-bold py-3.5 sm:py-3 px-6 rounded hover:bg-purple-700 shadow-md transition flex justify-center items-center gap-2"
           >
             📂 Load Saved
           </button>
@@ -244,7 +227,7 @@
 
       <!-- BOTTOM SECTION: Full Width Output & Editor -->
       <div
-        class="w-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col"
+        class="w-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden"
       >
         <div
           id="weeklyOverviewContainer"
@@ -252,29 +235,36 @@
         ></div>
 
         <div
-          class="bg-blue-600 text-white px-6 py-3 border-b flex justify-between items-center"
+          class="bg-blue-600 text-white px-4 sm:px-6 py-3 border-b flex justify-between items-center"
         >
-          <h3 id="planHeaderTitle" class="font-bold text-lg">Generated Plan</h3>
+          <h3 id="planHeaderTitle" class="font-bold text-base sm:text-lg">
+            Generated Plan
+          </h3>
           <span
             id="planHeaderBadge"
-            class="bg-blue-800 px-3 py-1 rounded text-xs font-bold"
+            class="bg-blue-800 px-3 py-1 rounded text-[10px] sm:text-xs font-bold whitespace-nowrap"
             >No Data</span
           >
         </div>
 
+        <!-- Output container has touch-pan-x for table scrolling on mobile -->
         <div
           id="outputContainer"
-          class="p-6 overflow-y-auto bg-gray-50 min-h-[500px]"
+          class="p-4 sm:p-6 overflow-x-auto overflow-y-auto touch-pan-x bg-gray-50 min-h-[400px] sm:min-h-[500px]"
         >
-          <div class="text-center text-gray-400 italic mt-20">
+          <div
+            class="text-center text-gray-400 italic mt-16 sm:mt-20 text-sm sm:text-base"
+          >
             Select your scope, grade level, and folders to generate plans.
           </div>
         </div>
 
-        <div class="p-4 border-t bg-white flex justify-end gap-3">
+        <div
+          class="p-4 sm:p-5 border-t bg-white flex flex-col sm:flex-row justify-end gap-3 sm:gap-4"
+        >
           <button
             onclick="window.exportToGoogleDocs()"
-            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center gap-2 print:hidden"
+            class="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-2.5 px-4 rounded shadow flex items-center gap-2 print:hidden"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -290,19 +280,19 @@
           </button>
           <button
             onclick="saveLessonPlan()"
-            class="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded shadow-sm hover:bg-gray-300 transition flex items-center gap-2"
+            class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-gray-200 text-gray-700 font-bold rounded shadow-sm hover:bg-gray-300 transition flex items-center gap-2 text-sm sm:text-base"
           >
             <span>💾</span> Save Draft
           </button>
           <button
             onclick="exportPDF()"
-            class="px-6 py-2 bg-blue-600 text-white font-bold rounded shadow-sm hover:bg-blue-700 transition flex items-center gap-2"
+            class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-blue-600 text-white font-bold rounded shadow-sm hover:bg-blue-700 transition flex items-center gap-2 text-sm sm:text-base"
           >
             <span>🖨️</span> Print PDF Only
           </button>
           <button
             onclick="saveAndPrint()"
-            class="px-6 py-2 bg-green-600 text-white font-bold rounded shadow-sm hover:bg-green-700 transition flex items-center gap-2"
+            class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-green-600 text-white font-bold rounded shadow-sm hover:bg-green-700 transition flex items-center gap-2 text-sm sm:text-base"
           >
             <span>✅</span> Save & Print
           </button>
@@ -310,53 +300,112 @@
       </div>
     </div>
 
-    <!-- AI CLARIFICATION MODAL (Popup for AI Questions) -->
+    <!-- AI CLARIFICATION MODAL -->
     <div
       id="aiClarificationModal"
       class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4"
     >
       <div
-        class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4"
+        class="bg-white rounded-lg max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-gray-300 flex flex-col gap-4"
       >
         <div class="flex items-center gap-3 border-b pb-3">
           <span class="text-2xl">💡</span>
-          <h3 class="font-bold text-lg text-blue-900">
+          <h3 class="font-bold text-base sm:text-lg text-blue-900">
             AI Curriculum Assistant Has a Question
           </h3>
         </div>
-        <p class="text-sm text-gray-600">
+        <p class="text-xs sm:text-sm text-gray-600">
           Before building your lesson plan, the AI needs clarification on your
           custom instructions:
         </p>
         <div
           id="aiQuestionBox"
-          class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900"
-        >
-          <!-- Question injected here -->
-        </div>
+          class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900 max-h-48 overflow-y-auto"
+        ></div>
         <div>
-          <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
+          <label
+            class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
             >Your Response / Clarification</label
           >
           <textarea
             id="userClarificationInput"
             rows="3"
-            class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500"
+            class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
             placeholder="Type your answer here..."
           ></textarea>
         </div>
-        <div class="flex justify-end gap-3 pt-2 border-t">
+        <div
+          class="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t w-full"
+        >
           <button
             onclick="cancelClarification()"
-            class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
+            class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
           >
             Cancel
           </button>
           <button
             onclick="submitClarificationAndProceed()"
-            class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700"
+            class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700"
           >
             Submit & Continue
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOAD SAVED PLANS MODAL -->
+    <div
+      id="loadPlanModal"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-end sm:items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-xl sm:rounded-lg max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[85vh] sm:max-h-[80vh]"
+      >
+        <div
+          class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-3"
+        >
+          <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
+            📂 Saved Lesson Plans
+          </h3>
+          <div
+            class="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end"
+          >
+            <select
+              id="modalSyFilter"
+              onchange="openLoadPlanModal()"
+              class="flex-1 sm:flex-none p-3 sm:p-1.5 border border-gray-300 rounded text-base sm:text-sm font-bold text-blue-900 bg-blue-50 focus:ring-blue-500 shadow-sm cursor-pointer"
+            ></select>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <button
+                onclick="openArchiveManager()"
+                class="text-xs sm:text-xs bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 font-bold px-3 py-3 sm:py-1.5 rounded transition border border-gray-200 shadow-sm flex items-center gap-1"
+              >
+                <span>🗑️</span>
+                <span class="hidden sm:inline">Recycle Bin</span>
+              </button>
+              <button
+                onclick="closeLoadPlanModal()"
+                class="text-gray-400 hover:text-red-500 font-bold text-2xl sm:text-xl px-2"
+              >
+                ✖
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          id="savedPlansListContainer"
+          class="overflow-y-auto space-y-3 flex-1 pr-1 sm:pr-2"
+        >
+          <p class="text-gray-400 italic text-center py-8 text-sm">
+            Loading saved plans from Firebase...
+          </p>
+        </div>
+        <div class="flex justify-end pt-4 border-t mt-4">
+          <button
+            onclick="closeLoadPlanModal()"
+            class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
+          >
+            Close
           </button>
         </div>
       </div>
@@ -368,132 +417,23 @@
       class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col text-center px-4"
     >
       <div
-        class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-6"
+        class="animate-spin rounded-full h-12 sm:h-16 w-12 sm:w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4 sm:mb-6"
       ></div>
-      <p class="text-white font-bold text-xl tracking-wider mb-2">
-        <!-- 🚀 NEW: Added ID to the main text -->
+      <p class="text-white font-bold text-lg sm:text-xl tracking-wider mb-2">
         <span id="loaderMainText">Processing...</span>
         <span id="elapsedTime" class="text-blue-400 ml-2">0s</span>
       </p>
-      <!-- 🚀 NEW: Added ID to the sub text -->
-      <p id="loaderSubText" class="text-blue-300 text-sm font-semibold mb-8">
+      <p
+        id="loaderSubText"
+        class="text-blue-300 text-xs sm:text-sm font-semibold mb-6 sm:mb-8"
+      >
         Please wait a moment.
       </p>
-
-      <!-- BIBLE VERSE CONTAINER -->
       <div
-        class="max-w-2xl text-gray-300 italic text-lg transition-opacity duration-300 min-h-[4rem]"
+        class="max-w-2xl text-gray-300 italic text-sm sm:text-lg transition-opacity duration-300 min-h-[4rem]"
         id="bibleVerse"
       >
         Preparing wisdom...
-      </div>
-    </div>
-
-    <!-- AI CLARIFICATION MODAL -->
-    <div
-      id="aiClarificationModal"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4"
-    >
-      <div
-        class="bg-white rounded-lg max-w-lg w-full p-6 shadow-2xl border border-gray-300 flex flex-col gap-4"
-      >
-        <div class="flex items-center gap-3 border-b pb-3">
-          <span class="text-2xl">💡</span>
-          <h3 class="font-bold text-lg text-blue-900">
-            AI Curriculum Assistant Has a Question
-          </h3>
-        </div>
-        <p class="text-sm text-gray-600">
-          Before building your lesson plan, the AI needs clarification on your
-          custom instructions:
-        </p>
-        <div
-          id="aiQuestionBox"
-          class="bg-blue-50 border border-blue-200 p-4 rounded text-sm font-semibold text-blue-900"
-        ></div>
-        <div>
-          <label class="block text-xs font-bold text-gray-600 uppercase mb-1"
-            >Your Response / Clarification</label
-          >
-          <textarea
-            id="userClarificationInput"
-            rows="3"
-            class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500"
-            placeholder="Type your answer here..."
-          ></textarea>
-        </div>
-        <div class="flex justify-end gap-3 pt-2 border-t">
-          <button
-            onclick="cancelClarification()"
-            class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            onclick="submitClarificationAndProceed()"
-            class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700"
-          >
-            Submit & Continue
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- LOAD SAVED PLANS MODAL -->
-    <div
-      id="loadPlanModal"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-center justify-center p-4"
-    >
-      <div
-        class="bg-white rounded-lg max-w-4xl w-full p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[80vh]"
-      >
-        <div
-          class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-3"
-        >
-          <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
-            📂 Saved Lesson Plans
-          </h3>
-          <div class="flex items-center gap-4">
-            <select
-              id="modalSyFilter"
-              onchange="openLoadPlanModal()"
-              class="p-1.5 border border-gray-300 rounded text-sm font-bold text-blue-900 bg-blue-50 focus:ring-blue-500 shadow-sm cursor-pointer"
-            >
-              <!-- Populated dynamically -->
-            </select>
-            <div class="flex items-center gap-3">
-              <!-- 🚀 NEW: Recycle Bin Button -->
-              <button
-                onclick="openArchiveManager()"
-                class="text-xs bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 font-bold px-3 py-1.5 rounded transition border border-gray-200 shadow-sm flex items-center gap-1"
-              >
-                <span>🗑️</span> Recycle Bin
-              </button>
-              <button
-                onclick="closeLoadPlanModal()"
-                class="text-gray-400 hover:text-red-500 font-bold text-xl"
-              >
-                ✖
-              </button>
-            </div>
-          </div>
-        </div>
-        <div
-          id="savedPlansListContainer"
-          class="overflow-y-auto space-y-3 flex-1 pr-2"
-        >
-          <p class="text-gray-400 italic text-center py-8">
-            Loading saved plans from Firebase...
-          </p>
-        </div>
-        <div class="flex justify-end pt-4 border-t mt-4">
-          <button
-            onclick="closeLoadPlanModal()"
-            class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded text-sm hover:bg-gray-300"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
 
@@ -505,7 +445,7 @@
         font-size: 10pt;
       "
     >
-      <!-- 1. IMAGE CENTERED PROPERLY FOR WORD & PDF (Fixed Size) -->
+      <!-- (Print content remains exactly as you had it) -->
       <div
         id="printHeaderBannerContainer"
         style="text-align: center; margin-bottom: 0"
@@ -524,8 +464,6 @@
           class="hidden"
         />
       </div>
-
-      <!-- TITLES -->
       <div style="text-align: center; margin-bottom: 5px">
         <div
           id="printMainTitle"
@@ -563,7 +501,6 @@
           <span id="printSemester"></span> — <span id="printQuarter"></span>
         </div>
       </div>
-
       <table
         class="print-table"
         style="
@@ -573,7 +510,6 @@
           font-size: 10pt;
         "
       >
-        <!-- Wrapper color removed to stop bleeding into the content -->
         <tbody
           style="-webkit-print-color-adjust: exact; print-color-adjust: exact"
         >
@@ -622,7 +558,6 @@
             >
               Time Frame
             </th>
-            <!-- Shrunk to 32% -->
             <th
               style="
                 width: 32%;
@@ -632,13 +567,11 @@
                 background-color: #b4c6e7;
               "
             >
-              Learning Experiences & Activities<br />
-              <span
+              Learning Experiences & Activities<br /><span
                 id="printScopeHeader"
                 style="font-weight: normal; font-size: 10pt"
               ></span>
             </th>
-            <!-- Expanded to 14% -->
             <th
               style="
                 width: 14%;
@@ -663,12 +596,8 @@
             </th>
           </tr>
         </tbody>
-        <tbody id="printTableBody">
-          <!-- Dynamically populated via exportPDF() -->
-        </tbody>
+        <tbody id="printTableBody"></tbody>
       </table>
-
-      <!-- SIGNATORIES FOOTER -->
       <table
         style="
           width: 100%;
@@ -742,16 +671,17 @@
         </tr>
       </table>
     </div>
+
     <!-- DYNAMIC FLOATING SCROLL BUTTON -->
     <button
       id="floatingScrollBtn"
-      class="fixed bottom-8 right-8 bg-blue-600 text-white p-4 rounded-full shadow-2xl hover:bg-blue-700 transition-all transform hover:scale-110 z-50 flex items-center justify-center print:hidden"
+      class="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-blue-600 text-white p-3 sm:p-4 rounded-full shadow-2xl hover:bg-blue-700 transition-all transform hover:scale-110 z-50 flex items-center justify-center print:hidden"
       title="Scroll to Export Buttons"
     >
       <svg
         id="scrollIcon"
         xmlns="http://www.w3.org/2000/svg"
-        class="h-6 w-6 transition-transform duration-500 ease-in-out"
+        class="h-5 w-5 sm:h-6 sm:w-6 transition-transform duration-500 ease-in-out"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -764,10 +694,8 @@
         />
       </svg>
     </button>
-    <!-- HTML DOCX GENERATOR (Must load first) -->
-    <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.min.js"></script>
 
-    <!-- YOUR 4 MODULAR APP FILES -->
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.min.js"></script>
     <script type="module" src="js/lesson-review/app-ui.js"></script>
     <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/core/auth-guard.js"></script>

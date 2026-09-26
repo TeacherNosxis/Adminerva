@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>Adminerva | AI-Powered GitHub AutoGrader</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -38,11 +41,11 @@
 
     <!-- Hero Section -->
     <main
-      class="flex-grow flex flex-col items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-24"
+      class="flex-grow flex flex-col items-center justify-center text-center px-4 sm:px-6 lg:px-8 py-16 sm:py-24"
     >
-      <div class="max-w-3xl space-y-8">
+      <div class="max-w-3xl space-y-6 sm:space-y-8">
         <h1
-          class="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl"
+          class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900"
         >
           Grade code. <br />
           <span
@@ -50,23 +53,27 @@
             >Track progress automatically.</span
           >
         </h1>
-        <p class="text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+        <p
+          class="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto px-2"
+        >
           Adminerva isolates individual student commits in group GitHub
           repositories, evaluates their intent, and generates structured AI
           feedback based on your Universal Programming Standard.
         </p>
 
         <!-- Call to Action Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+        <div
+          class="flex flex-col sm:flex-row gap-4 justify-center pt-4 sm:pt-6 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto"
+        >
           <a
             href="login.html"
-            class="inline-flex justify-center items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition"
+            class="inline-flex justify-center items-center w-full sm:w-auto px-8 py-3.5 sm:py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition"
           >
             Educator Login
           </a>
           <a
             href="login.html"
-            class="inline-flex justify-center items-center px-8 py-3 border border-slate-300 text-base font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition"
+            class="inline-flex justify-center items-center w-full sm:w-auto px-8 py-3.5 sm:py-3 border border-slate-300 text-base font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition"
           >
             Student Portal
           </a>
@@ -75,7 +82,7 @@
 
       <!-- Quick Feature Cards -->
       <div
-        class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full mt-24 text-left"
+        class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl w-full mt-16 sm:mt-24 text-left"
       >
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <div
@@ -120,7 +127,7 @@
 
     <!-- Footer -->
     <footer
-      class="bg-white border-t border-slate-200 py-8 text-center text-sm text-slate-500"
+      class="bg-white border-t border-slate-200 py-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500 mt-auto"
     >
       <p>&copy; 2026 Adminerva Project. All rights reserved.</p>
     </footer>

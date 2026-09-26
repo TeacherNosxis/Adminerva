@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>Educator Hub - Global Settings</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -27,23 +30,24 @@
     <div id="adminerva-nav" data-module="settings" data-page="settings"></div>
     <script src="js/core/adminerva-nav.js"></script>
 
-    <!-- Main Workspace (Vertical Layout) -->
+    <!-- Main Workspace (Responsive Vertical Layout) -->
     <div
-      class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col md:flex-row gap-8"
+      class="max-w-screen-2xl mx-auto w-full p-4 sm:p-6 mt-2 sm:mt-4 flex-1 flex flex-col md:flex-row gap-6 md:gap-8"
     >
       <!-- LEFT SIDEBAR -->
-      <aside class="w-full md:w-52 shrink-0 flex flex-col gap-1">
-        <!-- Default Active Button -->
+      <aside
+        class="w-full md:w-56 shrink-0 flex flex-col gap-1 overflow-x-auto md:overflow-visible"
+      >
         <button
           onclick="switchSettingsCategory('security')"
           id="navBtn-security"
-          class="sidebar-btn w-full text-left px-4 py-3 text-sm font-bold transition-all flex items-center gap-3 justify-between bg-purple-50 text-purple-700 border-r-4 border-purple-600"
+          class="sidebar-btn w-full text-left px-4 py-3.5 sm:py-3 text-sm font-bold transition-all flex items-center gap-3 justify-between bg-purple-50 text-purple-700 border-l-4 md:border-l-0 md:border-r-4 border-purple-600"
         >
           <span>API & Security</span> <span class="text-lg opacity-60">🔒</span>
         </button>
 
         <div
-          class="mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
+          class="mt-4 md:mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
         >
           RepoReview
         </div>
@@ -51,14 +55,14 @@
         <button
           onclick="switchSettingsCategory('rubrics')"
           id="navBtn-rubrics"
-          class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
+          class="sidebar-btn w-full text-left px-4 py-3.5 sm:py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
         >
           <span>Grading Rubrics</span>
           <span class="text-lg opacity-60">📋</span>
         </button>
 
         <div
-          class="mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
+          class="mt-4 md:mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
         >
           LessonReview
         </div>
@@ -66,14 +70,14 @@
         <button
           onclick="switchSettingsCategory('lesson')"
           id="navBtn-lesson"
-          class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
+          class="sidebar-btn w-full text-left px-4 py-3.5 sm:py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
         >
           <span>Export Defaults</span>
           <span class="text-lg opacity-60">📘</span>
         </button>
 
         <div
-          class="mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
+          class="mt-4 md:mt-5 mb-1 px-3 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
         >
           Upcoming Modules
         </div>
@@ -81,7 +85,7 @@
         <button
           onclick="switchSettingsCategory('presentation')"
           id="navBtn-presentation"
-          class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
+          class="sidebar-btn w-full text-left px-4 py-3.5 sm:py-3 rounded-lg text-sm font-bold transition-all flex items-center gap-3 justify-between text-gray-600 hover:bg-gray-100"
         >
           <span>Presentations</span> <span class="text-lg opacity-60">📽️</span>
         </button>
@@ -89,46 +93,48 @@
 
       <!-- RIGHT MAIN PANEL -->
       <main
-        class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px]"
+        class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px] flex flex-col"
       >
         <!-- PANEL: SECURITY -->
         <div
           id="panel-security"
-          class="settings-panel block p-8 h-full overflow-y-auto"
+          class="settings-panel block p-5 sm:p-8 h-full overflow-y-auto"
         >
-          <h3 class="text-xl font-bold text-gray-800 border-b pb-3 mb-6">
+          <h3
+            class="text-lg sm:text-xl font-bold text-gray-800 border-b pb-3 mb-6"
+          >
             Database & API Credentials
           </h3>
 
           <div class="space-y-6">
-            <div class="p-5 border rounded-lg bg-gray-50">
+            <div class="p-4 sm:p-5 border rounded-lg bg-gray-50">
               <h4
-                class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-2"
+                class="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3 flex items-center gap-2"
               >
                 <span>🔥</span> Firebase Connection
               </h4>
               <textarea
                 id="firebaseConfigInput"
                 rows="7"
-                class="w-full p-3 border rounded text-xs font-mono focus:ring-purple-500 focus:border-purple-500 bg-white"
+                class="w-full p-3 sm:p-3 border rounded text-base sm:text-xs font-mono focus:ring-purple-500 focus:border-purple-500 bg-white"
                 placeholder='{"apiKey": "..."}'
               ></textarea>
             </div>
 
-            <div class="p-5 border rounded-lg bg-gray-50">
+            <div class="p-4 sm:p-5 border rounded-lg bg-gray-50">
               <h4
-                class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-2 flex items-center gap-2"
+                class="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3 flex items-center gap-2"
               >
                 <span>🔑</span> API Credentials
               </h4>
 
-              <div class="mb-4">
-                <label class="block text-gray-700 font-bold mb-2"
+              <div class="mb-5">
+                <label class="block text-gray-700 text-sm font-bold mb-1.5"
                   >AI Processing Engine</label
                 >
                 <select
                   id="globalAiEngine"
-                  class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-600"
+                  class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-600"
                 >
                   <option value="cloud">
                     🌩️ Cloud (Google Gemini) - Fast & Stable
@@ -137,12 +143,12 @@
                     💻 Local (Ollama Proxy) - In Development
                   </option>
                 </select>
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Cloud requires an API key. Local requires the Node.js backend
                   proxy running on port 3000.
                 </p>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                 <div>
                   <label class="block text-xs font-semibold text-gray-700 mb-1"
                     >GitHub PAT (Read/Write)</label
@@ -150,7 +156,7 @@
                   <input
                     type="password"
                     id="adminGithubToken"
-                    class="w-full p-2 border rounded focus:ring-blue-500 bg-white"
+                    class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm focus:ring-blue-500 bg-white"
                   />
                 </div>
                 <div>
@@ -160,7 +166,7 @@
                   <input
                     type="password"
                     id="adminGeminiKey"
-                    class="w-full p-2 border rounded focus:ring-purple-500 bg-white"
+                    class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm focus:ring-purple-500 bg-white"
                   />
                 </div>
               </div>
@@ -169,9 +175,8 @@
                   >AI Engine Default</label
                 ><select
                   id="adminAiModel"
-                  class="w-full p-2 border rounded focus:ring-purple-500 bg-white"
+                  class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm focus:ring-purple-500 bg-white"
                 >
-                  <!-- Current Flash Models -->
                   <option value="gemini-3.8-flash">
                     Gemini 3.8 Flash (10K / day)
                   </option>
@@ -187,8 +192,6 @@
                   <option value="gemini-3-flash-preview">
                     Gemini 3 Flash Preview (10K / day)
                   </option>
-
-                  <!-- Pro Models (Complex logic, lower quota) -->
                   <option value="gemini-3.1-pro-preview">
                     Gemini 3.1 Pro Preview (250 / day)
                   </option>
@@ -201,7 +204,7 @@
 
             <button
               onclick="saveSecuritySettings()"
-              class="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 transition shadow"
+              class="w-full bg-green-600 text-white py-3.5 sm:py-3 rounded font-bold hover:bg-green-700 transition shadow text-sm"
             >
               Save Security Settings
             </button>
@@ -211,64 +214,66 @@
         <!-- PANEL: RUBRICS -->
         <div
           id="panel-rubrics"
-          class="settings-panel hidden p-8 h-full overflow-y-auto space-y-6"
+          class="settings-panel hidden p-5 sm:p-8 h-full overflow-y-auto space-y-6"
         >
-          <h3 class="text-xl font-bold text-gray-800 border-b pb-3 mb-6">
+          <h3
+            class="text-lg sm:text-xl font-bold text-gray-800 border-b pb-3 mb-4 sm:mb-6"
+          >
             Grading Rubrics
           </h3>
 
           <div
-            class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg flex justify-between items-center"
+            class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"
           >
             <div>
               <span
-                class="text-xs font-bold uppercase tracking-wider text-purple-700"
+                class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-700 block"
                 >Current AutoGrader Rubric</span
               >
               <h4
                 id="activeEquippedBanner"
-                class="text-lg font-extrabold text-purple-900"
+                class="text-base sm:text-lg font-extrabold text-purple-900 truncate"
               >
                 --
               </h4>
             </div>
             <span
-              class="bg-purple-200 text-purple-800 text-xs px-3 py-1.5 rounded-full font-bold"
+              class="w-fit bg-purple-200 text-purple-800 text-[10px] sm:text-xs px-3 py-1.5 rounded-full font-bold"
               >Equipped</span
             >
           </div>
 
           <div
-            class="flex items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200"
+            class="flex flex-col md:flex-row md:items-end gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200"
           >
             <div class="flex-1 w-full">
               <label
-                class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5"
                 >Select Template</label
               >
               <select
                 id="templateSelect"
                 onchange="changeTemplate()"
-                class="w-full p-2 border rounded font-semibold text-gray-800 focus:ring-purple-500 bg-white"
+                class="w-full p-3 sm:p-2 border rounded font-semibold text-gray-800 focus:ring-purple-500 bg-white text-base sm:text-sm"
               ></select>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap sm:flex-nowrap gap-2 w-full md:w-auto">
               <button
                 id="equipTemplateBtn"
                 onclick="equipCurrentTemplate()"
-                class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-green-700 transition"
+                class="flex-1 sm:flex-none bg-green-600 text-white px-4 py-3 sm:py-2 rounded text-sm font-bold shadow-sm hover:bg-green-700 transition"
               >
                 🎯 Equip
               </button>
               <button
                 onclick="createNewTemplate()"
-                class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-bold hover:bg-gray-100"
+                class="flex-1 sm:flex-none bg-white border border-gray-300 text-gray-700 px-3 py-3 sm:py-2 rounded text-sm font-bold hover:bg-gray-100"
               >
                 ➕ New
               </button>
               <button
                 onclick="deleteCurrentTemplate()"
-                class="bg-white border border-red-200 text-red-600 px-3 py-2 rounded text-sm font-bold hover:bg-red-50"
+                class="flex-1 sm:flex-none bg-white border border-red-200 text-red-600 px-3 py-3 sm:py-2 rounded text-sm font-bold hover:bg-red-50"
               >
                 🗑️ Delete
               </button>
@@ -277,53 +282,59 @@
 
           <div
             id="templateEditor"
-            class="border rounded-lg p-5 shadow-sm bg-white"
+            class="border rounded-lg p-4 sm:p-5 shadow-sm bg-white"
           >
             <div class="flex justify-between items-center mb-4 border-b pb-2">
               <div class="flex items-center gap-2">
                 <h4
-                  class="text-sm font-bold text-gray-800 uppercase tracking-wider"
+                  class="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider"
                 >
                   Editing Template:
                 </h4>
                 <span
                   id="editorStatusBadge"
-                  class="text-xs px-2.5 py-0.5 rounded-full font-bold"
+                  class="text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold"
                 ></span>
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
               <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1"
+                <label
+                  class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1"
                   >Template Name</label
                 >
                 <input
                   type="text"
                   id="tplName"
-                  class="w-full p-2 border rounded"
+                  class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm"
                   onchange="updateTemplatePreview()"
                 />
               </div>
               <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1"
+                <label
+                  class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1"
                   >Scoring Mode</label
                 >
                 <div class="flex gap-4 mt-2">
-                  <label class="cursor-pointer flex items-center gap-1.5"
+                  <label
+                    class="cursor-pointer flex items-center gap-1.5 text-sm"
                     ><input
                       type="radio"
                       name="tplScoreType"
                       value="percentage"
+                      class="scale-125"
                       onchange="updateTemplatePreview()"
                     />
                     Percentage (%)</label
                   >
-                  <label class="cursor-pointer flex items-center gap-1.5"
+                  <label
+                    class="cursor-pointer flex items-center gap-1.5 text-sm"
                     ><input
                       type="radio"
                       name="tplScoreType"
                       value="points"
+                      class="scale-125"
                       onchange="updateTemplatePreview()"
                     />
                     Custom Points</label
@@ -332,40 +343,42 @@
               </div>
             </div>
             <div class="mb-6">
-              <label class="block text-sm font-semibold text-gray-700 mb-1"
+              <label
+                class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1"
                 >General Prompt Instructions</label
               >
               <textarea
                 id="tplGeneralPrompt"
-                rows="2"
-                class="w-full p-2 border rounded bg-gray-50"
+                rows="3"
+                class="w-full p-3 sm:p-2 border rounded bg-gray-50 text-base sm:text-sm"
                 onchange="updateTemplatePreview()"
               ></textarea>
             </div>
             <div>
               <div class="flex justify-between items-end mb-3 border-b pb-2">
-                <label class="block text-sm font-semibold text-gray-700"
+                <label
+                  class="block text-xs sm:text-sm font-semibold text-gray-700"
                   >Grading Criteria</label
                 >
                 <span
                   id="tplTotalWeight"
-                  class="text-xs font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded"
+                  class="text-[10px] sm:text-xs font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded"
                   >Total: 0</span
                 >
               </div>
               <div id="criteriaContainer" class="space-y-3 mb-4"></div>
               <button
                 onclick="addCriterion()"
-                class="w-full py-2 border-2 border-dashed border-gray-300 rounded font-semibold text-sm hover:bg-gray-50 transition"
+                class="w-full py-3 sm:py-2 border-2 border-dashed border-gray-300 rounded font-semibold text-sm hover:bg-gray-50 transition"
               >
                 ➕ Add Criterion
               </button>
             </div>
           </div>
-          <div class="flex justify-end pb-8">
+          <div class="flex justify-end pb-4 sm:pb-8">
             <button
               onclick="saveRubrics()"
-              class="bg-purple-600 text-white px-6 py-2.5 rounded font-bold shadow hover:bg-purple-700 transition"
+              class="w-full sm:w-auto bg-purple-600 text-white px-6 py-3 sm:py-2.5 rounded font-bold shadow hover:bg-purple-700 transition"
             >
               Save Template Changes
             </button>
@@ -375,23 +388,27 @@
         <!-- PANEL: LESSON DEFAULTS -->
         <div
           id="panel-lesson"
-          class="settings-panel hidden p-8 h-full overflow-y-auto"
+          class="settings-panel hidden p-5 sm:p-8 h-full overflow-y-auto"
         >
-          <h3 class="text-xl font-bold text-gray-800 border-b pb-3 mb-6">
+          <h3
+            class="text-lg sm:text-xl font-bold text-gray-800 border-b pb-3 mb-6"
+          >
             Document Export & Signatories
           </h3>
 
-          <div class="mb-8 p-4 bg-gray-50 border rounded-lg">
-            <h4 class="text-xs font-bold text-gray-700 uppercase mb-1">
+          <div class="mb-6 sm:mb-8 p-4 bg-gray-50 border rounded-lg">
+            <h4
+              class="text-[10px] sm:text-xs font-bold text-gray-700 uppercase mb-1"
+            >
               Print Header / School Logo Upload
             </h4>
-            <p class="text-[11px] text-gray-500 mb-3">
+            <p class="text-[10px] sm:text-[11px] text-gray-500 mb-3">
               Upload your school banner/logo. It will be converted and saved
               securely to the cloud.
             </p>
 
             <div
-              class="mb-3 p-2 bg-white border rounded flex items-center justify-center h-24"
+              class="mb-4 p-2 bg-white border rounded flex items-center justify-center h-24"
             >
               <img
                 id="headerPreview"
@@ -413,18 +430,18 @@
               class="hidden"
               onchange="previewHeaderImage(event)"
             />
-            <div class="flex gap-2">
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
               <button
                 type="button"
                 onclick="document.getElementById('settingsHeaderFile').click()"
-                class="bg-gray-800 text-white font-bold px-4 py-2 rounded text-xs hover:bg-gray-700 transition"
+                class="flex-1 bg-gray-800 text-white font-bold px-4 py-3 sm:py-2 rounded text-sm sm:text-xs hover:bg-gray-700 transition"
               >
                 📁 Select Image File
               </button>
               <button
                 type="button"
                 onclick="clearHeaderImage()"
-                class="bg-red-100 text-red-600 font-bold px-3 py-2 rounded text-xs hover:bg-red-200 transition"
+                class="flex-1 bg-red-100 text-red-600 font-bold px-3 py-3 sm:py-2 rounded text-sm sm:text-xs hover:bg-red-200 transition"
               >
                 🗑️ Remove Header
               </button>
@@ -432,22 +449,24 @@
             <input type="hidden" id="settingsHeaderBase64" />
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mb-6 sm:mb-8"
+          >
             <div>
               <label
-                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
                 >Default Teacher Name</label
               >
               <input
                 type="text"
                 id="setTeacherName"
                 placeholder="e.g., Joseph Sixson"
-                class="w-full p-2 border rounded text-sm bg-gray-50 focus:ring-blue-500"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
               />
             </div>
             <div>
               <label
-                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
                 >Default Subject Title</label
               >
               <input
@@ -455,123 +474,126 @@
                 id="setSubjectTitle"
                 list="savedSubjectsList"
                 placeholder="Select or type a subject..."
-                class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+                class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
               />
               <datalist id="savedSubjectsList"></datalist>
             </div>
           </div>
-          <!-- NEW: Preliminary & Closing Defaults -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mb-6 sm:mb-8"
+          >
             <div>
               <label
-                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
                 >Default Preliminary Activities</label
               >
               <textarea
                 id="setPrelimActivities"
                 rows="3"
-                class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+                class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
                 placeholder="e.g., Opening Prayer\nAttendance Checking"
               ></textarea>
             </div>
             <div>
               <label
-                class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
                 >Default Closing Activities</label
               >
               <textarea
                 id="setClosingActivities"
                 rows="3"
-                class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500"
+                class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
                 placeholder="e.g., Summary of the lesson\nClosing Prayer"
               ></textarea>
             </div>
           </div>
 
-          <h4 class="text-sm font-bold text-gray-700 uppercase mb-3">
+          <h4
+            class="text-[10px] sm:text-sm font-bold text-gray-700 uppercase mb-3"
+          >
             Footer Signatories
           </h4>
           <div
-            class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 border rounded-lg"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 border rounded-lg"
           >
             <div>
               <label
-                class="block text-[10px] font-bold text-gray-500 uppercase mb-1"
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
                 >1. Submitted By</label
               >
               <input
                 type="text"
                 id="sigTeacher"
-                class="w-full p-2 border rounded text-sm bg-white mb-2"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white mb-2"
                 placeholder="Name"
               />
               <input
                 type="text"
                 id="sigTeacherTitle"
-                class="w-full p-2 border rounded text-sm bg-white"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white"
                 placeholder="Title"
               />
             </div>
             <div>
               <label
-                class="block text-[10px] font-bold text-gray-500 uppercase mb-1"
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
                 >2. Submitted To</label
               >
               <input
                 type="text"
                 id="sigSubjectCoord"
-                class="w-full p-2 border rounded text-sm bg-white mb-2"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white mb-2"
                 placeholder="Name"
               />
               <input
                 type="text"
                 id="sigSubjectCoordTitle"
-                class="w-full p-2 border rounded text-sm bg-white"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white"
                 placeholder="Title"
               />
             </div>
             <div>
               <label
-                class="block text-[10px] font-bold text-gray-500 uppercase mb-1"
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
                 >3. Noted By</label
               >
               <input
                 type="text"
                 id="sigGradeCoord"
-                class="w-full p-2 border rounded text-sm bg-white mb-2"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white mb-2"
                 placeholder="Name"
               />
               <input
                 type="text"
                 id="sigGradeCoordTitle"
-                class="w-full p-2 border rounded text-sm bg-white"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white"
                 placeholder="Title"
               />
             </div>
             <div>
               <label
-                class="block text-[10px] font-bold text-gray-500 uppercase mb-1"
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
                 >4. Approved By</label
               >
               <input
                 type="text"
                 id="sigPrincipal"
-                class="w-full p-2 border rounded text-sm bg-white mb-2"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white mb-2"
                 placeholder="Name"
               />
               <input
                 type="text"
                 id="sigPrincipalTitle"
-                class="w-full p-2 border rounded text-sm bg-white"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white"
                 placeholder="Title"
               />
             </div>
           </div>
 
-          <div class="flex justify-end pb-8">
+          <div class="flex justify-end pb-4 sm:pb-8">
             <button
               onclick="saveLessonReviewSettings()"
-              class="bg-blue-600 text-white font-bold px-8 py-3 rounded hover:bg-blue-700 shadow-md transition flex items-center gap-2"
+              class="w-full sm:w-auto bg-blue-600 text-white font-bold px-8 py-3.5 sm:py-3 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2"
             >
               <span>💾</span> Save LessonReview Defaults
             </button>
@@ -579,29 +601,30 @@
         </div>
 
         <!-- PANEL: PRESENTATIONS -->
-        <!-- PANEL: PRESENTATIONS -->
         <div
           id="panel-presentation"
-          class="settings-panel hidden p-8 h-full overflow-y-auto"
+          class="settings-panel hidden p-5 sm:p-8 h-full overflow-y-auto"
         >
-          <h3 class="text-xl font-bold text-gray-800 border-b pb-3 mb-6">
+          <h3
+            class="text-lg sm:text-xl font-bold text-gray-800 border-b pb-3 mb-6"
+          >
             Presentation Defaults & Templates
           </h3>
 
-          <!-- Default Brand Settings with Preview -->
-          <div class="mb-8 p-5 bg-gray-50 border rounded-lg">
+          <div class="mb-6 sm:mb-8 p-4 sm:p-5 bg-gray-50 border rounded-lg">
             <h4
-              class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4"
+              class="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-2 sm:mb-4"
             >
               Slide Background Image
             </h4>
-            <p class="text-[11px] text-gray-500 mb-3">
+            <p class="text-[10px] sm:text-[11px] text-gray-500 mb-4 sm:mb-3">
               Upload a 16:9 background for your slides (Max 800KB). It will be
               saved securely to the cloud.
             </p>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              <!-- Preview Box -->
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 items-start"
+            >
               <div class="w-full">
                 <div
                   class="p-2 bg-white border border-dashed border-gray-300 rounded flex items-center justify-center h-32 relative mb-3"
@@ -617,7 +640,7 @@
                     >No background selected</span
                   >
                 </div>
-                <div class="flex gap-2">
+                <div class="flex flex-col sm:flex-row gap-2">
                   <input
                     type="file"
                     id="slideLogoFile"
@@ -628,29 +651,28 @@
                   <button
                     type="button"
                     onclick="document.getElementById('slideLogoFile').click()"
-                    class="bg-gray-800 text-white font-bold px-4 py-2 rounded text-xs hover:bg-gray-700 transition"
+                    class="flex-1 bg-gray-800 text-white font-bold px-4 py-3 sm:py-2 rounded text-sm sm:text-xs hover:bg-gray-700 transition"
                   >
                     📁 Select Image
                   </button>
                   <button
                     type="button"
                     onclick="clearSlideBackground()"
-                    class="bg-red-100 text-red-600 font-bold px-3 py-2 rounded text-xs hover:bg-red-200 transition"
+                    class="flex-1 bg-red-100 text-red-600 font-bold px-3 py-3 sm:py-2 rounded text-sm sm:text-xs hover:bg-red-200 transition"
                   >
                     🗑️ Remove
                   </button>
                 </div>
               </div>
 
-              <!-- Theme Dropdown -->
               <div>
                 <label
-                  class="block text-xs font-bold text-gray-600 uppercase mb-1"
+                  class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1.5"
                   >UI Overlay Theme</label
                 >
                 <select
                   id="setSlideTheme"
-                  class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:ring-blue-500"
+                  class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-white focus:ring-blue-500"
                 >
                   <option value="light">Light Mode (Adminerva Standard)</option>
                   <option value="dark">Dark Cyber-Cyan</option>
@@ -659,17 +681,18 @@
             </div>
           </div>
 
-          <!-- Slide Template Sequence Manager -->
-          <div class="bg-white border rounded-lg shadow-sm p-5">
-            <div class="flex justify-between items-center mb-4 border-b pb-3">
+          <div class="bg-white border rounded-lg shadow-sm p-4 sm:p-5">
+            <div
+              class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 border-b pb-3"
+            >
               <h4
-                class="text-sm font-bold text-gray-800 uppercase tracking-wider"
+                class="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider"
               >
                 Default Slide Stack
               </h4>
               <button
                 onclick="addSlideToTemplate()"
-                class="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-100 transition shadow-sm"
+                class="w-full sm:w-auto bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 sm:py-1.5 rounded text-sm sm:text-xs font-bold hover:bg-blue-100 transition shadow-sm"
               >
                 ➕ Add Slide Block
               </button>
@@ -679,15 +702,15 @@
               every new lesson.
             </p>
 
-            <div id="slideTemplateSequence" class="space-y-3 mb-6">
+            <div id="slideTemplateSequence" class="space-y-3 mb-4 sm:mb-6">
               <!-- Dynamic Slide Template Blocks will render here -->
             </div>
           </div>
 
-          <div class="flex justify-end mt-8 pb-8">
+          <div class="flex justify-end mt-6 sm:mt-8 pb-4 sm:pb-8">
             <button
               onclick="savePresentationSettings()"
-              class="bg-blue-600 text-white font-bold px-8 py-3 rounded hover:bg-blue-700 shadow-md transition flex items-center gap-2"
+              class="w-full sm:w-auto bg-blue-600 text-white font-bold px-8 py-3.5 sm:py-3 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2"
             >
               <span>💾</span> Save Presentation Defaults
             </button>
@@ -697,20 +720,21 @@
     </div>
 
     <!-- MODALS & OVERLAYS -->
-
     <div
       id="globalLoader"
       class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[100] items-center justify-center flex-col"
     >
       <div
-        class="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500 border-solid mb-4"
+        class="animate-spin rounded-full h-12 sm:h-16 w-12 sm:w-16 border-t-4 border-purple-500 border-solid mb-4"
       ></div>
-      <p id="loaderMessage" class="text-white font-bold text-lg tracking-wider">
+      <p
+        id="loaderMessage"
+        class="text-white font-bold text-sm sm:text-lg tracking-wider"
+      >
         Processing...
       </p>
     </div>
 
-    <!-- MODULE SCRIPTS -->
     <script type="module" src="js/settings/settings-core.js"></script>
     <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/settings/settings-security.js"></script>

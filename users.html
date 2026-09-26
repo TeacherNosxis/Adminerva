@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>User Management | Adminerva Educator</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
@@ -13,29 +16,33 @@
     <div id="adminerva-nav" data-module="educator" data-page="directory"></div>
 
     <!-- Main Content -->
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-      <header class="mb-8">
-        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+    <main
+      class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8"
+    >
+      <header class="mb-6 sm:mb-8 text-center sm:text-left">
+        <h1
+          class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+        >
           Directory & Access
         </h1>
-        <p class="text-slate-500 mt-1 font-medium">
+        <p class="text-sm sm:text-base text-slate-500 mt-1 font-medium">
           Manage student rosters, access permissions, and instructor accounts.
         </p>
       </header>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <!-- Left Column: CSV Upload -->
         <div class="lg:col-span-1 space-y-6">
           <div
-            class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full"
+            class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-full"
           >
             <div>
               <h3
-                class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"
+                class="text-base sm:text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"
               >
-                <span class="text-blue-500">📄</span> Import Roster
+                <span class="text-blue-500">📁</span> Import Roster
               </h3>
-              <p class="text-sm text-slate-500 mb-4">
+              <p class="text-xs sm:text-sm text-slate-500 mb-4">
                 Upload a CSV file containing
                 <code class="bg-slate-100 text-slate-700 px-1 rounded"
                   >email</code
@@ -47,20 +54,21 @@
                   >lastName</code
                 >.
               </p>
+
               <!-- Google Sheets Sync -->
-              <div class="mb-8">
+              <div class="mb-6 sm:mb-8">
                 <h3
-                  class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"
+                  class="text-base sm:text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"
                 >
                   <span class="text-green-500">📊</span> Live Sheets Sync
                 </h3>
-                <p class="text-sm text-slate-500 mb-4">
+                <p class="text-xs sm:text-sm text-slate-500 mb-4">
                   Automatically sync the class roster from your connected Google
                   Form responses.
                 </p>
                 <button
                   id="syncSheetBtn"
-                  class="w-full bg-green-600 text-white font-bold py-2.5 px-4 rounded-md hover:bg-green-700 transition shadow-sm"
+                  class="w-full bg-green-600 text-white font-bold py-3.5 sm:py-2.5 px-4 rounded-md hover:bg-green-700 transition shadow-sm text-sm"
                 >
                   Sync Class Roster
                 </button>
@@ -69,14 +77,14 @@
               <hr class="border-slate-100 mb-6" />
 
               <div
-                class="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 hover:border-blue-400 transition cursor-pointer"
+                class="border-2 border-dashed border-slate-300 rounded-lg p-6 sm:p-8 text-center hover:bg-slate-50 hover:border-blue-400 transition cursor-pointer"
                 id="dropzone"
               >
                 <span class="text-3xl block mb-2">📥</span>
                 <p class="text-sm font-bold text-slate-700">
                   Click or drag CSV here
                 </p>
-                <p class="text-xs text-slate-400 mt-1">
+                <p class="text-[10px] sm:text-xs text-slate-400 mt-1">
                   Maximum 500 records per upload
                 </p>
                 <input type="file" id="csvFile" accept=".csv" class="hidden" />
@@ -84,24 +92,25 @@
 
               <button
                 id="uploadBtn"
-                class="w-full mt-4 bg-blue-600 text-white font-bold py-2.5 px-4 rounded-md hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
+                class="w-full mt-4 bg-blue-600 text-white font-bold py-3.5 sm:py-2.5 px-4 rounded-md hover:bg-blue-700 transition shadow-sm disabled:opacity-50 text-sm"
               >
                 Sync to Database
               </button>
               <p
                 id="uploadStatus"
-                class="text-xs font-bold text-center mt-3 hidden"
+                class="text-[10px] sm:text-xs font-bold text-center mt-3 hidden"
               ></p>
             </div>
 
             <!-- ISOLATED CLEAR BUTTON -->
-            <div class="mt-auto pt-12">
+            <div class="mt-auto pt-8 sm:pt-12">
               <div class="border-t border-red-100 pt-4 flex justify-center">
                 <button
                   onclick="window.clearDirectory()"
-                  class="text-xs font-bold text-red-400 hover:text-red-700 transition flex items-center gap-1.5 opacity-60 hover:opacity-100"
+                  class="text-[10px] sm:text-xs font-bold text-red-400 hover:text-red-700 transition flex items-center gap-1.5 opacity-80 sm:opacity-60 hover:opacity-100 p-2"
                 >
-                  <span class="text-base">🗑️</span> Hard Reset Database
+                  <span class="text-sm sm:text-base">⚠️</span> Hard Reset
+                  Database
                 </button>
               </div>
             </div>
@@ -113,9 +122,9 @@
           <div
             class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full"
           >
-            <!-- Tabs -->
+            <!-- Tabs (Scrollable on mobile) -->
             <div
-              class="p-0 border-b border-slate-200 bg-slate-50 flex px-6 pt-4"
+              class="p-0 border-b border-slate-200 bg-slate-50 flex px-4 sm:px-6 pt-4 overflow-x-auto hide-scrollbar whitespace-nowrap"
             >
               <button
                 class="pb-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 mr-6"
@@ -129,27 +138,27 @@
               </button>
             </div>
 
-            <!-- NEW: Filter & Search Bar -->
+            <!-- Filter & Search Bar -->
             <div
-              class="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row gap-3 items-center justify-between"
+              class="p-4 sm:p-4 border-b border-slate-200 bg-white flex flex-col md:flex-row gap-3 items-start md:items-center justify-between"
             >
-              <div class="flex gap-2 w-full sm:w-auto">
+              <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                 <select
                   id="sectionFilter"
-                  class="text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 font-medium text-slate-700 cursor-pointer"
+                  class="w-full sm:w-auto text-base sm:text-sm border border-slate-300 rounded-md px-3 py-3 sm:py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 font-medium text-slate-700 cursor-pointer"
                 >
                   <option value="all">All Sections</option>
                 </select>
                 <select
                   id="statusFilter"
-                  class="text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 font-medium text-slate-700 cursor-pointer"
+                  class="w-full sm:w-auto text-base sm:text-sm border border-slate-300 rounded-md px-3 py-3 sm:py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50 font-medium text-slate-700 cursor-pointer"
                 >
                   <option value="all">All Statuses</option>
                   <option value="linked">GitHub Linked</option>
                   <option value="missing">Missing Info</option>
                 </select>
               </div>
-              <div class="w-full sm:w-64 relative">
+              <div class="w-full md:w-64 relative mt-2 md:mt-0">
                 <span
                   class="absolute inset-y-0 left-0 flex items-center pl-3 opacity-50"
                   >🔍</span
@@ -158,35 +167,37 @@
                   type="text"
                   id="searchInput"
                   placeholder="Search name or email..."
-                  class="w-full text-sm border border-slate-300 rounded-md pl-9 pr-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  class="w-full text-base sm:text-sm border border-slate-300 rounded-md pl-9 pr-3 py-3 sm:py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            <!-- Table Content -->
-            <div class="overflow-x-auto flex-1">
-              <table class="w-full text-left border-collapse min-w-[600px]">
+            <!-- Table Content (Swipeable on Mobile) -->
+            <div class="overflow-x-auto flex-1 w-full touch-pan-x">
+              <table
+                class="w-full text-left border-collapse min-w-[600px] sm:min-w-[700px]"
+              >
                 <thead>
                   <tr
-                    class="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200"
+                    class="bg-slate-50 text-[10px] sm:text-xs text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200"
                   >
                     <!-- Clickable Sort Headers -->
                     <th
-                      class="px-6 py-3 cursor-pointer hover:bg-slate-200 transition select-none"
+                      class="px-4 sm:px-6 py-3 cursor-pointer hover:bg-slate-200 transition select-none"
                       onclick="window.sortTable('name')"
                     >
                       Student Name
                       <span id="sort-name" class="ml-1 text-blue-500"></span>
                     </th>
                     <th
-                      class="px-6 py-3 cursor-pointer hover:bg-slate-200 transition select-none"
+                      class="px-4 sm:px-6 py-3 cursor-pointer hover:bg-slate-200 transition select-none"
                       onclick="window.sortTable('email')"
                     >
                       Email Address
                       <span id="sort-email" class="ml-1 text-blue-500"></span>
                     </th>
-                    <th class="px-6 py-3">GitHub Setup</th>
-                    <th class="px-6 py-3 text-right">Actions</th>
+                    <th class="px-4 sm:px-6 py-3">GitHub Setup</th>
+                    <th class="px-4 sm:px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="userTableBody" class="text-sm">
@@ -197,18 +208,21 @@
 
             <!-- Table Footer -->
             <div
-              class="p-4 border-t border-slate-200 bg-slate-50 text-xs font-medium text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-4"
+              class="p-4 border-t border-slate-200 bg-slate-50 text-[10px] sm:text-xs font-medium text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4"
             >
               <span id="footerCount">Loading...</span>
 
               <!-- Pagination Controls -->
-              <div id="paginationControls" class="flex items-center gap-2">
+              <div
+                id="paginationControls"
+                class="flex items-center gap-2 w-full md:w-auto justify-center"
+              >
                 <!-- Buttons injected by JS -->
               </div>
 
               <button
                 onclick="window.loadDirectory()"
-                class="text-blue-600 hover:underline flex items-center gap-1"
+                class="w-full md:w-auto justify-center text-blue-600 hover:bg-blue-100 rounded px-4 py-3 sm:py-2 flex items-center gap-1 font-bold transition"
               >
                 <span>🔄</span> Refresh Data
               </button>

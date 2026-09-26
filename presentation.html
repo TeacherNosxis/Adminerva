@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
     <title>Adminerva - Slide Editor</title>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
@@ -24,13 +27,10 @@
         word-break: break-word !important;
         overflow-wrap: break-word !important;
       }
-      /* 🚀 Canvas-Only Text Shadow */
       #slide-canvas .ql-editor,
       #slide-canvas #slide-ribbon {
         text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15) !important;
       }
-      
-      /* 🚀 1. Base Box (Fuses the middle if multiple lines are typed) */
       .ql-editor blockquote {
         border-left: 3px solid currentColor !important;
         border-right: 3px solid currentColor !important;
@@ -43,16 +43,12 @@
         font-style: normal !important;
         display: block;
       }
-      
-      /* 🚀 2. Top Curve (Only applies to the VERY FIRST line) */
       .ql-editor blockquote:not(blockquote + blockquote) {
         border-top: 3px solid currentColor !important;
         border-top-left-radius: 20px !important;
         border-top-right-radius: 20px !important;
         padding-top: 16px !important;
       }
-
-      /* 🚀 3. Bottom Curve (Only applies to the VERY LAST line) */
       .ql-editor blockquote:not(:has(+ blockquote)) {
         border-bottom: 3px solid currentColor !important;
         border-bottom-left-radius: 20px !important;
@@ -76,241 +72,551 @@
 
     <!-- Main Workspace -->
     <div
-      class="max-w-screen-2xl mx-auto w-full p-6 mt-4 flex-1 flex flex-col lg:flex-row gap-6"
-    ><!-- LEFT COLUMN: Pure Slide Navigator (Scrollable) -->
-      <div class="w-full lg:w-1/5 bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
-        <div class="border-b border-gray-200 pb-2 mb-2 text-center">
-          <h2 class="text-sm font-black text-gray-800 tracking-wider">SLIDE NAVIGATOR</h2>
+      class="max-w-screen-2xl mx-auto w-full p-4 sm:p-6 mt-2 sm:mt-4 flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6"
+    >
+      <!-- LEFT COLUMN: Pure Slide Navigator -->
+      <div
+        class="w-full lg:w-1/5 bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col max-h-48 lg:max-h-none h-auto lg:h-full shrink-0 lg:overflow-y-auto"
+      >
+        <div class="border-b border-gray-200 pb-2 mb-2 text-center shrink-0">
+          <h2
+            class="text-xs sm:text-sm font-black text-gray-800 tracking-wider"
+          >
+            SLIDE NAVIGATOR
+          </h2>
         </div>
-        
-        <!-- 🚀 Independent Scrollable Slide List -->
-        <div class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar" id="slideBlockList">
-            <!-- Dynamic Slide Blocks -->
+
+        <div
+          class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar"
+          id="slideBlockList"
+        >
+          <!-- Dynamic Slide Blocks -->
         </div>
       </div>
 
       <!-- RIGHT COLUMN: Editor Workspace & Main Menu -->
-      <div class="w-full lg:w-4/5 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-6 relative h-full overflow-y-auto">
-        
-        <!-- 🚀 MAIN ACTION BAR (All Buttons Moved Here) -->
-        <div class="w-full max-w-5xl flex flex-wrap justify-between items-end mb-4 border-b border-gray-100 pb-4 gap-4">
-            
-            <!-- Left Side: Layout & Add -->
-            <div class="flex items-end gap-4">
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Slide Layout</label>
-                    <select id="slideLayoutSelector" onchange="changeSlideLayout(this.value)" class="p-1.5 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900 shadow-sm">
-                        <option value="standard">Standard (1 Column)</option>
-                        <option value="split">Split (2 Columns)</option>
-                        <option value="media">Full Media (Image)</option>
-                    </select>
-                </div>
-                <button onclick="openAddSlideModal()" class="bg-blue-100 text-blue-800 hover:bg-blue-200 px-4 py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm border border-blue-200">
-                    <span>➕</span> Add Slide
-                </button>
+      <div
+        class="w-full lg:w-4/5 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-start p-4 sm:p-6 relative h-full overflow-y-auto"
+      >
+        <!-- MAIN ACTION BAR -->
+        <div
+          class="w-full max-w-5xl flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 border-b border-gray-100 pb-4 gap-4"
+        >
+          <!-- Left Side: Layout & Add -->
+          <div
+            class="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 w-full sm:w-auto"
+          >
+            <div class="w-full sm:w-auto">
+              <label
+                class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                >Slide Layout</label
+              >
+              <select
+                id="slideLayoutSelector"
+                onchange="changeSlideLayout(this.value)"
+                class="w-full sm:w-auto p-3 sm:p-1.5 border border-gray-300 rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500 font-bold text-blue-900 shadow-sm"
+              >
+                <option value="standard">Standard (1 Column)</option>
+                <option value="split">Split (2 Columns)</option>
+                <option value="media">Full Media (Image)</option>
+              </select>
             </div>
+            <button
+              onclick="openAddSlideModal()"
+              class="w-full sm:w-auto justify-center bg-blue-100 text-blue-800 hover:bg-blue-200 px-4 py-3 sm:py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm border border-blue-200"
+            >
+              <span>➕</span> Add Slide
+            </button>
+          </div>
 
-            <!-- Right Side: Export & Save -->
-            <div class="flex items-center gap-3">
-                <span id="overflowWarning" class="hidden text-xs text-red-600 font-bold bg-red-50 px-2 py-1.5 rounded border border-red-200">
-                    ⚠️ Height Limit Reached
-                </span>
-                
-                <button onclick="savePresentationToCloud()" id="btnSavePresentation" class="bg-green-600 hover:bg-green-700 text-white px-5 py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm">
-                    <span>💾</span> Save
-                </button>
+          <!-- Right Side: Export & Save -->
+          <div
+            class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto"
+          >
+            <span
+              id="overflowWarning"
+              class="hidden w-full sm:w-auto text-center text-xs text-red-600 font-bold bg-red-50 px-2 py-2 sm:py-1.5 rounded border border-red-200"
+            >
+              ⚠️ Height Limit Reached
+            </span>
 
-                <button onclick="exportToPPTX()" class="bg-gray-800 hover:bg-gray-700 text-white px-5 py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm">
-                    <span>📥</span> Export
-                </button>
+            <div class="flex w-full sm:w-auto gap-3">
+              <button
+                onclick="savePresentationToCloud()"
+                id="btnSavePresentation"
+                class="flex-1 sm:flex-none justify-center bg-green-600 hover:bg-green-700 text-white px-5 py-3 sm:py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm"
+              >
+                <span>💾</span> Save
+              </button>
+
+              <button
+                onclick="exportToPPTX()"
+                class="flex-1 sm:flex-none justify-center bg-gray-800 hover:bg-gray-700 text-white px-5 py-3 sm:py-1.5 rounded font-bold transition shadow-sm flex items-center gap-2 text-sm"
+              >
+                <span>📥</span> Export
+              </button>
             </div>
+          </div>
         </div>
 
         <!-- UNIFIED TOOLBAR AREA -->
-        <div id="master-toolbar-container" class="w-full max-w-5xl mb-4 bg-gray-50 border border-gray-300 rounded-lg relative z-50 transition-opacity duration-200 min-h-[48px]">
-            <!-- Standard Toolbar -->
-            <div id="toolbar-standard" class="flex flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
-                <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
-                <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
-                <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                
-                <!-- 🚀 FIX: Swapped to <a> tag to evade Quill's 28px button height restriction -->
-                <a onclick="openPrefabModal()" class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap flex items-center gap-1">
-                    ✨ Insert Heading
-                </a>
-            </div>
-            
-            <!-- Left Toolbar -->
-            <div id="toolbar-left" class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
-                <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
-                <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
-                <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                
-                <!-- 🚀 FIX: Swapped to <a> tag -->
-                <a onclick="openPrefabModal()" class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap flex items-center gap-1">
-                    ✨ Insert Heading
-                </a>
-            </div>
-            
-            <!-- Right Toolbar -->
-            <div id="toolbar-right" class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-y-2">
-                <span class="ql-formats"><select class="ql-size"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select></span>
-                <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
-                <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
-                <span class="ql-formats mr-auto"><button class="ql-formula"></button></span>
-                
-                <!-- 🚀 FIX: Swapped to <a> tag -->
-                <a onclick="openPrefabModal()" class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded shadow-sm transition border border-blue-200 ml-2 whitespace-nowrap flex items-center gap-1">
-                    ✨ Insert Heading
-                </a>
-            </div>
+        <div
+          id="master-toolbar-container"
+          class="w-full max-w-5xl mb-4 bg-gray-50 border border-gray-300 rounded-lg relative z-50 transition-opacity duration-200 min-h-[48px]"
+        >
+          <!-- Standard Toolbar -->
+          <div
+            id="toolbar-standard"
+            class="flex flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-2"
+          >
+            <span class="ql-formats"
+              ><select class="ql-size">
+                <option value="small"></option>
+                <option selected></option>
+                <option value="large"></option>
+                <option value="huge"></option></select
+            ></span>
+            <span class="ql-formats"
+              ><button class="ql-bold"></button
+              ><button class="ql-italic"></button
+              ><button class="ql-underline"></button
+            ></span>
+            <span class="ql-formats"
+              ><button class="ql-list" value="ordered"></button
+              ><button class="ql-list" value="bullet"></button
+            ></span>
+            <span class="ql-formats mr-auto"
+              ><button class="ql-formula"></button
+            ></span>
+
+            <a
+              onclick="openPrefabModal()"
+              class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-2 sm:py-1.5 rounded shadow-sm transition border border-blue-200 whitespace-nowrap flex items-center gap-1"
+            >
+              ✨ Insert Heading
+            </a>
+          </div>
+
+          <!-- Left Toolbar -->
+          <div
+            id="toolbar-left"
+            class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-2"
+          >
+            <span class="ql-formats"
+              ><select class="ql-size">
+                <option value="small"></option>
+                <option selected></option>
+                <option value="large"></option>
+                <option value="huge"></option></select
+            ></span>
+            <span class="ql-formats"
+              ><button class="ql-bold"></button
+              ><button class="ql-italic"></button
+              ><button class="ql-underline"></button
+            ></span>
+            <span class="ql-formats"
+              ><button class="ql-list" value="ordered"></button
+              ><button class="ql-list" value="bullet"></button
+            ></span>
+            <span class="ql-formats mr-auto"
+              ><button class="ql-formula"></button
+            ></span>
+
+            <a
+              onclick="openPrefabModal()"
+              class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-2 sm:py-1.5 rounded shadow-sm transition border border-blue-200 whitespace-nowrap flex items-center gap-1"
+            >
+              ✨ Insert Heading
+            </a>
+          </div>
+
+          <!-- Right Toolbar -->
+          <div
+            id="toolbar-right"
+            class="hidden flex-wrap items-center bg-gray-50 p-2 w-full rounded-lg gap-2"
+          >
+            <span class="ql-formats"
+              ><select class="ql-size">
+                <option value="small"></option>
+                <option selected></option>
+                <option value="large"></option>
+                <option value="huge"></option></select
+            ></span>
+            <span class="ql-formats"
+              ><button class="ql-bold"></button
+              ><button class="ql-italic"></button
+              ><button class="ql-underline"></button
+            ></span>
+            <span class="ql-formats"
+              ><button class="ql-list" value="ordered"></button
+              ><button class="ql-list" value="bullet"></button
+            ></span>
+            <span class="ql-formats mr-auto"
+              ><button class="ql-formula"></button
+            ></span>
+
+            <a
+              onclick="openPrefabModal()"
+              class="cursor-pointer text-xs font-black text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-2 sm:py-1.5 rounded shadow-sm transition border border-blue-200 whitespace-nowrap flex items-center gap-1"
+            >
+              ✨ Insert Heading
+            </a>
+          </div>
         </div>
 
         <!-- 16:9 Aspect Ratio Canvas -->
-        <div class="w-full max-w-5xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md shrink-0" id="slide-canvas" style="background-color: #f8fafc;">
-          
-          <!-- 12% Top Ribbon -->
-          <div id="slide-ribbon" class="h-[12%] w-full bg-blue-50/80 backdrop-blur-sm border-b border-blue-100 flex items-center px-6 justify-between z-20 transition-all">
-            <div class="flex items-center gap-3">
-              <img src="assets/New Adminerva logo.png" class="h-8 opacity-80" alt="Logo" />
+        <div
+          class="w-full max-w-5xl aspect-[16/9] bg-cover bg-center bg-no-repeat border-2 border-gray-300 relative overflow-hidden flex flex-col group shadow-md shrink-0"
+          id="slide-canvas"
+          style="background-color: #f8fafc"
+        >
+          <div
+            id="slide-ribbon"
+            class="h-[12%] w-full bg-blue-50/80 backdrop-blur-sm border-b border-blue-100 flex items-center px-4 sm:px-6 justify-between z-20 transition-all"
+          >
+            <div class="flex items-center gap-2 sm:gap-3">
+              <img
+                src="assets/New Adminerva logo.png"
+                class="h-6 sm:h-8 opacity-80"
+                alt="Logo"
+              />
               <div class="flex flex-col">
-                <span id="ribbon-title" class="text-xs font-bold text-blue-900 uppercase tracking-wide leading-none">Main Lesson Title</span>
-                <span id="ribbon-subtitle" class="text-[9px] text-gray-500 leading-none mt-1 truncate w-64 md:w-96">Subtopic Context</span>
+                <span
+                  id="ribbon-title"
+                  class="text-[10px] sm:text-xs font-bold text-blue-900 uppercase tracking-wide leading-none"
+                  >Main Lesson Title</span
+                >
+                <span
+                  id="ribbon-subtitle"
+                  class="text-[8px] sm:text-[9px] text-gray-500 leading-none mt-1 truncate w-40 sm:w-64 md:w-96"
+                  >Subtopic Context</span
+                >
               </div>
             </div>
           </div>
 
           <!-- LAYOUT 1: Standard -->
-          <div id="layout-standard" class="flex-1 flex flex-col relative z-20 bg-white/40 backdrop-blur-[2px]">
-            <div class="flex-1 p-8">
-              <div id="editor-container" class="h-full w-full text-2xl leading-relaxed text-gray-900 border-none outline-none"></div>
+          <div
+            id="layout-standard"
+            class="flex-1 flex flex-col relative z-20 bg-white/40 backdrop-blur-[2px]"
+          >
+            <div class="flex-1 p-4 sm:p-8">
+              <div
+                id="editor-container"
+                class="h-full w-full text-base sm:text-2xl leading-relaxed text-gray-900 border-none outline-none"
+              ></div>
             </div>
           </div>
 
           <!-- LAYOUT 2: Split -->
-          <div id="layout-split" class="hidden flex-1 relative z-20 bg-white/40 backdrop-blur-[2px]">
+          <div
+            id="layout-split"
+            class="hidden flex-1 relative z-20 bg-white/40 backdrop-blur-[2px]"
+          >
             <div class="flex h-full w-full">
               <div class="flex-1 flex flex-col border-r border-gray-300/50">
-                <div class="flex-1 p-5"><div id="editor-left" class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"></div></div>
+                <div class="flex-1 p-3 sm:p-5">
+                  <div
+                    id="editor-left"
+                    class="h-full w-full text-sm sm:text-xl leading-relaxed text-gray-900 border-none outline-none"
+                  ></div>
+                </div>
               </div>
               <div class="flex-1 flex flex-col">
-                <div class="flex-1 p-5"><div id="editor-right" class="h-full w-full text-xl leading-relaxed text-gray-900 border-none outline-none"></div></div>
+                <div class="flex-1 p-3 sm:p-5">
+                  <div
+                    id="editor-right"
+                    class="h-full w-full text-sm sm:text-xl leading-relaxed text-gray-900 border-none outline-none"
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- LAYOUT 3: Full Media -->
-          <div id="layout-media" class="hidden absolute inset-0 z-30 bg-black/90 flex-col items-center justify-center group">
-              <img id="media-preview-img" src="" class="hidden max-w-full max-h-full object-contain">
-              <div id="media-upload-ui" class="text-center p-6 bg-white/10 backdrop-blur rounded-xl border border-white/20">
-                  <span class="block text-4xl mb-3">🖼️</span>
-                  <p class="text-white font-bold text-lg mb-4">Media Slide</p>
-                  <button onclick="document.getElementById('mediaFileInput').click()" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-bold shadow hover:bg-blue-700 transition">Upload Image</button>
-                  <p class="text-[10px] text-gray-400 mt-3">JPEG/PNG Max 800KB</p>
-                  <input type="file" id="mediaFileInput" accept="image/*" class="hidden" onchange="handleMediaUpload(event)">
-              </div>
-              <button onclick="clearMediaSlide()" class="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hidden group-hover:block transition shadow">✖ Remove</button>
+          <div
+            id="layout-media"
+            class="hidden absolute inset-0 z-30 bg-black/90 flex-col items-center justify-center group"
+          >
+            <img
+              id="media-preview-img"
+              src=""
+              class="hidden max-w-full max-h-full object-contain"
+            />
+            <div
+              id="media-upload-ui"
+              class="text-center p-4 sm:p-6 bg-white/10 backdrop-blur rounded-xl border border-white/20"
+            >
+              <span class="block text-3xl sm:text-4xl mb-3">🖼️</span>
+              <p class="text-white font-bold text-base sm:text-lg mb-4">
+                Media Slide
+              </p>
+              <button
+                onclick="document.getElementById('mediaFileInput').click()"
+                class="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded text-sm font-bold shadow hover:bg-blue-700 transition"
+              >
+                Upload Image
+              </button>
+              <p class="text-[10px] text-gray-400 mt-3">JPEG/PNG Max 800KB</p>
+              <input
+                type="file"
+                id="mediaFileInput"
+                accept="image/*"
+                class="hidden"
+                onchange="handleMediaUpload(event)"
+              />
+            </div>
+            <button
+              onclick="clearMediaSlide()"
+              class="absolute top-2 right-2 sm:top-4 sm:right-4 bg-red-600/80 hover:bg-red-600 text-white px-3 py-2 sm:py-1 rounded text-xs font-bold hidden group-hover:block transition shadow"
+            >
+              ✖ Remove
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 🚀 ADD SLIDE MODAL -->
-    <div id="addSlideModal" class="hidden fixed inset-0 bg-gray-900/80 z-[100] items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative">
-            <button onclick="closeAddSlideModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">✖</button>
-            <h3 class="text-xl font-black text-blue-900 mb-2">Add New Slide</h3>
-            <p class="text-sm text-gray-500 mb-6">Select a layout template for your new slide.</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Standard -->
-                <div onclick="confirmAddSlide('standard')" class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group">
-                    <div class="h-24 bg-gray-100 rounded mb-3 flex flex-col border border-gray-200">
-                        <div class="h-3 w-full bg-blue-100 rounded-t"></div>
-                        <div class="flex-1 p-2"><div class="w-full h-2 bg-gray-300 rounded mb-1"></div><div class="w-3/4 h-2 bg-gray-300 rounded"></div></div>
-                    </div>
-                    <div class="text-center font-bold text-gray-700 group-hover:text-blue-600">Standard</div>
-                    <div class="text-[10px] text-center text-gray-400 mt-1">1 Column Text</div>
-                </div>
-                <!-- Split -->
-                <div onclick="confirmAddSlide('split')" class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group">
-                    <div class="h-24 bg-gray-100 rounded mb-3 flex flex-col border border-gray-200">
-                        <div class="h-3 w-full bg-blue-100 rounded-t"></div>
-                        <div class="flex-1 flex gap-1 p-2">
-                            <div class="flex-1 border-r border-gray-300 pr-1"><div class="w-full h-2 bg-gray-300 rounded mb-1"></div><div class="w-3/4 h-2 bg-gray-300 rounded"></div></div>
-                            <div class="flex-1 pl-1"><div class="w-full h-2 bg-gray-300 rounded mb-1"></div><div class="w-1/2 h-2 bg-gray-300 rounded"></div></div>
-                        </div>
-                    </div>
-                    <div class="text-center font-bold text-gray-700 group-hover:text-blue-600">Split</div>
-                    <div class="text-[10px] text-center text-gray-400 mt-1">2 Columns Text</div>
-                </div>
-                <!-- Media -->
-                <div onclick="confirmAddSlide('media')" class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group">
-                    <div class="h-24 bg-gray-800 rounded mb-3 flex items-center justify-center border border-gray-900">
-                        <span class="text-3xl">🖼️</span>
-                    </div>
-                    <div class="text-center font-bold text-gray-700 group-hover:text-blue-600">Full Media</div>
-                    <div class="text-[10px] text-center text-gray-400 mt-1">Image / Diagram</div>
-                </div>
+    <!-- ADD SLIDE MODAL -->
+    <div
+      id="addSlideModal"
+      class="hidden fixed inset-0 bg-gray-900/80 z-[100] items-center justify-center p-4 backdrop-blur-sm"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-5 sm:p-6 relative max-h-[90vh] overflow-y-auto"
+      >
+        <button
+          onclick="closeAddSlideModal()"
+          class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold p-2 leading-none"
+        >
+          &times;
+        </button>
+        <h3
+          class="text-lg sm:text-xl font-black text-blue-900 mb-2 mt-2 sm:mt-0"
+        >
+          Add New Slide
+        </h3>
+        <p class="text-xs sm:text-sm text-gray-500 mb-6">
+          Select a layout template for your new slide.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            onclick="confirmAddSlide('standard')"
+            class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group"
+          >
+            <div
+              class="h-24 bg-gray-100 rounded mb-3 flex flex-col border border-gray-200"
+            >
+              <div class="h-3 w-full bg-blue-100 rounded-t"></div>
+              <div class="flex-1 p-2">
+                <div class="w-full h-2 bg-gray-300 rounded mb-1"></div>
+                <div class="w-3/4 h-2 bg-gray-300 rounded"></div>
+              </div>
             </div>
-        </div>
-    </div>
-    
-    </div>
-    
-<!-- 🚀 PREFAB HEADING MODAL -->
-    <div id="prefabHeadingModal" class="hidden fixed inset-0 bg-gray-900/80 z-[100] items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 relative">
-            <button onclick="closePrefabModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">✖</button>
-            <h3 class="text-xl font-black text-blue-900 mb-6 border-b pb-3">Select heading</h3>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onclick="injectPrefab('💡', 'Do you understand?', '#eab308')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-xl shadow-sm border border-yellow-200 group-hover:scale-110 transition">💡</div>
-                    <span class="font-bold text-gray-800 text-sm">Do you understand?</span>
-                </button>
-                <button onclick="injectPrefab('🔑', 'Keypoints', '#ef4444')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-red-50 hover:border-red-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-xl shadow-sm border border-red-200 group-hover:scale-110 transition">🔑</div>
-                    <span class="font-bold text-gray-800 text-sm">Keypoints</span>
-                </button>
-                <button onclick="injectPrefab('📖', 'Learn about it!', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">📖</div>
-                    <span class="font-bold text-gray-800 text-sm">Learn about it!</span>
-                </button>
-                <button onclick="injectPrefab('💭', 'Let&apos;s think!', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
-    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">💭</div>
-    <span class="font-bold text-gray-800 text-sm">Let's think!</span>
-</button>
-                <button onclick="injectPrefab('🎯', 'Objectives', '#0284c7')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl shadow-sm border border-blue-200 group-hover:scale-110 transition">🎯</div>
-                    <span class="font-bold text-gray-800 text-sm">Objectives</span>
-                </button>
-                <button onclick="injectPrefab('👁️', 'See it!', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">👁️</div>
-                    <span class="font-bold text-gray-800 text-sm">See it!</span>
-                </button>
-                <button onclick="injectPrefab('🧩', 'Solve it another way!', '#d946ef')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-fuchsia-50 hover:border-fuchsia-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-fuchsia-100 flex items-center justify-center text-xl shadow-sm border border-fuchsia-200 group-hover:scale-110 transition">🧩</div>
-                    <span class="font-bold text-gray-800 text-sm">Solve it another way!</span>
-                </button>
-                <button onclick="injectPrefab('📌', 'Tips', '#eab308')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-xl shadow-sm border border-yellow-200 group-hover:scale-110 transition">📌</div>
-                    <span class="font-bold text-gray-800 text-sm">Tips</span>
-                </button>
-                <button onclick="injectPrefab('⚙️', 'Try it!', '#d946ef')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-fuchsia-50 hover:border-fuchsia-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-fuchsia-100 flex items-center justify-center text-xl shadow-sm border border-fuchsia-200 group-hover:scale-110 transition">⚙️</div>
-                    <span class="font-bold text-gray-800 text-sm">Try it!</span>
-                </button>
-                <button onclick="injectPrefab('🤔', 'What do you think?', '#0ea5e9')" class="flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group">
-                    <div class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition">🤔</div>
-                    <span class="font-bold text-gray-800 text-sm">What do you think?</span>
-                </button>
+            <div
+              class="text-center font-bold text-gray-700 group-hover:text-blue-600"
+            >
+              Standard
             </div>
+            <div class="text-[10px] text-center text-gray-400 mt-1">
+              1 Column Text
+            </div>
+          </div>
+          <div
+            onclick="confirmAddSlide('split')"
+            class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group"
+          >
+            <div
+              class="h-24 bg-gray-100 rounded mb-3 flex flex-col border border-gray-200"
+            >
+              <div class="h-3 w-full bg-blue-100 rounded-t"></div>
+              <div class="flex-1 flex gap-1 p-2">
+                <div class="flex-1 border-r border-gray-300 pr-1">
+                  <div class="w-full h-2 bg-gray-300 rounded mb-1"></div>
+                  <div class="w-3/4 h-2 bg-gray-300 rounded"></div>
+                </div>
+                <div class="flex-1 pl-1">
+                  <div class="w-full h-2 bg-gray-300 rounded mb-1"></div>
+                  <div class="w-1/2 h-2 bg-gray-300 rounded"></div>
+                </div>
+              </div>
+            </div>
+            <div
+              class="text-center font-bold text-gray-700 group-hover:text-blue-600"
+            >
+              Split
+            </div>
+            <div class="text-[10px] text-center text-gray-400 mt-1">
+              2 Columns Text
+            </div>
+          </div>
+          <div
+            onclick="confirmAddSlide('media')"
+            class="border-2 border-gray-200 hover:border-blue-500 rounded-lg p-4 cursor-pointer transition group"
+          >
+            <div
+              class="h-24 bg-gray-800 rounded mb-3 flex items-center justify-center border border-gray-900"
+            >
+              <span class="text-3xl">🖼️</span>
+            </div>
+            <div
+              class="text-center font-bold text-gray-700 group-hover:text-blue-600"
+            >
+              Full Media
+            </div>
+            <div class="text-[10px] text-center text-gray-400 mt-1">
+              Image / Diagram
+            </div>
+          </div>
         </div>
+      </div>
     </div>
-    <!-- 🚀 FIXED SCRIPTS (No Stray Tags) -->
+
+    <!-- PREFAB HEADING MODAL -->
+    <div
+      id="prefabHeadingModal"
+      class="hidden fixed inset-0 bg-gray-900/80 z-[100] items-center justify-center p-4 backdrop-blur-sm"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-5 sm:p-6 relative max-h-[90vh] overflow-y-auto"
+      >
+        <button
+          onclick="closePrefabModal()"
+          class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold p-2 leading-none"
+        >
+          &times;
+        </button>
+        <h3
+          class="text-lg sm:text-xl font-black text-blue-900 mb-4 sm:mb-6 border-b pb-3 mt-2 sm:mt-0"
+        >
+          Select heading
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <button
+            onclick="injectPrefab('💡', 'Do you understand?', '#eab308')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-xl shadow-sm border border-yellow-200 group-hover:scale-110 transition shrink-0"
+            >
+              💡
+            </div>
+            <span class="font-bold text-gray-800 text-sm"
+              >Do you understand?</span
+            >
+          </button>
+          <button
+            onclick="injectPrefab('🔑', 'Keypoints', '#ef4444')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-red-50 hover:border-red-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-xl shadow-sm border border-red-200 group-hover:scale-110 transition shrink-0"
+            >
+              🔑
+            </div>
+            <span class="font-bold text-gray-800 text-sm">Keypoints</span>
+          </button>
+          <button
+            onclick="injectPrefab('📖', 'Learn about it!', '#0ea5e9')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition shrink-0"
+            >
+              📖
+            </div>
+            <span class="font-bold text-gray-800 text-sm">Learn about it!</span>
+          </button>
+
+          <!-- 🚀 FIXED SYNTAX ERROR HERE -->
+          <button
+            onclick="injectPrefab('💭', 'Let\'s think!', '#0ea5e9')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition shrink-0"
+            >
+              💭
+            </div>
+            <span class="font-bold text-gray-800 text-sm">Let's think!</span>
+          </button>
+
+          <button
+            onclick="injectPrefab('🎯', 'Objectives', '#0284c7')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl shadow-sm border border-blue-200 group-hover:scale-110 transition shrink-0"
+            >
+              🎯
+            </div>
+            <span class="font-bold text-gray-800 text-sm">Objectives</span>
+          </button>
+          <button
+            onclick="injectPrefab('👁️', 'See it!', '#0ea5e9')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition shrink-0"
+            >
+              👁️
+            </div>
+            <span class="font-bold text-gray-800 text-sm">See it!</span>
+          </button>
+          <button
+            onclick="injectPrefab('🧩', 'Solve it another way!', '#d946ef')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-fuchsia-50 hover:border-fuchsia-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-fuchsia-100 flex items-center justify-center text-xl shadow-sm border border-fuchsia-200 group-hover:scale-110 transition shrink-0"
+            >
+              🧩
+            </div>
+            <span class="font-bold text-gray-800 text-sm"
+              >Solve it another way!</span
+            >
+          </button>
+          <button
+            onclick="injectPrefab('📌', 'Tips', '#eab308')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-yellow-50 hover:border-yellow-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-xl shadow-sm border border-yellow-200 group-hover:scale-110 transition shrink-0"
+            >
+              📌
+            </div>
+            <span class="font-bold text-gray-800 text-sm">Tips</span>
+          </button>
+          <button
+            onclick="injectPrefab('⚙️', 'Try it!', '#d946ef')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-fuchsia-50 hover:border-fuchsia-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-fuchsia-100 flex items-center justify-center text-xl shadow-sm border border-fuchsia-200 group-hover:scale-110 transition shrink-0"
+            >
+              ⚙️
+            </div>
+            <span class="font-bold text-gray-800 text-sm">Try it!</span>
+          </button>
+          <button
+            onclick="injectPrefab('🤔', 'What do you think?', '#0ea5e9')"
+            class="w-full flex items-center gap-4 p-3 border rounded-lg hover:bg-sky-50 hover:border-sky-300 transition text-left group"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-sm border border-sky-200 group-hover:scale-110 transition shrink-0"
+            >
+              🤔
+            </div>
+            <span class="font-bold text-gray-800 text-sm"
+              >What do you think?</span
+            >
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="js/presentation-review/presentation-ui.js?v=5"></script>
     <script
       type="module"
