@@ -13,6 +13,8 @@ import {
   signOut,
   linkWithPopup,
   GithubAuthProvider,
+  signInWithPopup,
+  reauthenticateWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 let userProfiles = [];
@@ -152,8 +154,6 @@ async function loadDashboardProfile(studentData) {
   const cacheRef = doc(db, "student_dashboard_cache", studentData.docId);
 
   // 🚨 THE FIX: Wrap the database call in a try/catch.
-  // If the student gets blocked by a Firebase Security Rule, the script will catch the error
-  // instead of crashing, allowing it to proceed and reveal the GitHub button below.
   try {
     const cacheSnap = await getDoc(cacheRef);
     if (cacheSnap.exists()) {
@@ -166,7 +166,7 @@ async function loadDashboardProfile(studentData) {
       "Database read bypassed (Likely missing permissions). Continuing to UI load.",
     );
   }
-  // Because the script didn't crash above, the student will now successfully see the button.
+
   if (!studentData.githubToken) {
     overlay.classList.remove("hidden");
     return;
@@ -221,35 +221,62 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
   }
 }
 
+// 🚨 UPDATED: Smart Auth Flow
 async function linkGithubAccount() {
   const provider = new GithubAuthProvider();
   provider.addScope("repo");
+  provider.addScope("read:user");
 
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+
+  const isAlreadyGithub = currentUser.providerData.some(
+    (p) => p.providerId === "github.com",
+  );
+
+  let result;
   try {
-    const result = await linkWithPopup(auth.currentUser, provider);
-    const credential = GithubAuthProvider.credentialFromResult(result);
-    const token = credential.accessToken;
-    const verifiedUsername = result.user.reloadUserInfo.providerUserInfo.find(
-      (p) => p.providerId === "github.com",
-    ).screenName;
+    if (isAlreadyGithub) {
+      // User is already signed in with GitHub — just re-authenticate to refresh credentials
+      result = await reauthenticateWithPopup(currentUser, provider);
+    } else {
+      // User is signed in with Google — link their GitHub identity
+      result = await linkWithPopup(currentUser, provider);
+    }
+  } catch (error) {
+    // If linking says credential already in use, sign in with popup to claim the token directly
+    if (error.code === "auth/credential-already-in-use") {
+      result = await signInWithPopup(auth, provider);
+    } else {
+      alert("GitHub Connection Failed: " + error.message);
+      return;
+    }
+  }
 
+  const credential = GithubAuthProvider.credentialFromResult(result);
+  const token = credential?.accessToken;
+  const verifiedUsername =
+    result._tokenResponse?.screenName ||
+    result.user?.reloadUserInfo?.screenName ||
+    result.user?.reloadUserInfo?.providerUserInfo?.find(
+      (p) => p.providerId === "github.com",
+    )?.screenName;
+
+  if (token && currentStudentProfile?.docId) {
     const docRef = doc(db, "students", currentStudentProfile.docId);
-    await setDoc(
-      docRef,
-      {
-        githubToken: token,
-        githubUsername: verifiedUsername,
-      },
-      { merge: true },
-    );
+    const updateData = { githubToken: token };
+    if (verifiedUsername) updateData.githubUsername = verifiedUsername;
+
+    await setDoc(docRef, updateData, { merge: true });
 
     currentStudentProfile.githubToken = token;
-    currentStudentProfile.githubUsername = verifiedUsername;
+    if (verifiedUsername)
+      currentStudentProfile.githubUsername = verifiedUsername;
 
-    document.getElementById("githubAuthOverlay").classList.add("hidden");
+    const overlay = document.getElementById("githubAuthOverlay");
+    if (overlay) overlay.classList.add("hidden");
+
     loadDashboardProfile(currentStudentProfile);
-  } catch (error) {
-    alert("GitHub Connection Failed: " + error.message);
   }
 }
 
@@ -450,7 +477,6 @@ async function verifyStudentSetup(studentData) {
     repo = urlParts.pop();
     owner = urlParts.pop();
 
-    // The fetch now uses the student's exact personal token, even during impersonation
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=5`,
       {
