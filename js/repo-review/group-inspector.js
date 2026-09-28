@@ -128,7 +128,7 @@ window.fetchGroupRepos = async function () {
         // 🔒 Security Patch: Strict Regex matching to satisfy CodeQL's substring validation
         const parsedUrl = new URL(url);
         const match = parsedUrl.pathname.match(
-          /\/([^/]+)\/([^/.]+)(?:\.git|\/)?$/,
+          /\/([^/]+)\/([^/]+?)(?:\.git|\/)?$/,
         );
         if (!match) throw new Error("Invalid GitHub URL format");
         const owner = match[1];
