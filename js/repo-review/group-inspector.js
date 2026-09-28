@@ -9,6 +9,8 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+const CACHE_VERSION = 2; // 🚀 THE FIX: Bumping this forces the system to ignore old 0-commit caches
+
 let repoGroups = {};
 let studentStatsMap = {};
 
@@ -166,9 +168,11 @@ window.fetchGroupRepos = async function () {
         // ==========================================
         // 🚀 THE FAST-PATH: INSTANT CACHE HIT
         // ==========================================
+        // We now check if the cacheVersion matches our new script version!
         if (
           cachedData.latestSha === currentCommits[0].sha &&
-          cachedData.studentStats
+          cachedData.studentStats &&
+          cachedData.cacheVersion === CACHE_VERSION
         ) {
           repoGroups[url].members.forEach((m) => {
             if (cachedData.studentStats[m.id]) {
@@ -193,12 +197,16 @@ window.fetchGroupRepos = async function () {
         });
 
         for (let c of currentCommits) {
-          // Extract all 3 identities provided by GitHub
-          const authorLogin = (c.author?.login || "").toLowerCase();
-          const authorName = (c.commit?.author?.name || "").toLowerCase();
-          const authorEmail = (c.commit?.author?.email || "").toLowerCase();
+          // 🚀 THE FIX: Added .trim() to wipe out hidden spaces from unverified terminal configs
+          const authorLogin = (c.author?.login || "").toLowerCase().trim();
+          const authorName = (c.commit?.author?.name || "")
+            .toLowerCase()
+            .trim();
+          const authorEmail = (c.commit?.author?.email || "")
+            .toLowerCase()
+            .trim();
 
-          // 🚀 THE FIX: Advanced Cross-Matching Matrix
+          // 🚀 Advanced Cross-Matching Matrix
           const member = repoGroups[url].members.find((m) => {
             const dbUsername = (m.githubUsername || "").toLowerCase().trim();
             const dbEmail = (m.email || "").toLowerCase().trim();
@@ -217,7 +225,6 @@ window.fetchGroupRepos = async function () {
             if (authorName && dbUsername === authorName) return true;
 
             // 5. Partial Name Match: Check if the CSV Name is a subset of the GitHub Display Name
-            // Example: DB Name "Benito Ursal" matches GitHub Name "Benito Eliezer Ursal"
             if (authorName && dbName) {
               const nameParts = dbName.split(" ").filter((w) => w.length > 2);
               if (
@@ -306,6 +313,7 @@ window.fetchGroupRepos = async function () {
             latestSha: currentCommits[0].sha,
             commitsCache: commitsCache,
             studentStats: tempStats,
+            cacheVersion: CACHE_VERSION, // 🚀 Marks this cache with the new version!
           },
           { merge: true },
         );
@@ -341,7 +349,6 @@ function renderGroupsUI() {
   Object.entries(repoGroups).forEach(([url, groupData]) => {
     if (url === "unassigned") return;
 
-    // 🔒 Security Patch: Wrap groupName and URLs with escapeHTML
     let groupName = "Unknown Repo";
     try {
       const parsedUrl = new URL(url);
@@ -360,7 +367,6 @@ function renderGroupsUI() {
       const stats = studentStatsMap[student.id];
       const hasCommits = stats.count > 0;
 
-      // 🔒 Security Patch: Sanitize student credentials
       const safeName = escapeHTML(student.name);
       const safeGithub = escapeHTML(student.githubUsername || "?");
 
@@ -416,12 +422,11 @@ window.openStudentDetails = function (studentId) {
   document.getElementById("detAdded").textContent = "+" + stats.additions;
   document.getElementById("detDeleted").textContent = "-" + stats.deletions;
 
-  // 🔒 Security Patch: Create DOM nodes strictly as text content instead of innerHTML string mapping
   const commitList = document.getElementById("detCommitList");
   commitList.innerHTML = "";
   stats.messages.forEach((msg) => {
     const li = document.createElement("li");
-    li.textContent = msg; // textContent forces the browser to ignore executable HTML tags
+    li.textContent = msg;
     commitList.appendChild(li);
   });
 
