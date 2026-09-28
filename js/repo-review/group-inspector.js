@@ -9,7 +9,7 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const CACHE_VERSION = 2; // 🚀 THE FIX: Bumping this forces the system to ignore old 0-commit caches
+const CACHE_VERSION = 3; // 🚀 THE FIX: Bumped to force rebuild with Committer data
 
 let repoGroups = {};
 let studentStatsMap = {};
@@ -206,7 +206,18 @@ window.fetchGroupRepos = async function () {
             .toLowerCase()
             .trim();
 
-          // 🚀 Advanced Cross-Matching Matrix
+          // 🚀 THE FIX: Extracted committer data to catch web UI commits and merged PRs
+          const committerLogin = (c.committer?.login || "")
+            .toLowerCase()
+            .trim();
+          const committerName = (c.commit?.committer?.name || "")
+            .toLowerCase()
+            .trim();
+          const committerEmail = (c.commit?.committer?.email || "")
+            .toLowerCase()
+            .trim();
+
+          // 🚀 Advanced Cross-Matching Matrix (Now includes Committer)
           const member = repoGroups[url].members.find((m) => {
             const dbUsername = (m.githubUsername || "").toLowerCase().trim();
             const dbEmail = (m.email || "").toLowerCase().trim();
@@ -214,15 +225,19 @@ window.fetchGroupRepos = async function () {
 
             // 1. Exact Match: Official Username to GitHub Login
             if (authorLogin && dbUsername === authorLogin) return true;
+            if (committerLogin && dbUsername === committerLogin) return true;
 
             // 2. Exact Match: Official Email to GitHub Terminal Email
             if (authorEmail && dbEmail === authorEmail) return true;
+            if (committerEmail && dbEmail === committerEmail) return true;
 
             // 3. Exact Match: Official Name to GitHub Terminal Name
             if (authorName && dbName === authorName) return true;
+            if (committerName && dbName === committerName) return true;
 
             // 4. Cross-Match: Student mistakenly pasted their Display Name into the Username box
             if (authorName && dbUsername === authorName) return true;
+            if (committerName && dbUsername === committerName) return true;
 
             // 5. Partial Name Match: Check if the CSV Name is a subset of the GitHub Display Name
             if (authorName && dbName) {
@@ -233,11 +248,25 @@ window.fetchGroupRepos = async function () {
               )
                 return true;
             }
+            if (committerName && dbName) {
+              const nameParts = dbName.split(" ").filter((w) => w.length > 2);
+              if (
+                nameParts.length > 0 &&
+                nameParts.every((part) => committerName.includes(part))
+              )
+                return true;
+            }
 
             // 6. Ghost Check: Hidden GitHub alias emails (e.g. ID+username@users.noreply.github.com)
             if (
               authorEmail &&
               authorEmail.includes(dbUsername) &&
+              dbUsername.length > 3
+            )
+              return true;
+            if (
+              committerEmail &&
+              committerEmail.includes(dbUsername) &&
               dbUsername.length > 3
             )
               return true;
