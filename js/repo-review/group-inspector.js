@@ -102,6 +102,7 @@ window.fetchGroupRepos = async function () {
       // Baseline clean slate for every student
       studentStatsMap[student.id] = {
         name: student.name,
+        email: student.email, // Ensure email is tracked
         repoUrl: url,
         githubUsername: (student.githubUsername || "").toLowerCase().trim(),
         count: 0,
@@ -192,14 +193,23 @@ window.fetchGroupRepos = async function () {
         });
 
         for (let c of currentCommits) {
+          // 🚀 THE FIX: Extract all 3 identities provided by GitHub
           const authorLogin = (c.author?.login || "").toLowerCase();
           const authorName = (c.commit?.author?.name || "").toLowerCase();
+          const authorEmail = (c.commit?.author?.email || "").toLowerCase();
 
-          const member = repoGroups[url].members.find(
-            (m) =>
-              (m.githubUsername || "").toLowerCase().trim() === authorLogin ||
-              (m.name || "").toLowerCase().trim() === authorName,
-          );
+          // 🚀 THE FIX: Match against Database Username, Email, OR Real Name (preventing empty string matches)
+          const member = repoGroups[url].members.find((m) => {
+            const dbUsername = (m.githubUsername || "").toLowerCase().trim();
+            const dbEmail = (m.email || "").toLowerCase().trim();
+            const dbName = (m.name || "").toLowerCase().trim();
+
+            if (authorLogin && dbUsername === authorLogin) return true;
+            if (authorEmail && dbEmail === authorEmail) return true;
+            if (authorName && dbName === authorName) return true;
+
+            return false;
+          });
 
           if (member) {
             const stats = tempStats[member.id];
