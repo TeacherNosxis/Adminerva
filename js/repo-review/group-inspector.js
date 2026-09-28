@@ -133,6 +133,50 @@ window.fetchGroupRepos = async function () {
         if (!match) throw new Error("Invalid GitHub URL format");
         const owner = match[1];
         const repo = match[2];
+        // ==========================================
+        // 🔄 AUTO-UPDATE RENAME LOGIC
+        // ==========================================
+        try {
+          const repoInfoRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}`,
+            { headers: { Authorization: `Bearer ${ghToken}` } },
+          );
+
+          if (repoInfoRes.ok) {
+            const repoInfo = await repoInfoRes.json();
+            const actualUrl = repoInfo.html_url + ".git"; // Standardize with .git
+
+            // If GitHub's current canonical URL doesn't match the database URL
+            if (
+              url.toLowerCase() !== actualUrl.toLowerCase() &&
+              url.toLowerCase() !== repoInfo.html_url.toLowerCase()
+            ) {
+              console.log(
+                `Auto-fixing renamed repository: ${url} -> ${actualUrl}`,
+              );
+
+              // 1. Update Firestore so it's permanently fixed for future page loads
+              const updatePromises = repoGroups[url].members.map((m) =>
+                setDoc(
+                  doc(db, "students", m.id),
+                  { repoUrl: actualUrl },
+                  { merge: true },
+                ),
+              );
+              await Promise.all(updatePromises);
+
+              // 2. Update the local variables so the rest of the script uses the new name
+              owner = repoInfo.owner.login;
+              repo = repoInfo.name;
+
+              // 3. Update the UI string so it displays correctly immediately
+              url = actualUrl;
+            }
+          }
+        } catch (autoUpdateError) {
+          console.warn("Failed to check for repo renames", autoUpdateError);
+        }
+        // ==========================================
 
         // 1. Check Firebase Cache
         const cacheRef = doc(db, "group_repo_cache", repoId);
