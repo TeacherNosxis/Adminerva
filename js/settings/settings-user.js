@@ -486,7 +486,6 @@ async function verifyRepoStatusCache(stu, token) {
     updateDOMStatus(stu);
     return;
   }
-
   try {
     // 🔒 Security Patch: Native URL parsing to sanitize URL substrings
     let owner, repo;
@@ -505,6 +504,45 @@ async function verifyRepoStatusCache(stu, token) {
       updateDOMStatus(stu);
       return;
     }
+
+    // ==========================================
+    // 🔄 AUTO-UPDATE RENAME LOGIC (DIRECTORY)
+    // ==========================================
+    try {
+      const repoInfoRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (repoInfoRes.ok) {
+        const repoInfo = await repoInfoRes.json();
+        const actualUrl = repoInfo.html_url + ".git";
+
+        if (
+          stu.repoUrl.toLowerCase() !== actualUrl.toLowerCase() &&
+          stu.repoUrl.toLowerCase() !== repoInfo.html_url.toLowerCase()
+        ) {
+          console.log(
+            `Auto-fixing renamed repository in directory: ${stu.repoUrl} -> ${actualUrl}`,
+          );
+
+          // 1. Permanently fix it in the database
+          await setDoc(
+            doc(db, "students", stu.id),
+            { repoUrl: actualUrl },
+            { merge: true },
+          );
+
+          // 2. Update local variables so the status check below uses the new name
+          stu.repoUrl = actualUrl;
+          owner = repoInfo.owner.login;
+          repo = repoInfo.name;
+        }
+      }
+    } catch (autoUpdateError) {
+      console.warn("Directory rename check failed", autoUpdateError);
+    }
+    // ==========================================
 
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`,

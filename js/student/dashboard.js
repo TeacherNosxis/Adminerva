@@ -214,6 +214,49 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
     const urlParts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
     const repo = urlParts.pop();
     const owner = urlParts.pop();
+    // ==========================================
+    // 🔄 AUTO-UPDATE RENAME LOGIC (DASHBOARD)
+    // ==========================================
+    try {
+      const repoInfoRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (repoInfoRes.ok) {
+        const repoInfo = await repoInfoRes.json();
+        const actualUrl = repoInfo.html_url + ".git";
+
+        if (
+          repoUrl.toLowerCase() !== actualUrl.toLowerCase() &&
+          repoUrl.toLowerCase() !== repoInfo.html_url.toLowerCase()
+        ) {
+          console.log(
+            `Auto-fixing renamed repository in dashboard: ${repoUrl} -> ${actualUrl}`,
+          );
+
+          // 1. Update Firestore permanently
+          await setDoc(
+            doc(db, "students", currentStudentProfile.docId),
+            { repoUrl: actualUrl },
+            { merge: true },
+          );
+
+          // 2. Update local variables for the upcoming commit fetch
+          owner = repoInfo.owner.login;
+          repo = repoInfo.name;
+
+          // 3. Update the UI link instantly so the student sees the correct repo name
+          const subtitle = document.getElementById("repoSubtitle");
+          if (subtitle) {
+            subtitle.innerHTML = `<strong>${escapeHTML(currentStudentProfile.section)}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${escapeHTML(currentStudentProfile.githubUsername)}</span> on <a href="${escapeHTML(actualUrl)}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${escapeHTML(actualUrl)}</a>`;
+          }
+        }
+      }
+    } catch (autoUpdateError) {
+      console.warn("Failed to check for repo renames", autoUpdateError);
+    }
+    // ==========================================
 
     let allCommits = [];
     for (let page = 1; page <= 4; page++) {
