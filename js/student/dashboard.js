@@ -22,12 +22,22 @@ let currentChart = null;
 let currentStudentProfile = null;
 let cachedCommitsData = [];
 
+// 🔒 Security Patch
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) return (window.location.href = "login.html");
 
   document.getElementById("pageBody").classList.remove("hidden");
 
-  // 1. Check for Impersonation Mode
   const impersonateEmail = localStorage.getItem("Adminerva_Impersonate");
   const targetEmail = impersonateEmail
     ? impersonateEmail.toLowerCase()
@@ -38,7 +48,6 @@ onAuthStateChanged(auth, async (user) => {
     emailDisplay.textContent =
       targetEmail + (impersonateEmail ? " (Impersonating)" : "");
 
-  // 2. Inject a warning banner if viewing as a student
   if (impersonateEmail && !document.getElementById("impersonateBanner")) {
     const nav = document.getElementById("adminerva-nav");
     nav.insertAdjacentHTML(
@@ -47,7 +56,7 @@ onAuthStateChanged(auth, async (user) => {
           <div id="impersonateBanner" class="bg-amber-400 text-amber-900 px-6 py-2.5 font-bold text-sm flex justify-between items-center shadow-sm border-b border-amber-500 w-full relative z-[100]">
               <div class="flex items-center gap-2">
                   <span class="text-xl">👁️</span>
-                  <span><strong>IMPERSONATION MODE:</strong> Viewing workspace exactly as <u>${targetEmail}</u> experiences it.</span>
+                  <span><strong>IMPERSONATION MODE:</strong> Viewing workspace exactly as <u>${escapeHTML(targetEmail)}</u> experiences it.</span>
               </div>
               <button onclick="window.exitImpersonation()" class="bg-amber-900 text-amber-50 px-4 py-1.5 rounded hover:bg-amber-950 transition shadow-sm text-xs tracking-wide">Exit & Return</button>
           </div>
@@ -98,7 +107,23 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     userProfiles = [];
-    snap.forEach((d) => userProfiles.push({ docId: d.id, ...d.data() }));
+    let masterToken = null;
+    let masterUsername = null;
+
+    // 🚀 THE FIX: Identify the master GitHub credentials
+    snap.forEach((d) => {
+      const data = d.data();
+      if (data.githubToken) masterToken = data.githubToken;
+      if (data.githubUsername) masterUsername = data.githubUsername;
+      userProfiles.push({ docId: d.id, ...data });
+    });
+
+    // 🚀 THE FIX: Propagate credentials to all profiles in memory
+    userProfiles.forEach((p) => {
+      if (!p.githubToken && masterToken) p.githubToken = masterToken;
+      if (!p.githubUsername && masterUsername)
+        p.githubUsername = masterUsername;
+    });
 
     const selector = document.getElementById("sectionSelector");
     if (selector) {
@@ -108,7 +133,7 @@ onAuthStateChanged(auth, async (user) => {
         userProfiles.forEach((profile, index) => {
           selector.insertAdjacentHTML(
             "beforeend",
-            `<option value="${index}">${profile.section}</option>`,
+            `<option value="${index}">${escapeHTML(profile.section)}</option>`,
           );
         });
         selector.addEventListener("change", (e) =>
@@ -131,7 +156,6 @@ async function loadDashboardProfile(studentData) {
   const container = document.getElementById("commitListContainer");
   const overlay = document.getElementById("githubAuthOverlay");
 
-  // Run the Diagnostic Engine
   verifyStudentSetup(studentData);
   overlay.classList.add("hidden");
 
@@ -140,20 +164,25 @@ async function loadDashboardProfile(studentData) {
     currentChart = null;
   }
 
+  // 🚀 THE FIX: Splitting the missing requirement message
   if (!studentData.repoUrl || !studentData.githubUsername) {
-    subtitle.innerHTML = `<strong class="text-amber-700">${studentData.section}:</strong> <span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>`;
+    if (!studentData.repoUrl && studentData.githubUsername) {
+      subtitle.innerHTML = `<strong class="text-amber-700">${escapeHTML(studentData.section)}:</strong> <span class='text-amber-600'>Please set your Repository URL for this section in Settings.</span>`;
+    } else {
+      subtitle.innerHTML = `<strong class="text-amber-700">${escapeHTML(studentData.section)}:</strong> <span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>`;
+    }
+
     container.innerHTML =
       "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
     renderChart([], "7d");
     return;
   }
 
-  subtitle.innerHTML = `<strong>${studentData.section}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${studentData.githubUsername}</span> on <a href="${studentData.repoUrl}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${studentData.repoUrl}</a>`;
+  subtitle.innerHTML = `<strong>${escapeHTML(studentData.section)}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${escapeHTML(studentData.githubUsername)}</span> on <a href="${escapeHTML(studentData.repoUrl)}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${escapeHTML(studentData.repoUrl)}</a>`;
 
   const defaultFilter = document.getElementById("timeFilter")?.value || "7d";
   const cacheRef = doc(db, "student_dashboard_cache", studentData.docId);
 
-  // 🚨 THE FIX: Wrap the database call in a try/catch.
   try {
     const cacheSnap = await getDoc(cacheRef);
     if (cacheSnap.exists()) {
@@ -221,7 +250,6 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
   }
 }
 
-// 🚨 UPDATED: Smart Auth Flow
 async function linkGithubAccount() {
   const provider = new GithubAuthProvider();
   provider.addScope("repo");
@@ -237,14 +265,11 @@ async function linkGithubAccount() {
   let result;
   try {
     if (isAlreadyGithub) {
-      // User is already signed in with GitHub — just re-authenticate to refresh credentials
       result = await reauthenticateWithPopup(currentUser, provider);
     } else {
-      // User is signed in with Google — link their GitHub identity
       result = await linkWithPopup(currentUser, provider);
     }
   } catch (error) {
-    // If linking says credential already in use, sign in with popup to claim the token directly
     if (error.code === "auth/credential-already-in-use") {
       result = await signInWithPopup(auth, provider);
     } else {
@@ -262,16 +287,18 @@ async function linkGithubAccount() {
       (p) => p.providerId === "github.com",
     )?.screenName;
 
-  if (token && currentStudentProfile?.docId) {
-    const docRef = doc(db, "students", currentStudentProfile.docId);
+  // 🚀 THE FIX: Save the new identity to EVERY profile the student owns
+  if (token && userProfiles.length > 0) {
     const updateData = { githubToken: token };
     if (verifiedUsername) updateData.githubUsername = verifiedUsername;
 
-    await setDoc(docRef, updateData, { merge: true });
+    const updatePromises = userProfiles.map((p) => {
+      p.githubToken = token;
+      if (verifiedUsername) p.githubUsername = verifiedUsername;
+      return setDoc(doc(db, "students", p.docId), updateData, { merge: true });
+    });
 
-    currentStudentProfile.githubToken = token;
-    if (verifiedUsername)
-      currentStudentProfile.githubUsername = verifiedUsername;
+    await Promise.all(updatePromises);
 
     const overlay = document.getElementById("githubAuthOverlay");
     if (overlay) overlay.classList.add("hidden");
@@ -294,15 +321,22 @@ function renderCommits(commits, filter) {
       month: "short",
       day: "numeric",
     });
+
+    // 🔒 Security Patch
+    const safeUrl = escapeHTML(c.html_url);
+    const safeSha = escapeHTML(c.sha.substring(0, 7));
+    const safeMsg = escapeHTML(c.commit.message);
+    const safeDate = escapeHTML(date);
+
     container.insertAdjacentHTML(
       "beforeend",
       `
       <div class="p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-blue-200 transition group">
           <div class="flex justify-between items-start mb-1">
-              <a href="${c.html_url}" target="_blank" class="text-xs font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-700 transition">${c.sha.substring(0, 7)}</a>
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${date}</span>
+              <a href="${safeUrl}" target="_blank" class="text-xs font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-700 transition">${safeSha}</a>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">${safeDate}</span>
           </div>
-          <p class="text-sm font-medium text-slate-800 break-words">${c.commit.message}</p>
+          <p class="text-sm font-medium text-slate-800 break-words">${safeMsg}</p>
       </div>
     `,
     );
@@ -435,9 +469,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ==========================================
-// TOKEN-POWERED DIAGNOSTIC ENGINE
-// ==========================================
 async function verifyStudentSetup(studentData) {
   const banner = document.getElementById("studentWarningBanner");
   const title = document.getElementById("warningTitle");
@@ -452,11 +483,24 @@ async function verifyStudentSetup(studentData) {
     banner.classList.remove("hidden");
   };
 
-  if (!studentData.repoUrl || !studentData.githubUsername) {
+  // 🚀 THE FIX: Differentiate between a missing global username vs a missing local repo
+  if (!studentData.repoUrl && !studentData.githubUsername) {
     return triggerWarning(
       "bg-amber-50 border-amber-200 text-amber-800",
       "Missing Configuration",
       "You must configure your <strong>GitHub Username</strong> and <strong>Repository URL</strong> in your Settings to track your progress.",
+    );
+  } else if (!studentData.repoUrl) {
+    return triggerWarning(
+      "bg-amber-50 border-amber-200 text-amber-800",
+      "Missing Repository URL",
+      `You must configure the <strong>Repository URL</strong> for <strong>${escapeHTML(studentData.section)}</strong> in your Settings.`,
+    );
+  } else if (!studentData.githubUsername) {
+    return triggerWarning(
+      "bg-amber-50 border-amber-200 text-amber-800",
+      "Missing GitHub Username",
+      "You must configure your <strong>GitHub Username</strong> in your Settings to track your progress.",
     );
   }
 
@@ -541,7 +585,7 @@ async function verifyStudentSetup(studentData) {
         return triggerWarning(
           "bg-amber-50 border-amber-200 text-amber-800",
           "Identity Mismatch Detected",
-          `We see code in this repository, but none of it matches the linked GitHub account (<strong>@${studentData.githubUsername}</strong>). Are you pushing code using a different account?`,
+          `We see code in this repository, but none of it matches the linked GitHub account (<strong>@${escapeHTML(studentData.githubUsername)}</strong>). Are you pushing code using a different account?`,
         );
       }
 

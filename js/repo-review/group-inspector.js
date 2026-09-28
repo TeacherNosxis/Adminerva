@@ -193,20 +193,47 @@ window.fetchGroupRepos = async function () {
         });
 
         for (let c of currentCommits) {
-          // 🚀 THE FIX: Extract all 3 identities provided by GitHub
+          // Extract all 3 identities provided by GitHub
           const authorLogin = (c.author?.login || "").toLowerCase();
           const authorName = (c.commit?.author?.name || "").toLowerCase();
           const authorEmail = (c.commit?.author?.email || "").toLowerCase();
 
-          // 🚀 THE FIX: Match against Database Username, Email, OR Real Name (preventing empty string matches)
+          // 🚀 THE FIX: Advanced Cross-Matching Matrix
           const member = repoGroups[url].members.find((m) => {
             const dbUsername = (m.githubUsername || "").toLowerCase().trim();
             const dbEmail = (m.email || "").toLowerCase().trim();
             const dbName = (m.name || "").toLowerCase().trim();
 
+            // 1. Exact Match: Official Username to GitHub Login
             if (authorLogin && dbUsername === authorLogin) return true;
+
+            // 2. Exact Match: Official Email to GitHub Terminal Email
             if (authorEmail && dbEmail === authorEmail) return true;
+
+            // 3. Exact Match: Official Name to GitHub Terminal Name
             if (authorName && dbName === authorName) return true;
+
+            // 4. Cross-Match: Student mistakenly pasted their Display Name into the Username box
+            if (authorName && dbUsername === authorName) return true;
+
+            // 5. Partial Name Match: Check if the CSV Name is a subset of the GitHub Display Name
+            // Example: DB Name "Benito Ursal" matches GitHub Name "Benito Eliezer Ursal"
+            if (authorName && dbName) {
+              const nameParts = dbName.split(" ").filter((w) => w.length > 2);
+              if (
+                nameParts.length > 0 &&
+                nameParts.every((part) => authorName.includes(part))
+              )
+                return true;
+            }
+
+            // 6. Ghost Check: Hidden GitHub alias emails (e.g. ID+username@users.noreply.github.com)
+            if (
+              authorEmail &&
+              authorEmail.includes(dbUsername) &&
+              dbUsername.length > 3
+            )
+              return true;
 
             return false;
           });
