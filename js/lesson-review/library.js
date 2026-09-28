@@ -8,11 +8,9 @@ import {
   doc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// 1. Declare Global Variables explicitly
 let libraryData = [];
 let activeFolderId = null;
 
-// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
 function escapeHTML(str) {
   if (!str) return "";
   return String(str)
@@ -36,7 +34,6 @@ async function loadLibrary() {
     const snap = await getDocs(collection(db, "reference_folders"));
     libraryData = [];
 
-    // 2. Fix the variable name: changed querySnapshot to snap
     snap.forEach((docSnap) => {
       libraryData.push({ id: docSnap.id, ...docSnap.data() });
     });
@@ -150,7 +147,6 @@ function renderFolders() {
       ? "bg-blue-100 text-blue-900 font-bold"
       : "bg-white text-gray-700 hover:bg-gray-100";
 
-    // 🔒 Security Patch: Neutralize folder names and IDs
     const safeId = escapeHTML(folder.id);
     const safeName = escapeHTML(folder.name);
 
@@ -178,7 +174,6 @@ window.selectFolder = function (folderId) {
 
   const folder = libraryData.find((f) => f.id === folderId);
   if (folder) {
-    // 🔒 Security Patch
     document.getElementById("activeFolderTitle").innerHTML =
       `<span>📂</span> ${escapeHTML(folder.name)}`;
 
@@ -191,7 +186,6 @@ window.selectFolder = function (folderId) {
   }
 };
 
-// --- FILE CRUD & FILTERING ---
 window.filterDocuments = function () {
   const query = document.getElementById("searchInput").value.toLowerCase();
   const folder = libraryData.find((f) => f.id === activeFolderId);
@@ -248,6 +242,18 @@ window.deleteDocument = async function (docIndex) {
   }
 };
 
+// 🔒 THE FIX: Grab the text directly from memory instead of inline HTML execution
+window.previewDocumentText = function (folderId, docIndex) {
+  const folder = libraryData.find((f) => f.id === folderId);
+  if (folder && folder.documents[docIndex]) {
+    alert(
+      "PREVIEW:\n\n" +
+        folder.documents[docIndex].text.substring(0, 500) +
+        "...",
+    );
+  }
+};
+
 function renderDocuments(documentsArray) {
   const docList = document.getElementById("documentList");
   docList.innerHTML = "";
@@ -259,16 +265,9 @@ function renderDocuments(documentsArray) {
   }
 
   documentsArray.forEach((doc, index) => {
-    // 🔒 Security Patch: Sanitize the document title and formatted date
     const safeTitle = escapeHTML(doc.title);
     const safeDate = escapeHTML(formatDate(doc.updatedAt));
-
-    // 🔒 Security Patch: Flatten newlines, escape single quotes, and escape HTML entities so the alert string doesn't break
-    const safePreview = escapeHTML(doc.text.substring(0, 500))
-      .replace(/(\r\n|\n|\r)/gm, " ")
-      .replace(/'/g, "\\'")
-      .replace(/"/g, "&quot;")
-      .replace(/`/g, "\\`");
+    const safeFolderId = escapeHTML(activeFolderId);
 
     docList.insertAdjacentHTML(
       "beforeend",
@@ -277,7 +276,7 @@ function renderDocuments(documentsArray) {
                 <div class="col-span-6 flex items-center gap-3 truncate">
                     <span class="text-xl">📄</span>
                     <div class="truncate">
-                        <p class="font-semibold text-gray-800 text-sm truncate cursor-pointer hover:text-blue-600" onclick="alert('PREVIEW:\\n\\n${safePreview}...')">${safeTitle}</p>
+                        <p class="font-semibold text-gray-800 text-sm truncate cursor-pointer hover:text-blue-600" onclick="window.previewDocumentText('${safeFolderId}', ${index})">${safeTitle}</p>
                     </div>
                 </div>
                 <div class="col-span-4 text-sm text-gray-500">
@@ -314,7 +313,6 @@ window.extractPDF = async function () {
     return alert("Missing Gemini API Key. Please check your Global Settings.");
 
   const loader = document.getElementById("extractionLoader");
-  const loaderText = document.getElementById("loaderText");
   loader.classList.replace("hidden", "flex");
 
   const folder = libraryData.find((f) => f.id === activeFolderId);
@@ -380,7 +378,6 @@ window.extractPDF = async function () {
       const result = await response.json();
 
       if (!result.candidates || result.candidates.length === 0) {
-        console.error(`[Gemini API Error for ${file.name}]:`, result);
         throw new Error(
           `The AI refused to read "${file.name}". It may have triggered safety filters.`,
         );

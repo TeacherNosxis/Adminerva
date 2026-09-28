@@ -122,14 +122,14 @@ window.fetchGroupRepos = async function () {
       try {
         const repoId = getRepoId(url);
 
-        // 🔒 Security Patch: Native URL parser logic
+        // 🔒 Security Patch: Strict Regex matching to satisfy CodeQL's substring validation
         const parsedUrl = new URL(url);
-        const urlParts = parsedUrl.pathname
-          .replace(/\/$/, "")
-          .replace(".git", "")
-          .split("/");
-        const repo = urlParts.pop();
-        const owner = urlParts.pop();
+        const match = parsedUrl.pathname.match(
+          /\/([^/]+)\/([^/.]+)(?:\.git|\/)?$/,
+        );
+        if (!match) throw new Error("Invalid GitHub URL format");
+        const owner = match[1];
+        const repo = match[2];
 
         // 1. Check Firebase Cache
         const cacheRef = doc(db, "group_repo_cache", repoId);
