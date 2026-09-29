@@ -66,11 +66,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (activeModule === "educator" || activeModule === "repo") {
     centerLinks = `
             <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Analytics</a>
-            <a href="repobank.html" class="${getStyle("repobank")}">Repobank</a>
-            <a href="grading.html" class="${getStyle("grader")}">AutoGrader</a>
+            <a href="repobank.html" class="${getStyle("repobank")}">RepoBank</a>
             <a href="temp-grading.html" class="${getStyle("activity-grader")}">Manual Grader</a>
-            <a href="temp-activity-gradebook.html" class="${getStyle("activity-gradebook")}">Activity Gradebook</a>
-            <a href="gradebook.html" class="${getStyle("gradebook")}">AI Gradebook</a>
+            <a href="repofetch.html" class="${getStyle("repofetch")}">RepoFetch</a>
             ${adminDirLink}
         `;
     rightSide = `
@@ -139,26 +137,27 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", async (e) => {
     // `.closest()` ensures that even a sloppy thumb tap registers correctly
     const signOutTarget = e.target.closest("#signOutBtn");
-    
+
     if (signOutTarget) {
-        e.preventDefault();
-        signOutTarget.textContent = "Signing out...";
-        signOutTarget.classList.add("opacity-50", "pointer-events-none");
-        
-        try {
-            // Dynamically load Firebase Auth so it doesn't crash on pages missing the import
-            const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
-            const auth = getAuth();
-            await signOut(auth);
-        } catch (err) {
-            console.warn("Sign out background process skipped or failed.", err);
-        } finally {
-            // Guaranteed local wipe and forced redirect, regardless of Firebase connection
-            localStorage.removeItem("Adminerva_Role");
-            localStorage.removeItem("Adminerva_Mock_Role");
-            localStorage.removeItem("Adminerva_Impersonate");
-            window.location.href = "login.html";
-        }
+      e.preventDefault();
+      signOutTarget.textContent = "Signing out...";
+      signOutTarget.classList.add("opacity-50", "pointer-events-none");
+
+      try {
+        // Dynamically load Firebase Auth so it doesn't crash on pages missing the import
+        const { getAuth, signOut } =
+          await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
+        const auth = getAuth();
+        await signOut(auth);
+      } catch (err) {
+        console.warn("Sign out background process skipped or failed.", err);
+      } finally {
+        // Guaranteed local wipe and forced redirect, regardless of Firebase connection
+        localStorage.removeItem("Adminerva_Role");
+        localStorage.removeItem("Adminerva_Mock_Role");
+        localStorage.removeItem("Adminerva_Impersonate");
+        window.location.href = "login.html";
+      }
     }
   });
 });
