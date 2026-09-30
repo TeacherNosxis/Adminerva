@@ -9,7 +9,7 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const CACHE_VERSION = 4; // 🚀 THE FIX: Bumped to force rebuild with Committer data
+const CACHE_VERSION = 6; // 🚀 THE FIX: Bumped to wipe the split-cache corruption
 
 let repoGroups = {};
 let studentStatsMap = {};
@@ -23,7 +23,6 @@ window.hideLoader = function () {
   document.getElementById("globalLoader").classList.add("hidden");
 };
 
-// 🔒 Security Patch: Helper to neutralize malicious HTML scripts from user input
 function escapeHTML(str) {
   if (!str) return "";
   return String(str)
@@ -34,7 +33,6 @@ function escapeHTML(str) {
     .replace(/'/g, "&#039;");
 }
 
-// 🔒 Security Patch: Native URL parsing to sanitize URL substrings
 function getRepoId(repoUrl) {
   try {
     const parsedUrl = new URL(repoUrl);
@@ -94,18 +92,22 @@ window.fetchGroupRepos = async function () {
 
     stuSnap.forEach((d) => {
       const student = { id: d.id, ...d.data() };
-      const url = student.repoUrl
+      const rawUrl = student.repoUrl
         ? student.repoUrl.trim().replace(/\/$/, "")
         : "unassigned";
 
-      if (!repoGroups[url]) repoGroups[url] = { members: [], apiError: null };
-      repoGroups[url].members.push(student);
+      // 🚀 THE FIX: Group by standardized Repo ID, NOT the raw URL!
+      const groupId =
+        rawUrl !== "unassigned" ? getRepoId(rawUrl) : "unassigned";
 
-      // Baseline clean slate for every student
+      if (!repoGroups[groupId])
+        repoGroups[groupId] = { url: rawUrl, members: [], apiError: null };
+      repoGroups[groupId].members.push(student);
+
       studentStatsMap[student.id] = {
         name: student.name,
-        email: student.email, // Ensure email is tracked
-        repoUrl: url,
+        email: student.email,
+        repoUrl: rawUrl,
         githubUsername: (student.githubUsername || "").toLowerCase().trim(),
         count: 0,
         additions: 0,
@@ -115,27 +117,24 @@ window.fetchGroupRepos = async function () {
       };
     });
 
-    const validRepoUrls = Object.keys(repoGroups).filter(
-      (url) => url !== "unassigned" && url.includes("github.com"),
+    const validGroupIds = Object.keys(repoGroups).filter(
+      (id) => id !== "unassigned" && id !== "unknown_repo",
     );
     let processed = 0;
 
-    // PARALLEL EXECUTION: Fire all repo fetches at the same time
-    const fetchPromises = validRepoUrls.map(async (url) => {
-      try {
-        const repoId = getRepoId(url);
+    const fetchPromises = validGroupIds.map(async (groupId) => {
+      const group = repoGroups[groupId];
+      let url = group.url;
 
-        // 🔒 Security Patch: Strict Regex matching to satisfy CodeQL's substring validation
+      try {
         const parsedUrl = new URL(url);
         const match = parsedUrl.pathname.match(
           /\/([^/]+)\/([^/]+?)(?:\.git|\/)?$/,
         );
         if (!match) throw new Error("Invalid GitHub URL format");
-        const owner = match[1];
-        const repo = match[2];
-        // ==========================================
-        // 🔄 AUTO-UPDATE RENAME LOGIC
-        // ==========================================
+        let owner = match[1];
+        let repo = match[2];
+
         try {
           const repoInfoRes = await fetch(
             `https://api.github.com/repos/${owner}/${repo}`,
@@ -144,19 +143,13 @@ window.fetchGroupRepos = async function () {
 
           if (repoInfoRes.ok) {
             const repoInfo = await repoInfoRes.json();
-            const actualUrl = repoInfo.html_url + ".git"; // Standardize with .git
+            const actualUrl = repoInfo.html_url + ".git";
 
-            // If GitHub's current canonical URL doesn't match the database URL
             if (
               url.toLowerCase() !== actualUrl.toLowerCase() &&
               url.toLowerCase() !== repoInfo.html_url.toLowerCase()
             ) {
-              console.log(
-                `Auto-fixing renamed repository: ${url} -> ${actualUrl}`,
-              );
-
-              // 1. Update Firestore so it's permanently fixed for future page loads
-              const updatePromises = repoGroups[url].members.map((m) =>
+              const updatePromises = group.members.map((m) =>
                 setDoc(
                   doc(db, "students", m.id),
                   { repoUrl: actualUrl },
@@ -165,26 +158,21 @@ window.fetchGroupRepos = async function () {
               );
               await Promise.all(updatePromises);
 
-              // 2. Update the local variables so the rest of the script uses the new name
               owner = repoInfo.owner.login;
               repo = repoInfo.name;
-
-              // 3. Update the UI string so it displays correctly immediately
               url = actualUrl;
+              group.url = actualUrl; // Sync group url
             }
           }
         } catch (autoUpdateError) {
           console.warn("Failed to check for repo renames", autoUpdateError);
         }
-        // ==========================================
 
-        // 1. Check Firebase Cache
-        const cacheRef = doc(db, "group_repo_cache", repoId);
+        const cacheRef = doc(db, "group_repo_cache", groupId);
         const cacheSnap = await getDoc(cacheRef);
         const cachedData = cacheSnap.exists() ? cacheSnap.data() : {};
         let commitsCache = cachedData.commitsCache || {};
 
-        // 2. Fetch the CURRENT Top 100 List
         const res = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
           {
@@ -196,12 +184,12 @@ window.fetchGroupRepos = async function () {
         );
 
         if (!res.ok) {
-          repoGroups[url].apiError =
+          group.apiError =
             res.status === 409 ? "Empty Repository" : `HTTP ${res.status}`;
           processed++;
           window.showLoader(
             `Syncing Repositories`,
-            `Completed ${processed} of ${validRepoUrls.length}`,
+            `Completed ${processed} of ${validGroupIds.length}`,
           );
           return;
         }
@@ -209,16 +197,12 @@ window.fetchGroupRepos = async function () {
         const currentCommits = await res.json();
         if (currentCommits.length === 0) return;
 
-        // ==========================================
-        // 🚀 THE FAST-PATH: INSTANT CACHE HIT
-        // ==========================================
-        // We now check if the cacheVersion matches our new script version!
         if (
           cachedData.latestSha === currentCommits[0].sha &&
           cachedData.studentStats &&
           cachedData.cacheVersion === CACHE_VERSION
         ) {
-          repoGroups[url].members.forEach((m) => {
+          group.members.forEach((m) => {
             if (cachedData.studentStats[m.id]) {
               studentStatsMap[m.id] = cachedData.studentStats[m.id];
             }
@@ -226,22 +210,17 @@ window.fetchGroupRepos = async function () {
           processed++;
           window.showLoader(
             `Syncing Repositories`,
-            `Completed ${processed} of ${validRepoUrls.length}`,
+            `Completed ${processed} of ${validGroupIds.length}`,
           );
-          return; // EXIT EARLY
+          return;
         }
 
-        // ==========================================
-        // 🐢 THE SLOW-PATH: CACHE MISS / REBUILD
-        // ==========================================
-        let updatedCache = false;
         let tempStats = {};
-        repoGroups[url].members.forEach((m) => {
+        group.members.forEach((m) => {
           tempStats[m.id] = { ...studentStatsMap[m.id] };
         });
 
         for (let c of currentCommits) {
-          // 🚀 THE FIX: Added .trim() to wipe out hidden spaces from unverified terminal configs
           const authorLogin = (c.author?.login || "").toLowerCase().trim();
           const authorName = (c.commit?.author?.name || "")
             .toLowerCase()
@@ -249,8 +228,6 @@ window.fetchGroupRepos = async function () {
           const authorEmail = (c.commit?.author?.email || "")
             .toLowerCase()
             .trim();
-
-          // 🚀 THE FIX: Extracted committer data to catch web UI commits and merged PRs
           const committerLogin = (c.committer?.login || "")
             .toLowerCase()
             .trim();
@@ -261,36 +238,26 @@ window.fetchGroupRepos = async function () {
             .toLowerCase()
             .trim();
 
-          // 🚀 Advanced Cross-Matching Matrix (Now includes Committer)
-          const member = repoGroups[url].members.find((m) => {
+          const member = group.members.find((m) => {
             const dbUsername = (m.githubUsername || "").toLowerCase().trim();
             const dbEmail = (m.email || "").toLowerCase().trim();
             const dbName = (m.name || "").toLowerCase().trim();
 
-            // 1. Exact Match: Official Username to GitHub Login
             if (authorLogin && dbUsername === authorLogin) return true;
             if (committerLogin && dbUsername === committerLogin) return true;
-
-            // 2. Exact Match: Official Email to GitHub Terminal Email
             if (authorEmail && dbEmail === authorEmail) return true;
             if (committerEmail && dbEmail === committerEmail) return true;
-
-            // 3. Exact Match: Official Name to GitHub Terminal Name
             if (authorName && dbName === authorName) return true;
             if (committerName && dbName === committerName) return true;
-
-            // 4. Cross-Match: Relaxed Username Match
             if (authorName && authorName.includes(dbUsername)) return true;
             if (committerName && committerName.includes(dbUsername))
               return true;
 
-            // 5. Partial Name Match: Smart 2-Part Match (Solves the Middle Name Bug)
             if (authorName && dbName) {
               const nameParts = dbName.split(" ").filter((w) => w.length > 2);
               const matches = nameParts.filter((part) =>
                 authorName.includes(part),
               );
-              // If we find at least TWO matching parts (e.g., First and Last), count it.
               if (
                 matches.length >= 2 ||
                 (nameParts.length === 1 && matches.length === 1)
@@ -309,7 +276,6 @@ window.fetchGroupRepos = async function () {
                 return true;
             }
 
-            // 6. Ghost Check: Hidden GitHub alias emails (e.g. ID+username@users.noreply.github.com)
             if (
               authorEmail &&
               authorEmail.includes(dbUsername) &&
@@ -335,9 +301,7 @@ window.fetchGroupRepos = async function () {
             if (!commitDetail && stats.count <= 10) {
               const detailRes = await fetch(
                 `https://api.github.com/repos/${owner}/${repo}/commits/${c.sha}`,
-                {
-                  headers: { Authorization: `Bearer ${ghToken}` },
-                },
+                { headers: { Authorization: `Bearer ${ghToken}` } },
               );
 
               if (detailRes.ok) {
@@ -359,7 +323,6 @@ window.fetchGroupRepos = async function () {
                 };
 
                 commitsCache[c.sha] = commitDetail;
-                updatedCache = true;
               }
             } else if (!commitDetail) {
               commitDetail = {
@@ -376,14 +339,13 @@ window.fetchGroupRepos = async function () {
               stats.messages.push(`${dateStr} - ${commitDetail.message}`);
               stats.additions += commitDetail.additions;
               stats.deletions += commitDetail.deletions;
-              if (commitDetail.patch) {
+              if (commitDetail.patch)
                 stats.patches += `\n\n### COMMIT: "${commitDetail.message}"\n${commitDetail.patch}`;
-              }
             }
           }
         }
 
-        repoGroups[url].members.forEach((m) => {
+        group.members.forEach((m) => {
           studentStatsMap[m.id] = tempStats[m.id];
         });
 
@@ -394,7 +356,7 @@ window.fetchGroupRepos = async function () {
             latestSha: currentCommits[0].sha,
             commitsCache: commitsCache,
             studentStats: tempStats,
-            cacheVersion: CACHE_VERSION, // 🚀 Marks this cache with the new version!
+            cacheVersion: CACHE_VERSION,
           },
           { merge: true },
         );
@@ -402,14 +364,14 @@ window.fetchGroupRepos = async function () {
         processed++;
         window.showLoader(
           `Syncing Repositories`,
-          `Completed ${processed} of ${validRepoUrls.length}`,
+          `Completed ${processed} of ${validGroupIds.length}`,
         );
       } catch (err) {
-        repoGroups[url].apiError = "Network Error";
+        group.apiError = "Network Error";
         processed++;
         window.showLoader(
           `Syncing Repositories`,
-          `Completed ${processed} of ${validRepoUrls.length}`,
+          `Completed ${processed} of ${validGroupIds.length}`,
         );
       }
     });
@@ -427,17 +389,17 @@ function renderGroupsUI() {
   const container = document.getElementById("groupsContainer");
   container.innerHTML = "";
 
-  Object.entries(repoGroups).forEach(([url, groupData]) => {
-    if (url === "unassigned") return;
+  Object.entries(repoGroups).forEach(([groupId, groupData]) => {
+    if (groupId === "unassigned") return;
 
     let groupName = "Unknown Repo";
     try {
-      const parsedUrl = new URL(url);
+      const parsedUrl = new URL(groupData.url);
       groupName = parsedUrl.pathname.split("/").pop().replace(".git", "");
     } catch (e) {}
 
     groupName = escapeHTML(groupName);
-    const safeUrl = escapeHTML(url);
+    const safeUrl = escapeHTML(groupData.url);
 
     const errorBadge = groupData.apiError
       ? `<span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded border border-red-300">API Error: ${escapeHTML(groupData.apiError)}</span>`
@@ -447,7 +409,6 @@ function renderGroupsUI() {
     groupData.members.forEach((student) => {
       const stats = studentStatsMap[student.id];
       const hasCommits = stats.count > 0;
-
       const safeName = escapeHTML(student.name);
       const safeGithub = escapeHTML(student.githubUsername || "?");
 
@@ -498,7 +459,6 @@ window.openStudentDetails = function (studentId) {
   document.getElementById("detailsTitle").textContent =
     `Inspection: ${stats.name}`;
   document.getElementById("detailsRepoLink").textContent = stats.repoUrl;
-
   document.getElementById("detCommits").textContent = stats.count;
   document.getElementById("detAdded").textContent = "+" + stats.additions;
   document.getElementById("detDeleted").textContent = "-" + stats.deletions;
@@ -513,7 +473,6 @@ window.openStudentDetails = function (studentId) {
 
   document.getElementById("detCodeBlock").textContent =
     stats.patches || "No detailed file changes available.";
-
   document.getElementById("detailsModal").classList.remove("hidden");
 };
 
