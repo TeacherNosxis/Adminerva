@@ -9,7 +9,7 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const CACHE_VERSION = 3; // 🚀 THE FIX: Bumped to force rebuild with Committer data
+const CACHE_VERSION = 4; // 🚀 THE FIX: Bumped to force rebuild with Committer data
 
 let repoGroups = {};
 let studentStatsMap = {};
@@ -279,24 +279,32 @@ window.fetchGroupRepos = async function () {
             if (authorName && dbName === authorName) return true;
             if (committerName && dbName === committerName) return true;
 
-            // 4. Cross-Match: Student mistakenly pasted their Display Name into the Username box
-            if (authorName && dbUsername === authorName) return true;
-            if (committerName && dbUsername === committerName) return true;
+            // 4. Cross-Match: Relaxed Username Match
+            if (authorName && authorName.includes(dbUsername)) return true;
+            if (committerName && committerName.includes(dbUsername))
+              return true;
 
-            // 5. Partial Name Match: Check if the CSV Name is a subset of the GitHub Display Name
+            // 5. Partial Name Match: Smart 2-Part Match (Solves the Middle Name Bug)
             if (authorName && dbName) {
               const nameParts = dbName.split(" ").filter((w) => w.length > 2);
+              const matches = nameParts.filter((part) =>
+                authorName.includes(part),
+              );
+              // If we find at least TWO matching parts (e.g., First and Last), count it.
               if (
-                nameParts.length > 0 &&
-                nameParts.every((part) => authorName.includes(part))
+                matches.length >= 2 ||
+                (nameParts.length === 1 && matches.length === 1)
               )
                 return true;
             }
             if (committerName && dbName) {
               const nameParts = dbName.split(" ").filter((w) => w.length > 2);
+              const matches = nameParts.filter((part) =>
+                committerName.includes(part),
+              );
               if (
-                nameParts.length > 0 &&
-                nameParts.every((part) => committerName.includes(part))
+                matches.length >= 2 ||
+                (nameParts.length === 1 && matches.length === 1)
               )
                 return true;
             }
