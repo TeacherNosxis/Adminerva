@@ -21,6 +21,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const adminDirLink = isSuperAdmin
     ? `<a href="users.html" class="${getStyle("directory")}">Directory</a>`
     : "";
+  const adminReportsLink = isSuperAdmin
+    ? `<a href="issues.html" class="${getStyle("issues")}">Reports</a>`
+    : "";
 
   const settingsIcon = `
         <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2 sm:p-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center mr-2 sm:mr-4" title="Global Settings">
@@ -70,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="temp-grading.html" class="${getStyle("activity-grader")}">Manual Grader</a>
             <a href="repofetch.html" class="${getStyle("repofetch")}">RepoFetch</a>
             ${adminDirLink}
+            ${adminReportsLink}
         `;
     rightSide = `
             <div class="flex items-center">

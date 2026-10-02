@@ -75,12 +75,14 @@ onAuthStateChanged(auth, async (user) => {
     localStorage.removeItem("Adminerva_Mock_Role");
     activeRole = "student";
   }
+  const isIssuesPage = currentPath.includes("issues.html");
 
   // 4. Strict Routing Enforcement
   if (
     activeRole === "student" &&
     !currentPath.includes("student-") &&
-    !isLoginPage
+    !isLoginPage &&
+    !isIssuesPage
   ) {
     window.location.href = "student-dashboard.html";
   } else if (
