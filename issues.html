@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adminerva | Known Issues Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col">
+    <!-- Navigation Injected Here -->
+    <div id="adminerva-nav" data-module="educator" data-page="issues"></div>
+
+    <!-- Main Content (Hidden until auth-guard clears it) -->
+    <main
+      id="pageBody"
+      class="hidden flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8"
+    >
+      <!-- Header & Controls -->
+      <div
+        class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-slate-200 pb-6"
+      >
+        <div>
+          <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+            Known Issues Tracker
+          </h1>
+          <p class="text-slate-500 mt-2 text-sm max-w-2xl">
+            Review reported bugs and current platform limitations before
+            submitting a new ticket.
+          </p>
+        </div>
+
+        <div class="flex gap-3 w-full md:w-auto">
+          <input
+            type="text"
+            placeholder="Search issues..."
+            class="border border-slate-300 rounded-md px-4 py-2 text-sm w-full md:w-64 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none shadow-sm"
+          />
+          <select
+            class="border border-slate-300 rounded-md px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none bg-white shadow-sm font-medium"
+          >
+            <option>All Statuses</option>
+            <option>Investigating</option>
+            <option>Resolved</option>
+            <option>Known Limitation</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Issues Grid (Mock Data) -->
+      <div
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        id="issues-container"
+      >
+        <!-- Card 1: Investigating -->
+        <div
+          class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col h-full hover:shadow-md transition"
+        >
+          <div class="flex justify-between items-start mb-4">
+            <span
+              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200"
+            >
+              🔍 Investigating
+            </span>
+            <span class="text-xs font-medium text-slate-400">Oct 2, 2026</span>
+          </div>
+          <h3 class="font-bold text-slate-900 mb-2">
+            GitHub Token Expired Banner
+          </h3>
+          <p class="text-sm text-slate-600 mb-6 flex-grow leading-relaxed">
+            The platform displays a "Token Expired or Revoked" alert on the
+            Project Workspace even after the instructor successfully reconnects
+            the repository.
+          </p>
+          <button
+            class="text-cyan-600 text-sm font-bold hover:text-cyan-800 text-left flex items-center gap-1 transition"
+          >
+            View Screenshot <span class="text-lg">🖼️</span>
+          </button>
+        </div>
+
+        <!-- Card 2: Resolved -->
+        <div
+          class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col h-full hover:shadow-md transition"
+        >
+          <div class="flex justify-between items-start mb-4">
+            <span
+              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"
+            >
+              ✅ Resolved
+            </span>
+            <span class="text-xs font-medium text-slate-400">Sep 28, 2026</span>
+          </div>
+          <h3 class="font-bold text-slate-900 mb-2">
+            Firestore Sync Delay on Commits
+          </h3>
+          <p class="text-sm text-slate-600 mb-6 flex-grow leading-relaxed">
+            Student pushes were not immediately reflecting on the Contribution
+            Analytics graph. The polling rate has been adjusted to fix the
+            delay.
+          </p>
+          <button
+            class="text-slate-400 text-sm font-bold text-left cursor-not-allowed flex items-center gap-1"
+          >
+            No Screenshot Attached
+          </button>
+        </div>
+
+        <!-- Card 3: Limitation -->
+        <div
+          class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col h-full hover:shadow-md transition"
+        >
+          <div class="flex justify-between items-start mb-4">
+            <span
+              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200"
+            >
+              ℹ️ Known Limitation
+            </span>
+            <span class="text-xs font-medium text-slate-400">Sep 15, 2026</span>
+          </div>
+          <h3 class="font-bold text-slate-900 mb-2">
+            Header Image Size Limits
+          </h3>
+          <p class="text-sm text-slate-600 mb-6 flex-grow leading-relaxed">
+            Uploading a lesson plan header image over 800KB causes local storage
+            saturation. Users must compress images manually before saving
+            settings.
+          </p>
+          <button
+            class="text-cyan-600 text-sm font-bold hover:text-cyan-800 text-left flex items-center gap-1 transition"
+          >
+            View Screenshot <span class="text-lg">🖼️</span>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Core Scripts -->
+    <script type="module" src="js/firebase-core.js"></script>
+    <script type="module" src="js/auth-guard.js"></script>
+    <script src="js/adminerva-nav.js"></script>
+    <script src="js/adminerva-loader.js"></script>
+  </body>
+</html>

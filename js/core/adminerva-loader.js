@@ -9,9 +9,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <span id="subtleLoaderText" class="text-sm font-bold text-slate-200 tracking-wide">Fetching data...</span>
         </div>
 
-        <!-- Sticky Edge Ribbon (Upper Left, Below Navigation) -->
-        <button onclick="document.getElementById('bug-modal').classList.remove('hidden')" class="fixed top-24 left-0 bg-slate-800 text-cyan-400 border border-l-0 border-cyan-900 px-1.5 py-3 rounded-r-md shadow-[4px_0_10px_rgba(6,182,212,0.2)] hover:bg-slate-700 hover:text-cyan-300 transition-all z-40" style="writing-mode: vertical-rl; transform: rotate(180deg);">
-            <span class="text-xs font-bold tracking-widest uppercase">Report Issue</span>
+        <!-- Sticky Edge Ribbon (FIXED: Top-to-Bottom, Flush Left, Rounded Right) -->
+        <button onclick="document.getElementById('bug-modal').classList.remove('hidden')" class="fixed top-28 left-0 bg-slate-800 text-cyan-400 border border-l-0 border-cyan-900 px-2 py-4 rounded-r-lg shadow-[4px_0_10px_rgba(6,182,212,0.2)] hover:bg-slate-700 hover:text-cyan-300 transition-all z-40" style="writing-mode: vertical-rl;">
+            <span class="text-sm font-bold tracking-widest uppercase">Report Issue</span>
         </button>
         
         <!-- Bug Modal (Hidden by default) -->
