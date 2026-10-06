@@ -6,17 +6,43 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// Utility: Convert a wildcard path (src/*/Main.java) into a valid Regular Expression
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str).replace(
+    /[&<>"']/g,
+    (match) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      })[match],
+  );
+}
+
 function wildcardToRegex(wildcardPath) {
-  if (!wildcardPath) return new RegExp(".*");
-  const escaped = wildcardPath.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  const regexStr = "^" + escaped.replace(/\*/g, "[^/]+") + "$";
+  if (
+    !wildcardPath ||
+    wildcardPath.trim() === "" ||
+    wildcardPath.trim() === "*"
+  )
+    return new RegExp(".*");
+  let path = wildcardPath.trim();
+  if (!path.match(/\.[a-zA-Z0-9]+$/)) path = path.replace(/\/$/, "") + "/*";
+  let escaped = path.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  const regexStr = "^" + escaped.replace(/\\\*/g, ".*") + "$";
   return new RegExp(regexStr, "i");
 }
 
-window.startAutoCheck = async function (studentId, owner, repo, taskId) {
-  console.log(`[Auto-Check] Initiated for ${owner}/${repo} (Task: ${taskId})`);
-
+// NOTE: Added 'currentSha' to the parameters
+window.startAutoCheck = async function (
+  studentId,
+  owner,
+  repo,
+  taskId,
+  currentSha,
+) {
   const ghToken = localStorage.getItem("Adminerva_github_token");
   const geminiKey = localStorage.getItem("Adminerva_gemini_token");
 
@@ -27,124 +53,131 @@ window.startAutoCheck = async function (studentId, owner, repo, taskId) {
     return;
   }
 
-  // 1. Safely locate the UI element
   const cardId = `task-card-${studentId}-${taskId}`;
   const taskCard = document.getElementById(cardId);
-
-  if (!taskCard) {
-    console.error(
-      `[Auto-Check] FATAL: Could not find HTML element with ID: ${cardId}`,
-    );
-    alert("UI Error: Cannot find the task card. Please refresh the page.");
-    return;
-  }
+  if (!taskCard) return;
 
   const actionArea = taskCard.querySelector(".grade-action-area");
-  if (!actionArea) {
-    console.error(
-      `[Auto-Check] FATAL: Could not find action area inside ${cardId}`,
-    );
-    return;
-  }
+  if (!actionArea) return;
 
-  // Set Loading State
-  actionArea.innerHTML = `<span class="text-xs font-bold text-blue-500 flex items-center gap-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div> Checking...</span>`;
+  const updateStatus = (message) => {
+    actionArea.innerHTML = `<span class="text-xs font-bold text-blue-500 flex items-center gap-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div> ${message}</span>`;
+  };
 
   try {
-    // 2. Fetch the Blueprint Rules from Database
-    console.log(`[Auto-Check] Fetching blueprint rules for Task: ${taskId}`);
+    updateStatus("Fetching Rules...");
     const taskSnap = await getDoc(doc(db, "assessments", taskId));
-    if (!taskSnap.exists())
-      throw new Error("Assessment Blueprint missing in database.");
+    if (!taskSnap.exists()) throw new Error("Blueprint missing in database.");
     const taskData = taskSnap.data();
 
-    // 3. Locate the Target File in GitHub
+    updateStatus("Scanning Repo...");
     let targetFilePath = taskData.targetPath || "";
     let fileRawText = "";
+    let displayPathText = targetFilePath || "Entire Repository";
 
-    console.log(`[Auto-Check] Fetching repository info from GitHub...`);
     const repoRes = await fetch(
       `https://api.github.com/repos/${owner}/${repo}`,
       { headers: { Authorization: `Bearer ${ghToken}` } },
     );
-
-    if (!repoRes.ok)
-      throw new Error(
-        "Could not access repository. It may be private or deleted.",
-      );
+    if (!repoRes.ok) throw new Error("Repo inaccessible. Might be private.");
     const repoData = await repoRes.json();
     const defaultBranch = repoData.default_branch;
+    if (!defaultBranch) throw new Error("Repository is empty.");
 
-    if (!defaultBranch)
-      throw new Error("Repository appears to be completely empty.");
-
-    if (targetFilePath.includes("*")) {
-      console.log(`[Auto-Check] Resolving wildcard path: ${targetFilePath}`);
+    if (
+      targetFilePath === "" ||
+      targetFilePath.includes("*") ||
+      !targetFilePath.match(/\.[a-zA-Z0-9]+$/)
+    ) {
       const treeRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`,
         { headers: { Authorization: `Bearer ${ghToken}` } },
       );
-
       const treeData = await treeRes.json();
       const matcher = wildcardToRegex(targetFilePath);
-
-      const matchedFile = (treeData.tree || []).find((f) =>
-        matcher.test(f.path),
+      const allowedExts =
+        /\.(java|xml|kt|dart|cs|js|ts|html|css|txt|json|sql|gradle|properties)$/i;
+      const matchedFiles = (treeData.tree || []).filter(
+        (f) =>
+          f.type === "blob" && matcher.test(f.path) && allowedExts.test(f.path),
       );
-      if (!matchedFile)
+
+      if (matchedFiles.length === 0)
         throw new Error(
-          `Could not find any file matching path: ${targetFilePath}`,
+          `No code files found in path: ${targetFilePath || "repository"}`,
         );
 
-      targetFilePath = matchedFile.path;
-      console.log(
-        `[Auto-Check] Wildcard resolved to exact path: ${targetFilePath}`,
+      const filesToProcess = matchedFiles.slice(0, 40);
+      updateStatus(`Reading ${filesToProcess.length} File(s)...`);
+
+      let combinedCode = "";
+      let pathsFound = [];
+
+      const filePromises = filesToProcess.map(async (file) => {
+        const fileRes = await fetch(
+          `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`,
+          { headers: { Authorization: `Bearer ${ghToken}` } },
+        );
+        if (fileRes.ok) {
+          const text = await fileRes.text();
+          return { path: file.path, text: text };
+        }
+        return null;
+      });
+
+      const fetchedFiles = await Promise.all(filePromises);
+      fetchedFiles.forEach((fileObj) => {
+        if (fileObj && fileObj.text.trim()) {
+          combinedCode += `\n\n--- FILE: ${fileObj.path} ---\n${fileObj.text}`;
+          pathsFound.push(fileObj.path.split("/").pop());
+        }
+      });
+
+      if (!combinedCode.trim())
+        throw new Error("Files found, but contents were empty or unreadable.");
+      fileRawText = combinedCode;
+
+      if (pathsFound.length > 1) {
+        displayPathText = `${pathsFound[0]} (+${pathsFound.length - 1} files)`;
+      } else if (pathsFound.length === 1) {
+        displayPathText = pathsFound[0];
+      }
+    } else {
+      updateStatus("Reading Code...");
+      const fileRes = await fetch(
+        `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${targetFilePath}`,
+        { headers: { Authorization: `Bearer ${ghToken}` } },
       );
+      if (!fileRes.ok) throw new Error("Could not read file contents.");
+      const text = await fileRes.text();
+      fileRawText = `\n\n--- FILE: ${targetFilePath} ---\n${text || ""}`;
+      displayPathText = targetFilePath.split("/").pop();
     }
 
-    // Fetch the actual raw code
-    console.log(`[Auto-Check] Fetching raw code from: ${targetFilePath}`);
-    const fileRes = await fetch(
-      `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${targetFilePath}`,
-      { headers: { Authorization: `Bearer ${ghToken}` } },
-    );
-
-    if (!fileRes.ok)
-      throw new Error(
-        "File found in repository but its contents could not be read.",
-      );
-    fileRawText = await fileRes.text();
-    fileRawText = fileRawText || ""; // Fallback for empty files
-
-    // 4. Run Objective Filters Locally (Banned / Required)
-    console.log(`[Auto-Check] Running local objective filters...`);
+    updateStatus("Applying Filters...");
     let objectiveViolations = [];
     const rules = taskData.rules || [];
-
     rules.forEach((rule) => {
       const hasString = fileRawText.includes(rule.value);
       if (rule.type === "Banned" && hasString) {
-        objectiveViolations.push(`Used banned string: ${rule.value}`);
+        objectiveViolations.push(`Used banned code: ${rule.value}`);
       } else if (rule.type === "Required" && !hasString) {
-        objectiveViolations.push(`Missing required string: ${rule.value}`);
+        objectiveViolations.push(`Missing required code: ${rule.value}`);
       }
     });
 
-    // 5. Construct AI Prompt
     let finalScore = 0;
     let finalFeedback = "";
 
-    // Auto-Fail if major objective violations exist
     if (
       objectiveViolations.length > 0 &&
       rules.some((r) => r.type === "Banned" && fileRawText.includes(r.value))
     ) {
-      console.log(`[Auto-Check] Objective check failed. Bypassing Gemini API.`);
       finalScore = 0;
       finalFeedback =
         "Objective Check Failed: " + objectiveViolations.join(", ");
     } else {
-      console.log(`[Auto-Check] Forwarding code to Grading API...`);
+      updateStatus("Evaluating...");
       const prompt = `
             ${taskData.systemPersona || "You are a strict code evaluator."}
             
@@ -154,12 +187,12 @@ window.startAutoCheck = async function (studentId, owner, repo, taskId) {
             Objective Checks Log:
             ${objectiveViolations.length > 0 ? "Minor Violations: " + objectiveViolations.join(", ") : "All objective checks passed."}
             
-            Student Code (${targetFilePath}):
+            Student Code Collection:
             \`\`\`
-            ${fileRawText.substring(0, 8000)} 
+            ${fileRawText.substring(0, 80000)} 
             \`\`\`
             
-            Evaluate the code strictly based on the rubric. 
+            Evaluate the provided code strictly based on the rubric. 
             Return ONLY a valid JSON object matching this exact format:
             {"score": <number 0-100>, "feedback": "<1 to 2 short sentences explaining the score>"}
       `;
@@ -173,14 +206,13 @@ window.startAutoCheck = async function (studentId, owner, repo, taskId) {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               response_mime_type: "application/json",
-              temperature: 0.2, // Low temp for strict grading
+              temperature: 0.2,
             },
           }),
         },
       );
 
-      if (!aiRes.ok)
-        throw new Error("Automated Grading API failed to respond.");
+      if (!aiRes.ok) throw new Error("Automated engine failed to respond.");
       const aiData = await aiRes.json();
 
       let cleanJson = aiData.candidates[0].content.parts[0].text;
@@ -199,10 +231,7 @@ window.startAutoCheck = async function (studentId, owner, repo, taskId) {
         `[Notes: ${objectiveViolations.join(", ")}] ` + finalFeedback;
     }
 
-    // 6. Save to Database
-    console.log(
-      `[Auto-Check] Saving final score (${finalScore}) to database...`,
-    );
+    updateStatus("Saving Grade...");
     const gradeDocId = `${studentId}_${taskId}`;
     await setDoc(
       doc(db, "student_grades", gradeDocId),
@@ -211,40 +240,59 @@ window.startAutoCheck = async function (studentId, owner, repo, taskId) {
         taskId,
         score: finalScore,
         feedback: finalFeedback,
-        targetPath: targetFilePath,
+        targetPath: displayPathText,
+        gradedSha: currentSha, // NOTE: Saves the exact commit it checked!
         gradedAt: serverTimestamp(),
       },
       { merge: true },
     );
 
-    // 7. Update UI
-    renderGradeResult(actionArea, finalScore, finalFeedback);
-    console.log(`[Auto-Check] Complete!`);
+    renderGradeResult(
+      actionArea,
+      finalScore,
+      finalFeedback,
+      displayPathText,
+      studentId,
+      owner,
+      repo,
+      taskId,
+      currentSha,
+    );
   } catch (error) {
-    console.error("[Auto-Check] Process Failed:", error);
-
+    console.error("[Auto-Check] Failed:", error);
     actionArea.innerHTML = `
-        <div class="text-right">
+        <div class="text-right flex flex-col items-end">
             <span class="text-xs font-bold text-red-500">Check Failed</span>
-            <p class="text-[10px] text-gray-500 max-w-[200px] truncate" title="${escapeHTML(error.message)}">${escapeHTML(error.message)}</p>
-            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}')" class="mt-1 text-[10px] text-blue-500 hover:underline">Retry</button>
+            <p class="text-[9px] text-gray-500 max-w-[200px] truncate" title="${escapeHTML(error.message)}">${escapeHTML(error.message)}</p>
+            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="mt-0.5 text-[10px] font-bold text-blue-500 hover:underline">Retry Check</button>
         </div>
     `;
   }
 };
 
-function renderGradeResult(container, score, feedback) {
+function renderGradeResult(
+  container,
+  score,
+  feedback,
+  exactPath,
+  studentId,
+  owner,
+  repo,
+  taskId,
+  currentSha,
+) {
   let scoreColor = "text-green-600";
   if (score < 75) scoreColor = "text-red-600";
   if (score >= 75 && score < 90) scoreColor = "text-yellow-600";
 
   container.innerHTML = `
-        <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px]">
-            <div class="text-2xl font-bold ${scoreColor} leading-none ml-2">${score}</div>
+        <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px] shadow-inner">
+            <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${score}</div>
             <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
-                <p class="text-[10px] text-gray-600 leading-tight line-clamp-2" title="${escapeHTML(feedback)}">${escapeHTML(feedback)}</p>
+                <p class="text-[9px] font-mono text-gray-400 truncate mb-0.5" title="${escapeHTML(exactPath)}">File(s): ${escapeHTML(exactPath)}</p>
+                <p class="text-[10px] text-gray-700 leading-tight line-clamp-2" title="${escapeHTML(feedback)}">${escapeHTML(feedback)}</p>
             </div>
-            <button class="text-gray-400 hover:text-blue-500 transition px-1" title="Force Re-evaluate">🔄</button>
+            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1" title="Force Re-evaluate">🔄</button>
         </div>
     `;
 }

@@ -79,9 +79,6 @@ window.fetchAndSyncRepos = async function () {
   globalStudentsData = {};
 
   try {
-    // ==========================================
-    // PHASE 1: LOAD FAST FROM FIREBASE CACHE
-    // ==========================================
     const qStudents = query(
       collection(db, "students"),
       where("section", "==", section),
@@ -90,7 +87,12 @@ window.fetchAndSyncRepos = async function () {
     const repoGroups = {};
 
     stuSnap.forEach((d) => {
-      const student = { id: d.id, ...d.data(), commitCount: 0 };
+      const student = {
+        id: d.id,
+        ...d.data(),
+        commitCount: 0,
+        latestSha: null,
+      }; // ADDED latestSha
       const repoInfo = parseRepoInfo(student.repoUrl);
       if (!repoInfo) return;
 
@@ -107,7 +109,6 @@ window.fetchAndSyncRepos = async function () {
 
     const groupKeys = Object.keys(repoGroups);
 
-    // Fetch existing cache for instant rendering
     const cachePromises = groupKeys.map(async (groupId) => {
       const cacheRef = doc(db, "group_repo_cache", groupId);
       const cacheSnap = await getDoc(cacheRef);
@@ -117,27 +118,21 @@ window.fetchAndSyncRepos = async function () {
         repoGroups[groupId].members.forEach((member) => {
           if (stats[member.id])
             member.commitCount = stats[member.id].count || 0;
+          member.latestSha = cachedData.latestSha; // ATTACH CACHED SHA
         });
         repoGroups[groupId].latestSha = cachedData.latestSha;
       }
     });
 
     await Promise.all(cachePromises);
-
-    // RENDER UI IMMEDIATELY
     renderGroupedUI(repoGroups);
 
-    // ==========================================
-    // PHASE 2: CONCURRENT GITHUB SYNC (Promise.all)
-    // ==========================================
     let requiresUIRefresh = false;
     let processed = 0;
 
     const syncPromises = groupKeys.map(async (groupId) => {
       const group = repoGroups[groupId];
-
       try {
-        // First: Call main repo endpoint to gracefully handle URL renames & 404s
         let actualOwner = group.owner;
         let actualRepo = group.repo;
 
@@ -173,7 +168,6 @@ window.fetchAndSyncRepos = async function () {
           return;
         }
 
-        // Second: Fetch Commits (Using the validated actualOwner/actualRepo)
         const res = await fetch(
           `https://api.github.com/repos/${actualOwner}/${actualRepo}/commits?per_page=100`,
           {
@@ -211,7 +205,11 @@ window.fetchAndSyncRepos = async function () {
           return;
         }
 
-        // Optimization Check
+        // ALWAYS UPDATE THE STUDENT SHA TO THE LATEST
+        group.members.forEach((m) => {
+          m.latestSha = commits[0].sha;
+        });
+
         if (group.latestSha === commits[0].sha) {
           processed++;
           window.showSubtleLoader(
@@ -222,7 +220,6 @@ window.fetchAndSyncRepos = async function () {
 
         requiresUIRefresh = true;
         let updatedStats = {};
-
         group.members.forEach((m) => {
           updatedStats[m.id] = {
             count: 0,
@@ -267,12 +264,11 @@ window.fetchAndSyncRepos = async function () {
           }
         });
 
-        // Save new counts to the shared cache
         const cacheRef = doc(db, "group_repo_cache", groupId);
         await setDoc(
           cacheRef,
           {
-            repoUrl: group.cleanUrl, // Fixed the caching URL reference
+            repoUrl: group.cleanUrl,
             latestSha: commits[0].sha,
             studentStats: updatedStats,
             cacheVersion: CACHE_VERSION,
@@ -291,9 +287,7 @@ window.fetchAndSyncRepos = async function () {
       );
     });
 
-    // Run all Github fetches concurrently!
     await Promise.all(syncPromises);
-
     if (requiresUIRefresh) {
       window.showSubtleLoader("Applying fresh updates to view...");
       renderGroupedUI(repoGroups);
@@ -343,7 +337,6 @@ function renderGroupedUI(repoGroups) {
     const errorBadge = group.apiError
       ? `<span class="bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30 shrink-0">⚠️ ${escapeHTML(group.apiError)}</span>`
       : "";
-
     const accordionId = `group-content-${index}`;
     const cardHtml = `
         <div class="bg-white border rounded-lg shadow-sm mb-4 overflow-hidden">
@@ -387,6 +380,7 @@ window.toggleAccordion = function (id) {
 window.openGradingModal = async function (studentId, owner, repo) {
   const student = globalStudentsData[studentId];
   if (!student) return;
+  const currentStudentSha = student.latestSha; // Get the specific SHA they are currently on
 
   document.getElementById("modalStudentName").textContent =
     `${student.name} (@${student.githubUsername || "Unlinked"})`;
@@ -394,19 +388,18 @@ window.openGradingModal = async function (studentId, owner, repo) {
   document.getElementById("gradingModal").classList.remove("hidden");
 
   const listContainer = document.getElementById("dynamicAssessmentsList");
-  listContainer.innerHTML = `<div class="text-center text-gray-400 italic py-4 text-sm">Loading assigned tasks...</div>`;
+  listContainer.innerHTML = `<div class="text-center text-gray-400 italic py-4 text-sm"><div class="animate-spin inline-block rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2"></div>Loading assigned tasks...</div>`;
 
   try {
+    // 1. Fetch Blueprints
     const snap = await getDocs(collection(db, "assessments"));
     let activeTasks = [];
-
     snap.forEach((doc) => {
       const data = doc.data();
       const deployments = data.deployments || [];
       const sectionDeployment = deployments.find(
         (d) => d.section === currentClassSection,
       );
-
       if (sectionDeployment) {
         activeTasks.push({
           id: doc.id,
@@ -416,13 +409,23 @@ window.openGradingModal = async function (studentId, owner, repo) {
       }
     });
 
-    listContainer.innerHTML = "";
-
     if (activeTasks.length === 0) {
       listContainer.innerHTML = `<div class="text-center text-gray-500 py-4 text-sm border-2 border-dashed border-gray-300 rounded">No tasks are currently deployed to ${escapeHTML(currentClassSection)}.</div>`;
       return;
     }
 
+    // 2. Fetch existing grades for this specific student
+    const gradesQuery = query(
+      collection(db, "student_grades"),
+      where("studentId", "==", studentId),
+    );
+    const gradesSnap = await getDocs(gradesQuery);
+    const existingGrades = {};
+    gradesSnap.forEach((doc) => {
+      existingGrades[doc.data().taskId] = doc.data();
+    });
+
+    listContainer.innerHTML = "";
     activeTasks.sort(
       (a, b) =>
         new Date(a.deployment.deadline) - new Date(b.deployment.deadline),
@@ -430,9 +433,42 @@ window.openGradingModal = async function (studentId, owner, repo) {
 
     activeTasks.forEach((task) => {
       const taskCardId = `task-card-${studentId}-${task.id}`;
+      const gradeRecord = existingGrades[task.id];
+
+      // LOGIC: Does the SHA match?
+      const isUpToDate =
+        gradeRecord && gradeRecord.gradedSha === currentStudentSha;
+
+      let actionAreaHtml = "";
+
+      if (isUpToDate) {
+        // They already have a grade for this specific commit!
+        let scoreColor = "text-green-600";
+        if (gradeRecord.score < 75) scoreColor = "text-red-600";
+        if (gradeRecord.score >= 75 && gradeRecord.score < 90)
+          scoreColor = "text-yellow-600";
+
+        actionAreaHtml = `
+              <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px] shadow-inner">
+                  <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${gradeRecord.score}</div>
+                  <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
+                      <p class="text-[9px] font-bold text-gray-500 uppercase mb-0.5 tracking-wider">Up to Date</p>
+                      <p class="text-[10px] text-gray-700 leading-tight line-clamp-2" title="${escapeHTML(gradeRecord.feedback)}">${escapeHTML(gradeRecord.feedback)}</p>
+                  </div>
+                  <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1" title="Force Re-evaluate">🔄</button>
+              </div>
+          `;
+      } else {
+        // New commits exist, or it has never been graded
+        actionAreaHtml = `
+              <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="${gradeRecord ? "bg-amber-500 hover:bg-amber-600" : "bg-purple-600 hover:bg-purple-700"} text-white px-4 py-1.5 rounded text-xs font-bold transition shadow-sm whitespace-nowrap flex items-center gap-2">
+                  ✨ ${gradeRecord ? "Evaluate New Commits" : "Run Auto-Check"}
+              </button>
+          `;
+      }
 
       const cardHtml = `
-            <div id="${taskCardId}" class="p-4 bg-white border rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-blue-300 transition">
+            <div id="${taskCardId}" class="p-4 bg-white border ${gradeRecord && !isUpToDate ? "border-amber-400 bg-amber-50/30" : "border-gray-200"} rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-blue-300 transition">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="bg-blue-50 text-blue-600 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${escapeHTML(task.type)}</span>
@@ -441,11 +477,8 @@ window.openGradingModal = async function (studentId, owner, repo) {
                     <p class="text-[10px] text-gray-500 font-mono truncate">Target: ${escapeHTML(task.targetPath)}</p>
                     <p class="text-[10px] text-red-500 font-bold mt-1">Due: ${new Date(task.deployment.deadline).toLocaleDateString()}</p>
                 </div>
-                
                 <div class="grade-action-area shrink-0">
-                    <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}')" class="bg-purple-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-purple-700 transition shadow-sm whitespace-nowrap flex items-center gap-2">
-                        ✨ Run Auto-Check
-                    </button>
+                    ${actionAreaHtml}
                 </div>
             </div>
         `;
