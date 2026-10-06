@@ -138,6 +138,29 @@
         </div>
 
         <div class="space-y-6">
+          <!-- ✨ NEW: Active Assignments Widget -->
+          <div
+            class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200"
+          >
+            <h3
+              class="text-base sm:text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"
+            >
+              <span class="text-indigo-500">🎯</span> Active Assignments
+            </h3>
+            <div
+              id="studentAssessmentsContainer"
+              class="space-y-3 max-h-64 overflow-y-auto pr-2"
+            >
+              <!-- Loading Skeleton -->
+              <div class="animate-pulse flex space-x-4">
+                <div class="flex-1 space-y-3 py-1">
+                  <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+                  <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div
             class="bg-slate-800 p-5 sm:p-6 rounded-xl shadow-md text-white border border-slate-700 relative overflow-hidden"
           >
@@ -191,6 +214,62 @@
         </div>
       </div>
     </main>
+
+    <!-- ✨ NEW: Assessment Details Modal (Insert just above your scripts) -->
+    <div
+      id="assessmentModal"
+      class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[90vh]"
+      >
+        <div class="p-5 border-b bg-slate-800 flex justify-between items-start">
+          <div>
+            <span
+              id="modalAssType"
+              class="text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider mb-2 inline-block"
+            ></span>
+            <h2 id="modalAssTitle" class="text-xl font-bold text-white"></h2>
+            <p
+              id="modalAssPath"
+              class="text-xs text-cyan-400 mt-1 font-mono"
+            ></p>
+          </div>
+          <button
+            onclick="
+              document.getElementById('assessmentModal').classList.add('hidden')
+            "
+            class="text-slate-400 hover:text-white text-2xl font-bold"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1 space-y-4 bg-slate-50">
+          <div class="bg-white p-4 rounded border border-slate-200 shadow-sm">
+            <h3
+              class="font-bold text-sm text-indigo-800 mb-2 uppercase tracking-wider text-[10px]"
+            >
+              Task Instructions
+            </h3>
+            <p
+              id="modalAssContext"
+              class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed"
+            ></p>
+          </div>
+          <div class="bg-white p-4 rounded border border-slate-200 shadow-sm">
+            <h3
+              class="font-bold text-sm text-emerald-800 mb-2 uppercase tracking-wider text-[10px]"
+            >
+              Grading Rubric / Criteria
+            </h3>
+            <p
+              id="modalAssRubric"
+              class="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed"
+            ></p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script src="js/core/adminerva-nav.js"></script>
     <script src="js/core/adminerva-loader.js"></script>

@@ -21,6 +21,7 @@ let userProfiles = [];
 let currentChart = null;
 let currentStudentProfile = null;
 let cachedCommitsData = [];
+let currentSectionAssessments = [];
 
 // 🔒 Security Patch
 function escapeHTML(str) {
@@ -156,6 +157,7 @@ async function loadDashboardProfile(studentData) {
 
   verifyStudentSetup(studentData);
   overlay.classList.add("hidden"); // Initially hide it
+  loadStudentAssessments(studentData.section);
 
   if (currentChart) {
     currentChart.destroy();
@@ -643,3 +645,80 @@ async function verifyStudentSetup(studentData) {
     console.error("Diagnostic check failed:", e);
   }
 }
+
+// ==========================================
+// ASSIGNMENT WIDGET LOGIC
+// ==========================================
+async function loadStudentAssessments(studentSection) {
+  const container = document.getElementById("studentAssessmentsContainer");
+  if (!container) return;
+
+  try {
+    // 🚀 Uses array-contains to match the targetSections array in Firestore
+    const q = query(
+      collection(db, "assessments"),
+      where("targetSections", "array-contains", studentSection),
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      container.innerHTML = `<div class="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center text-sm text-slate-500 font-medium">No active assignments for this section.</div>`;
+      return;
+    }
+
+    container.innerHTML = "";
+    currentSectionAssessments = [];
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      currentSectionAssessments.push({ id: docSnap.id, ...data });
+
+      const typeColor =
+        data.type === "PETA"
+          ? "bg-purple-100 text-purple-700 border-purple-200"
+          : data.type === "Formative"
+            ? "bg-green-100 text-green-700 border-green-200"
+            : "bg-blue-100 text-blue-700 border-blue-200";
+
+      const card = `
+        <div class="p-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition group cursor-pointer" onclick="viewAssessmentDetails('${docSnap.id}')">
+            <div class="flex justify-between items-start mb-1">
+                <h4 class="font-bold text-sm text-slate-800 line-clamp-1 pr-2 group-hover:text-indigo-600 transition">${escapeHTML(data.title)}</h4>
+                <span class="${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider whitespace-nowrap">${escapeHTML(data.type)}</span>
+            </div>
+            <p class="text-xs text-slate-500 line-clamp-2 mt-1">${escapeHTML(data.taskContext || "No context provided.")}</p>
+        </div>
+      `;
+      container.insertAdjacentHTML("beforeend", card);
+    });
+  } catch (error) {
+    console.error("Failed to load assessments:", error);
+    container.innerHTML = `<div class="text-sm text-red-500 p-2">Failed to load assignments. Check console.</div>`;
+  }
+}
+
+window.viewAssessmentDetails = function (id) {
+  const ass = currentSectionAssessments.find((a) => a.id === id);
+  if (!ass) return;
+
+  const typeColor =
+    ass.type === "PETA"
+      ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+      : ass.type === "Formative"
+        ? "bg-green-500/20 text-green-300 border-green-500/30"
+        : "bg-blue-500/20 text-blue-300 border-blue-500/30";
+
+  document.getElementById("modalAssType").className =
+    `${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider mb-2 inline-block`;
+  document.getElementById("modalAssType").textContent = ass.type;
+  document.getElementById("modalAssTitle").textContent = ass.title;
+  document.getElementById("modalAssPath").textContent =
+    `Target File: ${ass.targetPath || "Any"}`;
+
+  document.getElementById("modalAssContext").textContent =
+    ass.taskContext || "No instructions provided.";
+  document.getElementById("modalAssRubric").textContent =
+    ass.evalCriteria || "No specific criteria provided.";
+
+  document.getElementById("assessmentModal").classList.remove("hidden");
+};
