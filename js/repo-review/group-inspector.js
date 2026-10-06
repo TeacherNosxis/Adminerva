@@ -9,7 +9,7 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const CACHE_VERSION = 6; // 🚀 THE FIX: Bumped to wipe the split-cache corruption
+const CACHE_VERSION = 7; // 🚀 THE FIX: Bumped to wipe the split-cache corruption
 
 let repoGroups = {};
 let studentStatsMap = {};
@@ -222,76 +222,63 @@ window.fetchGroupRepos = async function () {
 
         for (let c of currentCommits) {
           const authorLogin = (c.author?.login || "").toLowerCase().trim();
-          const authorName = (c.commit?.author?.name || "")
-            .toLowerCase()
-            .trim();
-          const authorEmail = (c.commit?.author?.email || "")
-            .toLowerCase()
-            .trim();
-          const committerLogin = (c.committer?.login || "")
-            .toLowerCase()
-            .trim();
-          const committerName = (c.commit?.committer?.name || "")
-            .toLowerCase()
-            .trim();
-          const committerEmail = (c.commit?.committer?.email || "")
-            .toLowerCase()
-            .trim();
+          const authorName = (c.commit?.author?.name || "").toLowerCase().trim();
+          const authorEmail = (c.commit?.author?.email || "").toLowerCase().trim();
+          const committerLogin = (c.committer?.login || "").toLowerCase().trim();
+          const committerName = (c.commit?.committer?.name || "").toLowerCase().trim();
+          const committerEmail = (c.commit?.committer?.email || "").toLowerCase().trim();
 
-          const member = group.members.find((m) => {
+          let member = null;
+
+          // 🚀 PASS 1: Strict Verified Match (GitHub Login & Exact Email)
+          // Guarantees JackDaniel gets his commit if his GitHub account was used, 
+          // completely ignoring Stephen's name on the local computer.
+          member = group.members.find((m) => {
             const dbUsername = (m.githubUsername || "").toLowerCase().trim();
             const dbEmail = (m.email || "").toLowerCase().trim();
-            const dbName = (m.name || "").toLowerCase().trim();
 
-            if (authorLogin && dbUsername === authorLogin) return true;
-            if (committerLogin && dbUsername === committerLogin) return true;
-            if (authorEmail && dbEmail === authorEmail) return true;
-            if (committerEmail && dbEmail === committerEmail) return true;
-            if (authorName && dbName === authorName) return true;
-            if (committerName && dbName === committerName) return true;
-            if (authorName && authorName.includes(dbUsername)) return true;
-            if (committerName && committerName.includes(dbUsername))
-              return true;
-
-            if (authorName && dbName) {
-              const nameParts = dbName.split(" ").filter((w) => w.length > 2);
-              const matches = nameParts.filter((part) =>
-                authorName.includes(part),
-              );
-              if (
-                matches.length >= 2 ||
-                (nameParts.length === 1 && matches.length === 1)
-              )
-                return true;
+            if (dbUsername) {
+              if (authorLogin && dbUsername === authorLogin) return true;
+              if (committerLogin && dbUsername === committerLogin) return true;
             }
-            if (committerName && dbName) {
-              const nameParts = dbName.split(" ").filter((w) => w.length > 2);
-              const matches = nameParts.filter((part) =>
-                committerName.includes(part),
-              );
-              if (
-                matches.length >= 2 ||
-                (nameParts.length === 1 && matches.length === 1)
-              )
-                return true;
+            if (dbEmail) {
+              if (authorEmail && dbEmail === authorEmail) return true;
+              if (committerEmail && dbEmail === committerEmail) return true;
             }
-
-            if (
-              authorEmail &&
-              authorEmail.includes(dbUsername) &&
-              dbUsername.length > 3
-            )
-              return true;
-            if (
-              committerEmail &&
-              committerEmail.includes(dbUsername) &&
-              dbUsername.length > 3
-            )
-              return true;
-
             return false;
           });
 
+          // 🚀 PASS 2: Fallback Fuzzy Match (Local Git Config Name)
+          // Only runs if Pass 1 found nothing. Includes your existing name-part logic.
+          if (!member) {
+            member = group.members.find((m) => {
+              const dbName = (m.name || "").toLowerCase().trim();
+              const dbUsername = (m.githubUsername || "").toLowerCase().trim();
+
+              if (!dbName) return false; // Prevent empty string black holes
+
+              if (authorName && dbName === authorName) return true;
+              if (committerName && dbName === committerName) return true;
+
+              const nameParts = dbName.split(" ").filter((w) => w.length > 2);
+
+              if (authorName) {
+                const matches = nameParts.filter((part) => authorName.includes(part));
+                if (matches.length >= 2 || (nameParts.length === 1 && matches.length === 1)) return true;
+                if (dbUsername && authorName.includes(dbUsername) && dbUsername.length > 3) return true;
+              }
+
+              if (committerName) {
+                const matches = nameParts.filter((part) => committerName.includes(part));
+                if (matches.length >= 2 || (nameParts.length === 1 && matches.length === 1)) return true;
+                if (dbUsername && committerName.includes(dbUsername) && dbUsername.length > 3) return true;
+              }
+
+              return false;
+            });
+          }
+
+          // Proceed with assigning the stats to the correct member
           if (member) {
             const stats = tempStats[member.id];
             stats.count++;
