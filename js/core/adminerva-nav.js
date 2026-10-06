@@ -104,6 +104,18 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
     logoBlock = adminLogoBlock;
+  } else if (module === "global") {
+    // 🚀 THE FIX: A neutral sub-nav that works for all user roles
+    navTabsHTML = `
+        <div class="bg-slate-800 border-t border-slate-700 px-4 sm:px-6 py-3 flex items-center shadow-md">
+            <button onclick="window.history.back()" class="text-cyan-400 hover:text-cyan-300 text-sm font-bold flex items-center gap-2 transition">
+                <span class="text-lg leading-none">←</span> Return to Previous Page
+            </button>
+            <span class="text-slate-500 text-xs font-bold uppercase tracking-widest ml-4 border-l border-slate-600 pl-4 hidden sm:inline-block">
+                System Support
+            </span>
+        </div>
+    `;
   } else if (activeModule === "settings") {
     centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide hidden sm:block">System Configuration</span>`;
     rightSide = `

@@ -9,7 +9,7 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const CACHE_VERSION = 7; // 🚀 THE FIX: Bumped to wipe the split-cache corruption
+const CACHE_VERSION = 7;
 
 let repoGroups = {};
 let studentStatsMap = {};
@@ -96,7 +96,6 @@ window.fetchGroupRepos = async function () {
         ? student.repoUrl.trim().replace(/\/$/, "")
         : "unassigned";
 
-      // 🚀 THE FIX: Group by standardized Repo ID, NOT the raw URL!
       const groupId =
         rawUrl !== "unassigned" ? getRepoId(rawUrl) : "unassigned";
 
@@ -183,15 +182,31 @@ window.fetchGroupRepos = async function () {
           },
         );
 
+        // Targeted Error Handling
         if (!res.ok) {
-          group.apiError =
-            res.status === 409 ? "Empty Repository" : `HTTP ${res.status}`;
+          if (res.status === 404) {
+            group.apiError = "Private Repo or Broken Link (404)";
+          } else if (res.status === 403) {
+            group.apiError = "GitHub API Rate Limit Reached (403)";
+          } else if (res.status === 409) {
+            group.apiError = "Empty Repository (409)";
+          } else if (res.status === 401) {
+            group.apiError = "Invalid GitHub Token (401)";
+          } else {
+            group.apiError = `HTTP Error ${res.status}`;
+          }
+
           processed++;
           window.showLoader(
             `Syncing Repositories`,
             `Completed ${processed} of ${validGroupIds.length}`,
           );
           return;
+        } else {
+          // Clear any previous errors if fetch succeeds
+          if (group.apiError !== null) {
+            group.apiError = null;
+          }
         }
 
         const currentCommits = await res.json();
@@ -222,17 +237,24 @@ window.fetchGroupRepos = async function () {
 
         for (let c of currentCommits) {
           const authorLogin = (c.author?.login || "").toLowerCase().trim();
-          const authorName = (c.commit?.author?.name || "").toLowerCase().trim();
-          const authorEmail = (c.commit?.author?.email || "").toLowerCase().trim();
-          const committerLogin = (c.committer?.login || "").toLowerCase().trim();
-          const committerName = (c.commit?.committer?.name || "").toLowerCase().trim();
-          const committerEmail = (c.commit?.committer?.email || "").toLowerCase().trim();
+          const authorName = (c.commit?.author?.name || "")
+            .toLowerCase()
+            .trim();
+          const authorEmail = (c.commit?.author?.email || "")
+            .toLowerCase()
+            .trim();
+          const committerLogin = (c.committer?.login || "")
+            .toLowerCase()
+            .trim();
+          const committerName = (c.commit?.committer?.name || "")
+            .toLowerCase()
+            .trim();
+          const committerEmail = (c.commit?.committer?.email || "")
+            .toLowerCase()
+            .trim();
 
           let member = null;
 
-          // 🚀 PASS 1: Strict Verified Match (GitHub Login & Exact Email)
-          // Guarantees JackDaniel gets his commit if his GitHub account was used, 
-          // completely ignoring Stephen's name on the local computer.
           member = group.members.find((m) => {
             const dbUsername = (m.githubUsername || "").toLowerCase().trim();
             const dbEmail = (m.email || "").toLowerCase().trim();
@@ -248,14 +270,12 @@ window.fetchGroupRepos = async function () {
             return false;
           });
 
-          // 🚀 PASS 2: Fallback Fuzzy Match (Local Git Config Name)
-          // Only runs if Pass 1 found nothing. Includes your existing name-part logic.
           if (!member) {
             member = group.members.find((m) => {
               const dbName = (m.name || "").toLowerCase().trim();
               const dbUsername = (m.githubUsername || "").toLowerCase().trim();
 
-              if (!dbName) return false; // Prevent empty string black holes
+              if (!dbName) return false;
 
               if (authorName && dbName === authorName) return true;
               if (committerName && dbName === committerName) return true;
@@ -263,22 +283,43 @@ window.fetchGroupRepos = async function () {
               const nameParts = dbName.split(" ").filter((w) => w.length > 2);
 
               if (authorName) {
-                const matches = nameParts.filter((part) => authorName.includes(part));
-                if (matches.length >= 2 || (nameParts.length === 1 && matches.length === 1)) return true;
-                if (dbUsername && authorName.includes(dbUsername) && dbUsername.length > 3) return true;
+                const matches = nameParts.filter((part) =>
+                  authorName.includes(part),
+                );
+                if (
+                  matches.length >= 2 ||
+                  (nameParts.length === 1 && matches.length === 1)
+                )
+                  return true;
+                if (
+                  dbUsername &&
+                  authorName.includes(dbUsername) &&
+                  dbUsername.length > 3
+                )
+                  return true;
               }
 
               if (committerName) {
-                const matches = nameParts.filter((part) => committerName.includes(part));
-                if (matches.length >= 2 || (nameParts.length === 1 && matches.length === 1)) return true;
-                if (dbUsername && committerName.includes(dbUsername) && dbUsername.length > 3) return true;
+                const matches = nameParts.filter((part) =>
+                  committerName.includes(part),
+                );
+                if (
+                  matches.length >= 2 ||
+                  (nameParts.length === 1 && matches.length === 1)
+                )
+                  return true;
+                if (
+                  dbUsername &&
+                  committerName.includes(dbUsername) &&
+                  dbUsername.length > 3
+                )
+                  return true;
               }
 
               return false;
             });
           }
 
-          // Proceed with assigning the stats to the correct member
           if (member) {
             const stats = tempStats[member.id];
             stats.count++;
@@ -354,7 +395,7 @@ window.fetchGroupRepos = async function () {
           `Completed ${processed} of ${validGroupIds.length}`,
         );
       } catch (err) {
-        group.apiError = "Network Error";
+        group.apiError = "Network/Fetch Error";
         processed++;
         window.showLoader(
           `Syncing Repositories`,
@@ -389,7 +430,7 @@ function renderGroupsUI() {
     const safeUrl = escapeHTML(groupData.url);
 
     const errorBadge = groupData.apiError
-      ? `<span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded border border-red-300">API Error: ${escapeHTML(groupData.apiError)}</span>`
+      ? `<span class="bg-red-500/10 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30 shrink-0">⚠️ ${escapeHTML(groupData.apiError)}</span>`
       : "";
 
     let membersHtml = "";
@@ -418,13 +459,15 @@ function renderGroupsUI() {
     });
 
     const card = `
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col">
-        <div class="bg-gray-50 border-b border-gray-200 p-4 rounded-t-lg flex justify-between items-center">
-          <div>
-            <h3 class="font-bold text-gray-800 truncate w-64" title="${groupName}">${groupName}</h3>
-            <a href="${safeUrl}" target="_blank" class="text-[10px] text-blue-500 hover:underline break-all">${safeUrl}</a>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col mb-5">
+        <div class="bg-gray-50 border-b border-gray-200 p-4 rounded-t-lg flex justify-between items-center gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3 mb-1">
+                <h3 class="font-bold text-gray-800 truncate" title="${groupName}">${groupName}</h3>
+                ${errorBadge}
+            </div>
+            <a href="${safeUrl}" target="_blank" class="text-[10px] text-blue-500 hover:underline truncate block">${safeUrl}</a>
           </div>
-          ${errorBadge}
         </div>
         <div class="p-2 flex-1">
           ${membersHtml}

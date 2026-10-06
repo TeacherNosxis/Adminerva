@@ -94,7 +94,12 @@ window.fetchAndSyncRepos = async function () {
       if (!repoInfo) return;
 
       if (!repoGroups[repoInfo.groupId]) {
-        repoGroups[repoInfo.groupId] = { ...repoInfo, members: [] };
+        // Initialize apiError as null during setup
+        repoGroups[repoInfo.groupId] = {
+          ...repoInfo,
+          members: [],
+          apiError: null,
+        };
       }
       repoGroups[repoInfo.groupId].members.push(student);
       globalStudentsData[student.id] = student;
@@ -113,7 +118,7 @@ window.fetchAndSyncRepos = async function () {
           if (stats[member.id])
             member.commitCount = stats[member.id].count || 0;
         });
-        repoGroups[groupId].latestSha = cachedData.latestSha; // Store to verify later
+        repoGroups[groupId].latestSha = cachedData.latestSha;
       }
     });
 
@@ -142,7 +147,29 @@ window.fetchAndSyncRepos = async function () {
           },
         );
 
-        if (!res.ok) continue;
+        // Targeted Error Handling
+        if (!res.ok) {
+          if (res.status === 404) {
+            group.apiError = "Private Repo or Broken Link (404)";
+          } else if (res.status === 403) {
+            group.apiError = "GitHub API Rate Limit Reached (403)";
+          } else if (res.status === 409) {
+            group.apiError = "Empty Repository (409)";
+          } else if (res.status === 401) {
+            group.apiError = "Invalid GitHub Token (401)";
+          } else {
+            group.apiError = `HTTP Error ${res.status}`;
+          }
+          requiresUIRefresh = true; // Force UI refresh to show the badge
+          continue;
+        } else {
+          // Clear any previous errors if fetch succeeds
+          if (group.apiError !== null) {
+            group.apiError = null;
+            requiresUIRefresh = true;
+          }
+        }
+
         const commits = await res.json();
         if (commits.length === 0) continue;
 
@@ -214,10 +241,12 @@ window.fetchAndSyncRepos = async function () {
         );
       } catch (err) {
         console.warn(`Failed to sync ${group.repo}`, err);
+        group.apiError = "Network/Fetch Error";
+        requiresUIRefresh = true;
       }
     }
 
-    // Only re-render if we found new commits that changed the numbers
+    // Only re-render if we found new commits or new errors that changed the UI state
     if (requiresUIRefresh) {
       window.showSubtleLoader("Applying fresh updates to view...");
       renderGroupedUI(repoGroups);
@@ -264,15 +293,22 @@ function renderGroupedUI(repoGroups) {
         `;
     });
 
+    const errorBadge = group.apiError
+      ? `<span class="bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30 shrink-0">⚠️ ${escapeHTML(group.apiError)}</span>`
+      : "";
+
     const accordionId = `group-content-${index}`;
     const cardHtml = `
         <div class="bg-white border rounded-lg shadow-sm mb-4 overflow-hidden">
-            <div class="bg-slate-800 p-4 flex justify-between items-center cursor-pointer hover:bg-slate-700 transition" onclick="toggleAccordion('${accordionId}')">
-                <div>
-                    <h3 class="font-bold text-white text-lg">${escapeHTML(group.owner)} / ${escapeHTML(group.repo)}</h3>
-                    <a href="${group.cleanUrl}" target="_blank" class="text-xs text-cyan-400 hover:underline" onclick="event.stopPropagation()">${group.cleanUrl}</a>
+            <div class="bg-slate-800 p-4 flex justify-between items-center cursor-pointer hover:bg-slate-700 transition gap-4" onclick="toggleAccordion('${accordionId}')">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-1">
+                        <h3 class="font-bold text-white text-lg truncate">${escapeHTML(group.owner)} / ${escapeHTML(group.repo)}</h3>
+                        ${errorBadge}
+                    </div>
+                    <a href="${group.cleanUrl}" target="_blank" class="text-xs text-cyan-400 hover:underline truncate block" onclick="event.stopPropagation()">${group.cleanUrl}</a>
                 </div>
-                <div class="text-slate-300 transform transition-transform duration-200 font-bold" id="icon-${accordionId}">▼</div>
+                <div class="text-slate-300 transform transition-transform duration-200 font-bold shrink-0" id="icon-${accordionId}">▼</div>
             </div>
             <div id="${accordionId}" class="hidden flex-col">
                 ${membersHtml}
