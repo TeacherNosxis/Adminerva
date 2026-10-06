@@ -11,17 +11,16 @@ import {
   signOut,
   GithubAuthProvider,
   GoogleAuthProvider,
-  signInWithRedirect,
-  linkWithRedirect,
-  getRedirectResult,
-  onAuthStateChanged 
+  signInWithPopup
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 const SUPER_ADMIN_EMAIL = "babaynike2013@gmail.com".toLowerCase();
 const TEACHER_EMAIL = "josephsixson@mcstayuman.edu.ph".toLowerCase();
 const errBox = document.getElementById("loginErrorBox");
 
-// UI Helpers
+// ==========================================
+// UI STATE MANAGERS
+// ==========================================
 const showError = (title, message) => {
   if (!errBox) return;
   errBox.innerHTML = `
@@ -33,145 +32,123 @@ const showError = (title, message) => {
   resetButtons();
 };
 
-const showLoading = (message) => {
-  if (!errBox) return;
-  errBox.innerHTML = `
-    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-3 mt-2"></div>
-    <p class="text-blue-400 font-bold text-sm">${message}</p>
-  `;
-  errBox.classList.remove("hidden");
-};
-
 const resetButtons = () => {
   const gBtn = document.getElementById("googleLoginBtn");
   const ghBtn = document.getElementById("githubLoginBtn");
-  if (gBtn) gBtn.disabled = false;
-  if (ghBtn) ghBtn.disabled = false;
+  if (gBtn) { gBtn.disabled = false; gBtn.innerHTML = gBtn.dataset.originalHtml; }
+  if (ghBtn) { ghBtn.disabled = false; ghBtn.innerHTML = ghBtn.dataset.originalHtml; }
 };
 
-// State flag to prevent double-processing
-let isProcessing = false;
+const setLoading = (btnId, text) => {
+  const btn = document.getElementById(btnId);
+  if (btn) {
+    if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-current mr-2 inline-block align-middle"></div> <span class="align-middle">${text}...</span>`;
+  }
+};
 
 // ==========================================
-// 1. THE CORE ROUTING ENGINE
+// THE LOGIN ENGINE (Popups tied directly to clicks)
 // ==========================================
-async function authenticateUser(user, redirectResult = null) {
-  if (isProcessing) return;
-  isProcessing = true;
-  
-  showLoading("Verifying your account...");
+const handleOAuthLogin = async (provider, providerType, btnId) => {
+  if (errBox) errBox.classList.add("hidden");
+  setLoading(btnId, "Connecting");
 
   try {
-    const email = user.email?.toLowerCase().trim();
-    if (!email) {
-      await signOut(auth);
-      return showError("Login Failed", "Your GitHub account does not expose a public email. Please sign in with Google instead.");
+    if (providerType === "github") {
+      provider.addScope("repo");
+      provider.addScope("read:user");
     }
 
-    // Role verification against Firestore
+    // 1. INSTANT POPUP: Fires immediately on click, bypassing most blockers
+    const result = await signInWithPopup(auth, provider);
+    const email = result.user.email?.toLowerCase().trim();
+
+    if (!email) {
+      await signOut(auth);
+      throw new Error("no-email");
+    }
+
+    setLoading(btnId, "Verifying User");
+
+    // 2. VERIFY IDENTITY against Firestore Directory
     const isEducator = email === SUPER_ADMIN_EMAIL || email === TEACHER_EMAIL;
-    const targetCollection = isEducator ? "teachers" : "students";
+    let targetCollection = isEducator ? "teachers" : "students";
 
     const q = query(collection(db, targetCollection), where("email", "==", email));
     const snap = await getDocs(q);
 
     if (snap.empty) {
       await signOut(auth);
-      return showError("Access Denied", `Your email (${email}) is not recognized. If you clicked GitHub, your personal email might not match the school records. Please click "Continue with Google" instead.`);
+      throw new Error("unrecognized-email:" + email);
     }
 
-    const docId = snap.docs[0].id;
-    const userData = snap.docs[0].data();
+    const matchedDocId = snap.docs[0].id;
 
-    let currentToken = userData.githubToken;
-    let ghUsername = userData.githubUsername || "";
-
-    // Extract fresh GitHub token if returning from a redirect
-    if (redirectResult) {
-      const credential = GithubAuthProvider.credentialFromResult(redirectResult);
+    // 3. TOKEN CAPTURE (Only needed here if they logged directly into GitHub)
+    if (providerType === "github") {
+      const credential = GithubAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
-        currentToken = credential.accessToken;
-        ghUsername = redirectResult._tokenResponse?.screenName || redirectResult.user.reloadUserInfo?.screenName || ghUsername;
-        
-        await updateDoc(doc(db, targetCollection, docId), {
-          githubToken: currentToken,
-          githubUsername: ghUsername,
+        const ghUsername = result._tokenResponse?.screenName || result.user.reloadUserInfo?.screenName || "";
+        await updateDoc(doc(db, targetCollection, matchedDocId), {
+          githubToken: credential.accessToken,
+          githubUsername: ghUsername
         });
       }
     }
 
-    // MULTI-STEP AUTH: If logged in with Google but no GitHub token exists
-    if (!currentToken) {
-       showLoading("Linking GitHub Account...");
-       const ghProvider = new GithubAuthProvider();
-       ghProvider.addScope("repo");
-       ghProvider.addScope("read:user");
-       await linkWithRedirect(user, ghProvider);
-       return; // Browser leaves the page here
-    }
-
-    // Route to appropriate dashboard
-    localStorage.setItem("Adminerva_Role", isEducator ? (email === SUPER_ADMIN_EMAIL ? "superadmin" : "teacher") : "student");
+    // 4. ROUTE TO DASHBOARD
+    localStorage.setItem(
+      "Adminerva_Role",
+      isEducator ? (email === SUPER_ADMIN_EMAIL ? "superadmin" : "teacher") : "student"
+    );
     window.location.href = isEducator ? "reporeviewDashboard.html" : "student-dashboard.html";
 
   } catch (error) {
-    console.error(error);
-    isProcessing = false;
-    showError("Authentication Error", error.message);
-  }
-}
-
-// ==========================================
-// 2. THE CATCHERS (Running in parallel)
-// ==========================================
-
-// Catcher A: Grabs the OAuth payload (Tokens)
-getRedirectResult(auth)
-  .then((result) => {
-    if (result && result.user) {
-      authenticateUser(result.user, result);
-    }
-  })
-  .catch(async (error) => {
     await signOut(auth);
-    isProcessing = false;
-    let msg = error.message.replace("Firebase:", "").trim();
-    if (error.code === "auth/account-exists-with-different-credential") {
-      msg = "You already created an account using Google. Please click 'Continue with Google'.";
-    }
-    showError("Login Failed", msg);
-  });
+    
+    let errorTitle = "Login Failed";
+    let errorMessage = error.message.replace("Firebase:", "").trim();
 
-// Catcher B: Grabs the Auth State (Fallback if payload drops)
-onAuthStateChanged(auth, (user) => {
-  if (user && !isProcessing) {
-    authenticateUser(user, null);
+    // 🚀 TARGETED ERROR TRANSLATIONS
+    if (error.message === "no-email") {
+      errorMessage = "Your GitHub account does not expose a public email. Please sign in with Google.";
+    } else if (error.message.startsWith("unrecognized-email:")) {
+      errorTitle = "Access Denied";
+      const failedEmail = error.message.split(":")[1];
+      errorMessage = `Your email (${failedEmail}) is not recognized. If you clicked GitHub, your personal email might not match the school records. <strong>Please click "Continue with Google" instead.</strong>`;
+    } else if (error.code === "auth/popup-blocked") {
+      errorMessage = "Your browser aggressively blocked the login window. <strong>Please check the URL bar, allow popups for teachernosxis.github.io</strong>, and try again.";
+    } else if (error.code === "auth/popup-closed-by-user") {
+      errorMessage = "The login window was closed before finishing. Please try again.";
+    } else if (error.code === "auth/account-exists-with-different-credential") {
+      errorMessage = "You already registered this account using Google. Please click 'Continue with Google'.";
+    } else if (error.code === "auth/network-request-failed") {
+      errorMessage = "Network error. Please check your internet connection and try again.";
+    }
+
+    showError(errorTitle, errorMessage);
   }
-});
+};
 
 // ==========================================
-// 3. BUTTON LISTENERS (Triggering Redirects)
+// EVENT LISTENERS
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("error") === "unauthorized") {
-     showError("Session Expired", "Please sign in again to continue.");
-     window.history.replaceState({}, document.title, window.location.pathname);
+    showError("Session Expired", "Please sign in again to continue.");
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 
-  document.getElementById("googleLoginBtn")?.addEventListener("click", (e) => {
-    e.target.disabled = true;
-    showLoading("Redirecting to Google...");
-    const provider = new GoogleAuthProvider();
-    signInWithRedirect(auth, provider);
-  });
+  const googleBtn = document.getElementById("googleLoginBtn");
+  if (googleBtn) {
+    googleBtn.addEventListener("click", () => handleOAuthLogin(new GoogleAuthProvider(), "google", "googleLoginBtn"));
+  }
 
-  document.getElementById("githubLoginBtn")?.addEventListener("click", (e) => {
-    e.target.disabled = true;
-    showLoading("Redirecting to GitHub...");
-    const provider = new GithubAuthProvider();
-    provider.addScope("repo");
-    provider.addScope("read:user");
-    signInWithRedirect(auth, provider);
-  });
+  const githubBtn = document.getElementById("githubLoginBtn");
+  if (githubBtn) {
+    githubBtn.addEventListener("click", () => handleOAuthLogin(new GithubAuthProvider(), "github", "githubLoginBtn"));
+  }
 });
