@@ -1,0 +1,197 @@
+import { db, auth } from "../core/firebase-core.js";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+let allAssessments = [];
+let studentSection = "";
+
+// Security Patch
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str).replace(
+    /[&<>"']/g,
+    (m) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      })[m],
+  );
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
+  const targetEmail =
+    localStorage.getItem("Adminerva_Impersonate") || user.email;
+
+  try {
+    const q = query(
+      collection(db, "students"),
+      where("email", "==", targetEmail.toLowerCase()),
+    );
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      studentSection = snap.docs[0].data().section;
+      fetchAssessments();
+    }
+  } catch (error) {
+    console.error("Error identifying student section:", error);
+  }
+});
+
+async function fetchAssessments() {
+  if (!studentSection) return;
+  const container = document.getElementById("assignmentsFeed");
+
+  try {
+    const q = query(
+      collection(db, "assessments"),
+      where("targetSections", "array-contains", studentSection),
+    );
+    const snap = await getDocs(q);
+
+    allAssessments = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      // Calculate a fallback "Urgent" flag for items older than 7 days if no deadline exists yet
+      const postedDate = data.createdAt ? data.createdAt.toDate() : new Date();
+      const isUrgent = data.dueDate
+        ? new Date(data.dueDate) < new Date()
+        : new Date() - postedDate > 7 * 24 * 60 * 60 * 1000;
+
+      allAssessments.push({
+        id: docSnap.id,
+        isUrgent: isUrgent,
+        postedDate: postedDate,
+        ...data,
+      });
+    });
+
+    renderAssessments();
+  } catch (error) {
+    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments. Check console.</div>`;
+    console.error(error);
+  }
+}
+
+function renderAssessments() {
+  const container = document.getElementById("assignmentsFeed");
+  const searchQuery = document
+    .getElementById("searchAssInput")
+    .value.toLowerCase();
+  const filterStatus = document.getElementById("filterStatus").value;
+  const sortOption = document.getElementById("sortDate").value;
+
+  // 1. Filter
+  let filtered = allAssessments.filter((ass) => {
+    const matchesSearch =
+      ass.title.toLowerCase().includes(searchQuery) ||
+      (ass.taskContext || "").toLowerCase().includes(searchQuery);
+    const matchesStatus =
+      filterStatus === "all" ||
+      (filterStatus === "urgent" && ass.isUrgent) ||
+      (filterStatus === "pending" && !ass.isUrgent);
+    return matchesSearch && matchesStatus;
+  });
+
+  // 2. Sort
+  filtered.sort((a, b) => {
+    if (sortOption === "newest") return b.postedDate - a.postedDate;
+    if (sortOption === "oldest") return a.postedDate - b.postedDate;
+    if (sortOption === "deadline") {
+      // Prioritize actual due dates, fallback to posted date
+      const dateA = a.dueDate ? new Date(a.dueDate) : a.postedDate;
+      const dateB = b.dueDate ? new Date(b.dueDate) : b.postedDate;
+      return dateA - dateB;
+    }
+  });
+
+  // 3. Render
+  container.innerHTML = "";
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="py-12 text-center text-slate-400 font-medium italic border-2 border-dashed border-slate-200 rounded-xl bg-white">No assignments found matching your criteria.</div>`;
+    return;
+  }
+
+  filtered.forEach((ass) => {
+    const typeColor =
+      ass.type === "PETA"
+        ? "bg-purple-100 text-purple-700 border-purple-200"
+        : ass.type === "Formative"
+          ? "bg-green-100 text-green-700 border-green-200"
+          : "bg-blue-100 text-blue-700 border-blue-200";
+
+    const urgencyBadge = ass.isUrgent
+      ? `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">⚠️ Urgent / Past Due</span>`
+      : `<span class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">⏳ Pending Review</span>`;
+
+    const card = `
+      <div class="bg-white p-5 rounded-xl border ${ass.isUrgent ? "border-rose-300 shadow-sm" : "border-slate-200"} hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center gap-4" onclick="viewAssessmentDetails('${ass.id}')">
+        
+        <div class="flex-grow">
+          <div class="flex items-center gap-3 mb-2 flex-wrap">
+            <span class="${typeColor} text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">${escapeHTML(ass.type)}</span>
+            ${urgencyBadge}
+            <span class="text-[10px] text-slate-400 font-medium ml-auto">Posted: ${ass.postedDate.toLocaleDateString()}</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 leading-tight">${escapeHTML(ass.title)}</h3>
+          <p class="text-sm text-slate-500 mt-2 line-clamp-2">${escapeHTML(ass.taskContext || "No context provided.")}</p>
+        </div>
+        
+        <div class="sm:border-l sm:border-slate-200 sm:pl-4 flex flex-row sm:flex-col items-center justify-between sm:justify-center w-full sm:w-32 gap-2 mt-2 sm:mt-0">
+          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Target</span>
+          <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded truncate max-w-full" title="${escapeHTML(ass.targetPath || "Any")}">${escapeHTML(ass.targetPath || "Any")}</span>
+        </div>
+      </div>
+    `;
+    container.insertAdjacentHTML("beforeend", card);
+  });
+}
+
+// Bind Event Listeners for Filters
+document.addEventListener("DOMContentLoaded", () => {
+  document
+    .getElementById("searchAssInput")
+    ?.addEventListener("input", renderAssessments);
+  document
+    .getElementById("filterStatus")
+    ?.addEventListener("change", renderAssessments);
+  document
+    .getElementById("sortDate")
+    ?.addEventListener("change", renderAssessments);
+});
+
+// Window function for the modal
+window.viewAssessmentDetails = function (id) {
+  const ass = allAssessments.find((a) => a.id === id);
+  if (!ass) return;
+
+  const typeColor =
+    ass.type === "PETA"
+      ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+      : ass.type === "Formative"
+        ? "bg-green-500/20 text-green-300 border-green-500/30"
+        : "bg-blue-500/20 text-blue-300 border-blue-500/30";
+
+  document.getElementById("modalAssType").className =
+    `${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider mb-2 inline-block`;
+  document.getElementById("modalAssType").textContent = ass.type;
+  document.getElementById("modalAssTitle").textContent = ass.title;
+  document.getElementById("modalAssPath").textContent =
+    `Target File: ${ass.targetPath || "Any"}`;
+
+  document.getElementById("modalAssContext").textContent =
+    ass.taskContext || "No instructions provided.";
+  document.getElementById("modalAssRubric").textContent =
+    ass.evalCriteria || "No specific criteria provided.";
+
+  document.getElementById("assessmentModal").classList.remove("hidden");
+};

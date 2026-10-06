@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <title>Assignments | Student Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body
+    class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col hidden"
+    id="pageBody"
+  >
+    <!-- Global Navigation -->
+    <div id="adminerva-nav" data-module="student" data-page="assessments"></div>
+
+    <main
+      class="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8"
+    >
+      <!-- Header -->
+      <header class="mb-6 border-b border-slate-200 pb-6">
+        <h1
+          class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2"
+        >
+          <span class="text-indigo-600">📚</span> My Assignments
+        </h1>
+        <p class="text-sm sm:text-base text-slate-500 mt-1 font-medium">
+          Track your active tasks, PETAs, and module requirements.
+        </p>
+      </header>
+
+      <!-- LMS Filter & Sort Bar -->
+      <div
+        class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between"
+      >
+        <div class="w-full sm:w-1/2 relative">
+          <span
+            class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"
+            >🔍</span
+          >
+          <input
+            type="text"
+            id="searchAssInput"
+            placeholder="Search assignments..."
+            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+          />
+        </div>
+
+        <div class="flex w-full sm:w-auto gap-3">
+          <select
+            id="filterStatus"
+            class="w-full sm:w-auto border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold bg-slate-50 text-slate-700 cursor-pointer focus:ring-2 focus:ring-indigo-500 outline-none"
+          >
+            <option value="all">All Assignments</option>
+            <option value="urgent">⚠️ Urgent / Past Due</option>
+            <option value="pending">⏳ Pending</option>
+          </select>
+
+          <select
+            id="sortDate"
+            class="w-full sm:w-auto border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold bg-slate-50 text-slate-700 cursor-pointer focus:ring-2 focus:ring-indigo-500 outline-none"
+          >
+            <option value="newest">Posted: Newest First</option>
+            <option value="oldest">Posted: Oldest First</option>
+            <option value="deadline">Sort by Deadline</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Assignments Feed -->
+      <div id="assignmentsFeed" class="space-y-4">
+        <!-- Skeleton Loader -->
+        <div
+          class="animate-pulse bg-white p-5 rounded-xl border border-slate-200"
+        >
+          <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
+          <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+          <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Assessment Details Modal -->
+    <div
+      id="assessmentModal"
+      class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[90vh]"
+      >
+        <div class="p-5 border-b bg-slate-800 flex justify-between items-start">
+          <div>
+            <span
+              id="modalAssType"
+              class="text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider mb-2 inline-block"
+            ></span>
+            <h2 id="modalAssTitle" class="text-xl font-bold text-white"></h2>
+            <p
+              id="modalAssPath"
+              class="text-xs text-cyan-400 mt-1 font-mono"
+            ></p>
+          </div>
+          <button
+            onclick="
+              document.getElementById('assessmentModal').classList.add('hidden')
+            "
+            class="text-slate-400 hover:text-white text-2xl font-bold"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1 space-y-4 bg-slate-50">
+          <div class="bg-white p-4 rounded border border-slate-200 shadow-sm">
+            <h3
+              class="font-bold text-sm text-indigo-800 mb-2 uppercase tracking-wider text-[10px]"
+            >
+              Task Instructions
+            </h3>
+            <p
+              id="modalAssContext"
+              class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed"
+            ></p>
+          </div>
+          <div class="bg-white p-4 rounded border border-slate-200 shadow-sm">
+            <h3
+              class="font-bold text-sm text-emerald-800 mb-2 uppercase tracking-wider text-[10px]"
+            >
+              Grading Rubric / Criteria
+            </h3>
+            <p
+              id="modalAssRubric"
+              class="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed"
+            ></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="js/core/adminerva-nav.js"></script>
+    <script src="js/core/adminerva-loader.js"></script>
+    <script type="module" src="js/core/auth-guard.js"></script>
+    <script type="module" src="js/student/assessments.js"></script>
+  </body>
+</html>

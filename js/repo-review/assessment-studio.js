@@ -3,16 +3,22 @@ import {
   collection,
   getDocs,
   addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
   query,
   orderBy,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// --- State Variables ---
+// State Variables
 let allSections = [];
-let selectedSections = [];
 let objectiveRules = [];
 let assessments = [];
+
+// Trackers for modals
+let currentAssessmentId = null;
+let assignSelectedSections = []; // used for the assign modal
 
 function escapeHTML(str) {
   if (!str) return "";
@@ -32,17 +38,14 @@ function escapeHTML(str) {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!db) return;
   window.showSubtleLoader("Loading Assessment Studio...");
-
   await fetchSectionsFromStudents();
   await loadAssessments();
-
   window.hideSubtleLoader();
 });
 
 // ==========================================
 // DATA FETCHING & RENDERING
 // ==========================================
-
 async function fetchSectionsFromStudents() {
   try {
     const snap = await getDocs(collection(db, "students"));
@@ -51,7 +54,6 @@ async function fetchSectionsFromStudents() {
       if (d.data().section) uniqueSections.add(d.data().section);
     });
     allSections = [...uniqueSections].sort();
-    updateSectionDropdown();
   } catch (e) {
     console.error("Error fetching sections: ", e);
   }
@@ -72,12 +74,22 @@ async function loadAssessments() {
   }
 }
 
+function getTypeStyle(type) {
+  if (type === "Mini PETA")
+    return "bg-purple-500/20 text-purple-600 border-purple-500/30";
+  if (type === "Practical Exam")
+    return "bg-red-500/20 text-red-600 border-red-500/30";
+  if (type === "Formative")
+    return "bg-green-500/20 text-green-600 border-green-500/30";
+  return "bg-blue-500/20 text-blue-600 border-blue-500/30"; // Written Work
+}
+
 function renderAssessmentGrid() {
   const grid = document.getElementById("assessmentGrid");
   grid.innerHTML = "";
 
   if (assessments.length === 0) {
-    grid.innerHTML = `<div class="col-span-full py-12 text-center text-gray-400 italic border-2 border-dashed border-gray-300 rounded-lg">No assessments created yet. Click "+ New Assessment" to start.</div>`;
+    grid.innerHTML = `<div class="col-span-full py-12 text-center text-gray-400 italic border-2 border-dashed border-gray-300 rounded-lg">No assessments created yet. Click "+ New Blueprint" to start.</div>`;
     return;
   }
 
@@ -85,16 +97,11 @@ function renderAssessmentGrid() {
     const sectionsHtml = (item.targetSections || [])
       .map(
         (sec) =>
-          `<span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold">${escapeHTML(sec)}</span>`,
+          `<span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold shadow-sm">${escapeHTML(sec)}</span>`,
       )
       .join("");
 
-    const typeColor =
-      item.type === "PETA"
-        ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
-        : item.type === "Formative"
-          ? "bg-green-500/20 text-green-300 border-green-500/30"
-          : "bg-blue-500/20 text-blue-300 border-blue-500/30";
+    const typeColor = getTypeStyle(item.type);
 
     const card = `
             <div class="bg-white border rounded-xl shadow-sm hover:shadow-md transition cursor-pointer flex flex-col overflow-hidden" onclick="window.openViewModal('${item.id}')">
@@ -108,9 +115,12 @@ function renderAssessmentGrid() {
                 <div class="p-4 flex-1 flex flex-col">
                     <p class="text-sm text-gray-600 line-clamp-2 mb-4">${escapeHTML(item.taskContext || "No context provided.")}</p>
                     <div class="mt-auto">
-                        <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">Assigned To</div>
+                        <div class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex justify-between">
+                            <span>Assigned Sections</span>
+                            <span class="text-blue-500">${(item.targetSections || []).length} Active</span>
+                        </div>
                         <div class="flex flex-wrap gap-1">
-                            ${sectionsHtml || `<span class="text-xs text-gray-400 italic">Unassigned</span>`}
+                            ${sectionsHtml || `<span class="text-xs text-gray-400 italic">Unassigned - Template Only</span>`}
                         </div>
                     </div>
                 </div>
@@ -121,75 +131,169 @@ function renderAssessmentGrid() {
 }
 
 // ==========================================
-// CHIP LOGIC (SECTION SELECTOR)
+// VIEW, CREATE & EDIT MODALS
 // ==========================================
+window.openCreateModal = function () {
+  currentAssessmentId = null; // We are creating, not editing
 
-function updateSectionDropdown() {
-  const selector = document.getElementById("sectionSelector");
-  selector.innerHTML = `<option value="" disabled selected>Select a section to add...</option>`;
+  document.getElementById("createModalTitle").textContent =
+    "Create Assessment Blueprint";
+  document.getElementById("saveAssessmentBtn").textContent = "Save Blueprint";
 
-  // Only show sections that haven't been selected yet
-  const available = allSections.filter(
-    (sec) => !selectedSections.includes(sec),
-  );
+  document.getElementById("assessTitle").value = "";
+  document.getElementById("assessType").value = "Mini PETA";
+  document.getElementById("assessPath").value = "";
+  document.getElementById("aiPersona").value =
+    "You are a strict Java high school programming teacher grading a student's code.";
+  document.getElementById("taskContext").value = "";
+  document.getElementById("evalCriteria").value = "";
 
-  available.forEach((sec) => {
-    selector.insertAdjacentHTML(
-      "beforeend",
-      `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
-    );
-  });
-}
+  objectiveRules = [];
+  renderRules();
 
-function renderSectionChips() {
-  const container = document.getElementById("selectedSectionsContainer");
-  container.innerHTML = "";
+  document.getElementById("createModal").classList.remove("hidden");
+};
 
-  if (selectedSections.length === 0) {
-    container.innerHTML = `<span class="text-xs text-gray-400 italic py-1">No sections assigned yet.</span>`;
-    return;
+window.openEditModal = function () {
+  const item = assessments.find((a) => a.id === currentAssessmentId);
+  if (!item) return;
+
+  document.getElementById("createModalTitle").textContent = "Edit Blueprint";
+  document.getElementById("saveAssessmentBtn").textContent = "Update Blueprint";
+
+  document.getElementById("assessTitle").value = item.title || "";
+  document.getElementById("assessType").value = item.type || "Mini PETA";
+  document.getElementById("assessPath").value = item.targetPath || "";
+  document.getElementById("aiPersona").value = item.aiPersona || "";
+  document.getElementById("taskContext").value = item.taskContext || "";
+  document.getElementById("evalCriteria").value = item.evalCriteria || "";
+
+  objectiveRules = [...(item.rules || [])];
+  renderRules();
+
+  document.getElementById("viewModal").classList.add("hidden");
+  document.getElementById("createModal").classList.remove("hidden");
+};
+
+window.openViewModal = function (id) {
+  const item = assessments.find((a) => a.id === id);
+  if (!item) return;
+
+  currentAssessmentId = id;
+
+  // Inject data into view modal
+  document.getElementById("viewTitle").textContent = item.title || "Untitled";
+  document.getElementById("viewTargetPath").textContent = item.targetPath
+    ? `Target: ${item.targetPath}`
+    : "Target: No specific path set";
+  document.getElementById("viewTaskContext").textContent =
+    item.taskContext || "No context provided.";
+  document.getElementById("viewEvalCriteria").textContent =
+    item.evalCriteria || "No rubric provided.";
+  document.getElementById("viewAIPersona").textContent =
+    item.aiPersona || "No persona set.";
+
+  // Style Badge
+  const badge = document.getElementById("viewTypeBadge");
+  badge.textContent = item.type || "Unknown";
+  badge.className = `text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider inline-block ${getTypeStyle(item.type)}`;
+
+  // Inject Rules
+  const rulesList = document.getElementById("viewObjectiveRules");
+  rulesList.innerHTML = "";
+  if (item.rules && item.rules.length > 0) {
+    item.rules.forEach((rule) => {
+      const color =
+        rule.type === "Banned"
+          ? "text-red-500 bg-red-50"
+          : "text-green-600 bg-green-50";
+      rulesList.insertAdjacentHTML(
+        "beforeend",
+        `<li><span class="font-mono ${color} px-1 rounded">${escapeHTML(rule.type)}: ${escapeHTML(rule.value)}</span></li>`,
+      );
+    });
+  } else {
+    rulesList.innerHTML = `<li class="text-gray-400 italic text-xs">No objective filters set.</li>`;
   }
 
-  selectedSections.forEach((sec) => {
-    const chip = `
-            <span class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 border border-blue-200 shadow-sm">
-                ${escapeHTML(sec)} 
-                <button onclick="window.removeSectionChip('${escapeHTML(sec)}')" class="hover:text-red-500 ml-1 focus:outline-none">&times;</button>
-            </span>
-        `;
-    container.insertAdjacentHTML("beforeend", chip);
-  });
-}
-
-window.addSectionChip = function (section) {
-  if (!section || selectedSections.includes(section)) return;
-  selectedSections.push(section);
-
-  // Reset dropdown to default option
-  document.getElementById("sectionSelector").value = "";
-
-  renderSectionChips();
-  updateSectionDropdown();
+  document.getElementById("viewModal").classList.remove("hidden");
 };
 
-window.removeSectionChip = function (section) {
-  selectedSections = selectedSections.filter((s) => s !== section);
-  renderSectionChips();
-  updateSectionDropdown();
+window.closeModals = function () {
+  document.getElementById("createModal").classList.add("hidden");
+  document.getElementById("viewModal").classList.add("hidden");
+  document.getElementById("assignModal").classList.add("hidden");
 };
 
 // ==========================================
-// DYNAMIC OBJECTIVE RULES
+// DATABASE OPERATIONS
 // ==========================================
+window.saveAssessment = async function () {
+  const title = document.getElementById("assessTitle").value.trim();
+  if (!title) return alert("Please enter an Assessment Title.");
 
+  const payload = {
+    title: title,
+    type: document.getElementById("assessType").value,
+    targetPath: document.getElementById("assessPath").value.trim(),
+    aiPersona: document.getElementById("aiPersona").value.trim(),
+    taskContext: document.getElementById("taskContext").value.trim(),
+    evalCriteria: document.getElementById("evalCriteria").value.trim(),
+    rules: objectiveRules,
+  };
+
+  window.showSubtleLoader("Saving Blueprint...");
+
+  try {
+    if (currentAssessmentId) {
+      // Update existing
+      await updateDoc(doc(db, "assessments", currentAssessmentId), payload);
+    } else {
+      // Create new (initialize targetSections as empty array)
+      payload.targetSections = [];
+      payload.createdAt = serverTimestamp();
+      await addDoc(collection(db, "assessments"), payload);
+    }
+    window.closeModals();
+    await loadAssessments();
+  } catch (e) {
+    alert("Failed to save: " + e.message);
+  } finally {
+    window.hideSubtleLoader();
+  }
+};
+
+window.deleteAssessment = async function () {
+  if (!currentAssessmentId) return;
+
+  if (
+    confirm(
+      "Are you sure you want to permanently delete this Assessment Blueprint? It will be removed from all assigned sections.",
+    )
+  ) {
+    window.showSubtleLoader("Deleting...");
+    try {
+      await deleteDoc(doc(db, "assessments", currentAssessmentId));
+      window.closeModals();
+      await loadAssessments();
+    } catch (e) {
+      alert("Error deleting: " + e.message);
+    } finally {
+      window.hideSubtleLoader();
+    }
+  }
+};
+
+// ==========================================
+// DYNAMIC RULES BUILDER
+// ==========================================
 window.addObjectiveRule = function () {
   const type = document.getElementById("newRuleType").value;
   const value = document.getElementById("newRuleValue").value.trim();
-
   if (!value) return;
 
   objectiveRules.push({ type, value });
-  document.getElementById("newRuleValue").value = ""; // Clear input
+  document.getElementById("newRuleValue").value = "";
   renderRules();
 };
 
@@ -201,92 +305,103 @@ window.removeObjectiveRule = function (index) {
 function renderRules() {
   const container = document.getElementById("rulesContainer");
   container.innerHTML = "";
-
   if (objectiveRules.length === 0) {
     container.innerHTML = `<div class="text-xs text-gray-400 italic">No objective rules added.</div>`;
     return;
   }
-
   objectiveRules.forEach((rule, index) => {
     const colorClass =
       rule.type === "Banned"
         ? "text-red-600 bg-red-50 border-red-200"
         : "text-green-600 bg-green-50 border-green-200";
-    const ruleHtml = `
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
             <div class="flex justify-between items-center p-2 rounded border ${colorClass} text-sm font-mono shadow-sm">
                 <div><span class="font-bold text-[10px] uppercase tracking-wider">${rule.type}:</span> ${escapeHTML(rule.value)}</div>
                 <button onclick="window.removeObjectiveRule(${index})" class="text-gray-400 hover:text-red-600 font-bold">&times;</button>
             </div>
-        `;
-    container.insertAdjacentHTML("beforeend", ruleHtml);
+        `,
+    );
   });
 }
 
 // ==========================================
-// MODAL & DATABASE LOGIC
+// SECTION ASSIGNMENT LOGIC
 // ==========================================
+window.openAssignModal = function () {
+  const item = assessments.find((a) => a.id === currentAssessmentId);
+  if (!item) return;
 
-window.openCreateModal = function () {
-  // Reset Form State
-  document.getElementById("assessTitle").value = "";
-  document.getElementById("assessType").value = "PETA";
-  document.getElementById("assessPath").value = "";
-  document.getElementById("aiPersona").value =
-    "You are a strict Java high school programming teacher grading a student's code.";
-  document.getElementById("taskContext").value = "";
-  document.getElementById("evalCriteria").value = "";
+  assignSelectedSections = [...(item.targetSections || [])];
+  renderAssignChips();
+  updateAssignDropdown();
 
-  selectedSections = [];
-  objectiveRules = [];
-
-  renderSectionChips();
-  updateSectionDropdown();
-  renderRules();
-
-  document.getElementById("createModal").classList.remove("hidden");
+  document.getElementById("assignModal").classList.remove("hidden");
 };
 
-window.closeModals = function () {
-  document.getElementById("createModal").classList.add("hidden");
-  document.getElementById("viewModal").classList.add("hidden");
+function updateAssignDropdown() {
+  const selector = document.getElementById("assignSelector");
+  selector.innerHTML = `<option value="" disabled selected>+ Select a section to assign...</option>`;
+
+  const available = allSections.filter(
+    (sec) => !assignSelectedSections.includes(sec),
+  );
+  available.forEach((sec) => {
+    selector.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
+    );
+  });
+}
+
+function renderAssignChips() {
+  const container = document.getElementById("assignChipsContainer");
+  container.innerHTML = "";
+  if (assignSelectedSections.length === 0) {
+    container.innerHTML = `<span class="text-xs text-gray-400 italic py-1">No active sections.</span>`;
+    return;
+  }
+  assignSelectedSections.forEach((sec) => {
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+            <span class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 border border-blue-200 shadow-sm">
+                ${escapeHTML(sec)} <button onclick="window.removeAssignChip('${escapeHTML(sec)}')" class="hover:text-red-500 ml-1 focus:outline-none">&times;</button>
+            </span>
+        `,
+    );
+  });
+}
+
+window.addAssignChip = function (section) {
+  if (!section || assignSelectedSections.includes(section)) return;
+  assignSelectedSections.push(section);
+  document.getElementById("assignSelector").value = "";
+  renderAssignChips();
+  updateAssignDropdown();
 };
 
-window.saveAssessment = async function () {
-  const title = document.getElementById("assessTitle").value.trim();
-  const type = document.getElementById("assessType").value;
-  const path = document.getElementById("assessPath").value.trim();
+window.removeAssignChip = function (section) {
+  assignSelectedSections = assignSelectedSections.filter((s) => s !== section);
+  renderAssignChips();
+  updateAssignDropdown();
+};
 
-  if (!title) return alert("Please enter an Assessment Title.");
-
-  const payload = {
-    title: title,
-    type: type,
-    targetPath: path,
-    targetSections: selectedSections,
-    aiPersona: document.getElementById("aiPersona").value.trim(),
-    taskContext: document.getElementById("taskContext").value.trim(),
-    evalCriteria: document.getElementById("evalCriteria").value.trim(),
-    rules: objectiveRules,
-    createdAt: serverTimestamp(),
-  };
-
-  window.showSubtleLoader("Saving Blueprint...");
+window.saveAssignments = async function () {
+  if (!currentAssessmentId) return;
+  window.showSubtleLoader("Deploying assignments...");
 
   try {
-    await addDoc(collection(db, "assessments"), payload);
-    window.closeModals();
-    await loadAssessments(); // Refresh the grid
+    await updateDoc(doc(db, "assessments", currentAssessmentId), {
+      targetSections: assignSelectedSections,
+    });
+    document.getElementById("assignModal").classList.add("hidden");
+    await loadAssessments(); // Refresh cards to show new assignment count
+    window.openViewModal(currentAssessmentId); // Refresh view modal state
   } catch (e) {
-    alert("Failed to save: " + e.message);
+    alert("Failed to assign: " + e.message);
   } finally {
     window.hideSubtleLoader();
   }
-};
-
-window.openViewModal = function (id) {
-  const item = assessments.find((a) => a.id === id);
-  if (!item) return;
-
-  // We will populate the view modal in the next step, for now it just opens it.
-  document.getElementById("viewModal").classList.remove("hidden");
 };

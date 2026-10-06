@@ -8,7 +8,7 @@
   </head>
   <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     <!-- Navigation Bar -->
-    <div id="adminerva-nav" data-module="assessment" data-page="studio"></div>
+    <div id="adminerva-nav" data-module="repo" data-page="studio"></div>
     <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Workspace -->
@@ -20,64 +20,23 @@
           <div>
             <h2 class="text-2xl font-bold text-gray-800">Assessment Studio</h2>
             <p class="text-sm text-gray-500 mt-1">
-              Design performance tasks, written works, and AI grading
-              blueprints.
+              Design assessment blueprints and deploy them to class sections.
             </p>
           </div>
           <button
             onclick="openCreateModal()"
             class="bg-blue-600 text-white px-6 py-2.5 rounded font-bold hover:bg-blue-700 transition shadow flex items-center gap-2"
           >
-            <span class="text-xl leading-none">+</span> New Assessment
+            <span class="text-xl leading-none">+</span> New Blueprint
           </button>
         </div>
 
-        <!-- Assessment Cards Grid (Mock Data) -->
+        <!-- Assessment Cards Grid -->
         <div
           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           id="assessmentGrid"
         >
-          <!-- Sample Card -->
-          <div
-            class="bg-white border rounded-xl shadow-sm hover:shadow-md transition cursor-pointer flex flex-col overflow-hidden"
-            onclick="openViewModal()"
-          >
-            <div class="bg-slate-800 p-4 border-b border-slate-700">
-              <div class="flex justify-between items-start mb-2">
-                <span
-                  class="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-500/30 uppercase tracking-wider"
-                  >PETA</span
-                >
-                <span class="text-slate-400 hover:text-white transition"
-                  >⋮</span
-                >
-              </div>
-              <h3 class="font-bold text-white text-lg truncate">
-                Q2 - Java Control Loops
-              </h3>
-            </div>
-            <div class="p-4 flex-1 flex flex-col">
-              <p class="text-sm text-gray-600 line-clamp-2 mb-4">
-                Evaluate if the student successfully implemented nested loops
-                and string concatenation without using Scanner.
-              </p>
-              <div class="mt-auto">
-                <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">
-                  Assigned To
-                </div>
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    class="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold"
-                    >St. Isidore</span
-                  >
-                  <span
-                    class="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold"
-                    >St. Thomas</span
-                  >
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- Dynamically populated -->
         </div>
       </div>
     </div>
@@ -88,32 +47,63 @@
       class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[110] p-4"
     >
       <div
-        class="bg-white rounded-xl shadow-2xl max-w-3xl w-full flex flex-col overflow-hidden max-h-[90vh]"
+        class="bg-white rounded-xl shadow-2xl max-w-4xl w-full flex flex-col overflow-hidden max-h-[90vh]"
       >
-        <div class="p-6 border-b bg-slate-800 flex justify-between items-start">
-          <div>
-            <span
-              class="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-500/30 uppercase tracking-wider mb-2 inline-block"
-              >PETA</span
-            >
-            <h2 class="text-2xl font-bold text-white">
-              Q2 - Java Control Loops
-            </h2>
-            <p class="text-sm text-cyan-400 mt-1 font-mono">
-              Target: test/quarter2/Main.java
-            </p>
-          </div>
+        <div class="p-6 border-b bg-slate-800 relative">
           <button
             onclick="closeModals()"
-            class="text-slate-400 hover:text-white text-2xl font-bold"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold leading-none"
           >
             &times;
           </button>
+
+          <div class="flex items-center gap-4 mb-3 mt-2">
+            <span
+              id="viewTypeBadge"
+              class="text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider inline-block"
+              >Type</span
+            >
+            <button
+              onclick="deleteAssessment()"
+              class="text-red-400 hover:text-red-300 text-xs font-bold transition flex items-center gap-1 border border-red-500/30 bg-red-500/10 px-2 py-0.5 rounded"
+            >
+              🗑️ Delete
+            </button>
+          </div>
+
+          <div
+            class="flex flex-col md:flex-row justify-between items-start md:items-end w-full gap-4 pr-8"
+          >
+            <div>
+              <h2 id="viewTitle" class="text-2xl font-bold text-white">
+                Task Title
+              </h2>
+              <p
+                id="viewTargetPath"
+                class="text-sm text-cyan-400 mt-1 font-mono"
+              >
+                Target: src/Main.java
+              </p>
+            </div>
+            <div class="flex gap-2">
+              <button
+                onclick="openAssignModal()"
+                class="bg-blue-600 text-white px-5 py-2 rounded text-sm font-bold hover:bg-blue-700 transition shadow flex items-center gap-2"
+              >
+                <span>👥</span> Assign Sections
+              </button>
+              <button
+                onclick="openEditModal()"
+                class="bg-slate-700 text-white border border-slate-600 px-5 py-2 rounded text-sm font-bold hover:bg-slate-600 transition shadow flex items-center gap-2"
+              >
+                <span>✏️</span> Edit
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="p-6 overflow-y-auto bg-gray-50 flex-1">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Left Column: Student Facing -->
             <div class="space-y-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
@@ -124,23 +114,22 @@
                 <div class="font-bold text-sm text-gray-800 mb-1">
                   Task Context
                 </div>
-                <p class="text-sm text-gray-600">
-                  Implement nested loops and string concatenation to build a
-                  dynamic pyramid pattern.
-                </p>
+                <p
+                  id="viewTaskContext"
+                  class="text-sm text-gray-600 whitespace-pre-wrap"
+                ></p>
               </div>
               <div class="bg-white p-4 rounded border shadow-sm">
                 <div class="font-bold text-sm text-gray-800 mb-1">
                   Evaluation Criteria (Rubric)
                 </div>
-                <p class="text-sm text-gray-600">
-                  Focus on accurate loop logic, proper variable scoping, and
-                  exact output matching.
-                </p>
+                <p
+                  id="viewEvalCriteria"
+                  class="text-sm text-gray-600 whitespace-pre-wrap"
+                ></p>
               </div>
             </div>
 
-            <!-- Right Column: System/AI Facing -->
             <div class="space-y-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
@@ -153,53 +142,31 @@
                 <div class="font-bold text-sm text-gray-800 mb-1">
                   AI Persona
                 </div>
-                <p class="text-sm text-gray-600 italic">
-                  "You are a strict Java high school programming teacher grading
-                  a student's code."
-                </p>
+                <p
+                  id="viewAIPersona"
+                  class="text-sm text-gray-600 italic whitespace-pre-wrap"
+                ></p>
               </div>
               <div
-                class="bg-white p-4 rounded border shadow-sm border-l-4 border-l-red-500"
+                class="bg-white p-4 rounded border shadow-sm border-l-4 border-l-gray-800"
               >
-                <div class="font-bold text-sm text-gray-800 mb-1">
+                <div class="font-bold text-sm text-gray-800 mb-2">
                   Objective Filters
                 </div>
-                <ul class="list-disc list-inside text-sm text-gray-600">
-                  <li>
-                    Banned:
-                    <code class="bg-gray-100 px-1 rounded text-red-500"
-                      >Scanner(System.in)</code
-                    >
-                  </li>
+                <ul
+                  id="viewObjectiveRules"
+                  class="list-disc list-inside text-sm text-gray-600 space-y-1"
+                >
+                  <!-- Populated dynamically -->
                 </ul>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- Action Bar -->
-        <div class="p-4 border-t bg-white flex justify-between items-center">
-          <div class="flex gap-2">
-            <button
-              class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 transition"
-            >
-              Assign Sections
-            </button>
-            <button
-              class="bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded text-sm font-bold hover:bg-gray-200 transition"
-            >
-              Edit Assessment
-            </button>
-          </div>
-          <button
-            class="text-red-500 hover:text-red-700 text-sm font-bold px-4 py-2 transition"
-          >
-            Delete
-          </button>
-        </div>
       </div>
     </div>
-    <!-- CREATE/EDIT ASSESSMENT MODAL -->
+
+    <!-- CREATE/EDIT BLUEPRINT MODAL -->
     <div
       id="createModal"
       class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4"
@@ -210,7 +177,7 @@
         <div
           class="p-5 border-b bg-slate-800 flex justify-between items-center"
         >
-          <h2 class="text-xl font-bold text-white">
+          <h2 id="createModalTitle" class="text-xl font-bold text-white">
             Create Assessment Blueprint
           </h2>
           <button
@@ -223,14 +190,12 @@
 
         <div class="p-6 overflow-y-auto flex-1 bg-gray-50">
           <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            <!-- Left Column: Core Setup -->
             <div class="md:col-span-5 space-y-5">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
               >
                 Core Setup
               </h3>
-
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1"
                   >Assessment Title</label
@@ -239,10 +204,9 @@
                   type="text"
                   id="assessTitle"
                   class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                  placeholder="e.g., Q2 PETA - Arrays"
+                  placeholder="e.g., Q2 Mini PETA - Arrays"
                 />
               </div>
-
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-1"
@@ -252,7 +216,8 @@
                     id="assessType"
                     class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white"
                   >
-                    <option value="PETA">PETA</option>
+                    <option value="Mini PETA">Mini PETA</option>
+                    <option value="Practical Exam">Practical Exam</option>
                     <option value="Written Work">Written Work</option>
                     <option value="Formative">Formative</option>
                   </select>
@@ -269,44 +234,14 @@
                   />
                 </div>
               </div>
-
-              <!-- SECTION SELECTOR (Chip UI) -->
-              <div class="bg-white p-4 border rounded shadow-sm relative">
-                <label class="block text-sm font-bold text-gray-700 mb-2"
-                  >Target Sections</label
-                >
-
-                <!-- Selected Chips Container -->
-                <div
-                  class="flex flex-wrap gap-2 mb-3 min-h-[30px]"
-                  id="selectedSectionsContainer"
-                >
-                  <!-- Chips will be injected here -->
-                </div>
-
-                <!-- Dropdown Trigger -->
-                <select
-                  id="sectionSelector"
-                  onchange="addSectionChip(this.value)"
-                  class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50 text-gray-600"
-                >
-                  <option value="" disabled selected>
-                    Select a section to add...
-                  </option>
-                  <!-- Options populated from Firebase -->
-                </select>
-              </div>
             </div>
 
-            <!-- Right Column: AI & Logic -->
             <div class="md:col-span-7 space-y-5">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2 text-purple-600"
               >
                 Grading Intelligence Setup
               </h3>
-
-              <!-- AI Modular Inputs -->
               <div
                 class="space-y-4 bg-white p-4 border rounded shadow-sm border-l-4 border-l-purple-500"
               >
@@ -316,7 +251,7 @@
                   >
                     AI Persona
                     <span class="text-[10px] font-normal text-gray-400"
-                      >(Hidden from students)</span
+                      >(Hidden)</span
                     >
                   </label>
                   <input
@@ -326,54 +261,45 @@
                     value="You are a strict Java high school programming teacher grading a student's code."
                   />
                 </div>
-
                 <div>
                   <label
                     class="flex justify-between text-sm font-bold text-gray-700 mb-1"
                   >
                     Task Context
                     <span class="text-[10px] font-normal text-blue-500"
-                      >(Visible as Module Instructions)</span
+                      >(Visible Instructions)</span
                     >
                   </label>
                   <textarea
                     id="taskContext"
                     rows="2"
                     class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm"
-                    placeholder="What is the student trying to achieve?"
                   ></textarea>
                 </div>
-
                 <div>
                   <label
                     class="flex justify-between text-sm font-bold text-gray-700 mb-1"
                   >
                     Evaluation Criteria
                     <span class="text-[10px] font-normal text-blue-500"
-                      >(Visible as Module Rubric)</span
+                      >(Visible Rubric)</span
                     >
                   </label>
                   <textarea
                     id="evalCriteria"
                     rows="2"
                     class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm"
-                    placeholder="What specifically should the AI look for?"
                   ></textarea>
                 </div>
               </div>
 
-              <!-- Objective Rules -->
               <div
                 class="bg-white p-4 border rounded shadow-sm border-l-4 border-l-gray-800"
               >
                 <label class="block text-sm font-bold text-gray-700 mb-2"
-                  >Objective Rules (Regex / Exact Match)</label
+                  >Objective Rules</label
                 >
-
-                <div id="rulesContainer" class="space-y-2 mb-3">
-                  <!-- Dynamic rules injected here -->
-                </div>
-
+                <div id="rulesContainer" class="space-y-2 mb-3"></div>
                 <div class="flex gap-2">
                   <select
                     id="newRuleType"
@@ -399,8 +325,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Footer -->
         <div class="p-4 border-t bg-white flex justify-end gap-3">
           <button
             onclick="closeModals()"
@@ -410,6 +334,7 @@
           </button>
           <button
             onclick="saveAssessment()"
+            id="saveAssessmentBtn"
             class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition shadow"
           >
             Save Blueprint
@@ -417,6 +342,70 @@
         </div>
       </div>
     </div>
+
+    <!-- ASSIGN SECTIONS MODAL -->
+    <div
+      id="assignModal"
+      class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[130] p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl max-w-md w-full flex flex-col overflow-hidden"
+      >
+        <div
+          class="p-5 border-b bg-slate-800 flex justify-between items-center"
+        >
+          <h2 class="text-lg font-bold text-white">Assign to Sections</h2>
+          <button
+            onclick="
+              document.getElementById('assignModal').classList.add('hidden')
+            "
+            class="text-slate-400 hover:text-white text-2xl font-bold"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="p-6 bg-gray-50">
+          <p class="text-xs text-gray-500 mb-4">
+            Assigning sections will make this task active for students in
+            RepoFetch and their modules.
+          </p>
+
+          <div
+            class="flex flex-wrap gap-2 mb-4 min-h-[40px] p-2 bg-white border rounded shadow-inner"
+            id="assignChipsContainer"
+          >
+            <!-- Chips injected here -->
+          </div>
+
+          <select
+            id="assignSelector"
+            onchange="addAssignChip(this.value)"
+            class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white font-bold"
+          >
+            <option value="" disabled selected>
+              + Select a section to assign...
+            </option>
+          </select>
+        </div>
+        <div class="p-4 border-t bg-white flex justify-end gap-3">
+          <button
+            onclick="
+              document.getElementById('assignModal').classList.add('hidden')
+            "
+            class="text-gray-600 font-bold px-4 py-2 hover:bg-gray-100 rounded transition"
+          >
+            Cancel
+          </button>
+          <button
+            onclick="saveAssignments()"
+            class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition shadow"
+          >
+            Deploy Assignment
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Core Scripts -->
     <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/repo-review/assessment-studio.js"></script>

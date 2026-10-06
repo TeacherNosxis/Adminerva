@@ -54,6 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (activeModule === "student") {
     centerLinks = `
             <a href="student-dashboard.html" class="${getStyle("dashboard")}">Dashboard</a>
+            <a href="student-assessments.html" class="${getStyle("assessments")}">Assignments</a>
             <a href="student-settings.html" class="${getStyle("settings")}">Settings</a>
         `;
     rightSide = `
@@ -72,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="repobank.html" class="${getStyle("repobank")}">RepoBank</a>
             <a href="temp-grading.html" class="${getStyle("activity-grader")}">Manual Grader</a>
             <a href="repofetch.html" class="${getStyle("repofetch")}">RepoFetch</a>
+            <a href="assessment-studio.html" class="${getStyle("studio")}">Assessment Studio</a>
             ${adminDirLink}
             ${adminReportsLink}
         `;
@@ -137,9 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
     </nav>`;
 
-  // ✨ NEW: Centralized, Touch-Safe Sign Out Listener
   document.addEventListener("click", async (e) => {
-    // `.closest()` ensures that even a sloppy thumb tap registers correctly
     const signOutTarget = e.target.closest("#signOutBtn");
 
     if (signOutTarget) {
@@ -148,7 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
       signOutTarget.classList.add("opacity-50", "pointer-events-none");
 
       try {
-        // Dynamically load Firebase Auth so it doesn't crash on pages missing the import
         const { getAuth, signOut } =
           await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
         const auth = getAuth();
@@ -156,7 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (err) {
         console.warn("Sign out background process skipped or failed.", err);
       } finally {
-        // Guaranteed local wipe and forced redirect, regardless of Firebase connection
         localStorage.removeItem("Adminerva_Role");
         localStorage.removeItem("Adminerva_Mock_Role");
         localStorage.removeItem("Adminerva_Impersonate");
