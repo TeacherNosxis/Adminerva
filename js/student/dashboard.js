@@ -645,7 +645,6 @@ async function verifyStudentSetup(studentData) {
     console.error("Diagnostic check failed:", e);
   }
 }
-
 // ==========================================
 // ASSIGNMENT WIDGET LOGIC
 // ==========================================
@@ -654,25 +653,40 @@ async function loadStudentAssessments(studentSection) {
   if (!container) return;
 
   try {
-    // 🚀 Uses array-contains to match the targetSections array in Firestore
-    const q = query(
-      collection(db, "assessments"),
-      where("targetSections", "array-contains", studentSection),
-    );
+    const q = query(collection(db, "assessments"));
     const snap = await getDocs(q);
 
-    if (snap.empty) {
+    currentSectionAssessments = [];
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      let isAssignedToStudent = false;
+
+      // 1. Look for the NEW Active Deployments object structure
+      if (data.deployments && Array.isArray(data.deployments)) {
+        if (data.deployments.some((d) => d.section === studentSection))
+          isAssignedToStudent = true;
+      }
+      // 2. Fallback to the OLD simple string array
+      else if (data.targetSections && Array.isArray(data.targetSections)) {
+        if (data.targetSections.includes(studentSection))
+          isAssignedToStudent = true;
+      }
+
+      if (isAssignedToStudent) {
+        currentSectionAssessments.push({ id: docSnap.id, ...data });
+      }
+    });
+
+    if (currentSectionAssessments.length === 0) {
       container.innerHTML = `<div class="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center text-sm text-slate-500 font-medium">No active assignments for this section.</div>`;
       return;
     }
 
     container.innerHTML = "";
-    currentSectionAssessments = [];
 
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      currentSectionAssessments.push({ id: docSnap.id, ...data });
-
+    // Limit to 4 most recent for the mini widget
+    currentSectionAssessments.slice(0, 4).forEach((data) => {
       const typeColor =
         data.type === "PETA"
           ? "bg-purple-100 text-purple-700 border-purple-200"
@@ -681,7 +695,7 @@ async function loadStudentAssessments(studentSection) {
             : "bg-blue-100 text-blue-700 border-blue-200";
 
       const card = `
-        <div class="p-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition group cursor-pointer" onclick="viewAssessmentDetails('${docSnap.id}')">
+        <div class="p-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition group cursor-pointer" onclick="viewAssessmentDetails('${data.id}')">
             <div class="flex justify-between items-start mb-1">
                 <h4 class="font-bold text-sm text-slate-800 line-clamp-1 pr-2 group-hover:text-indigo-600 transition">${escapeHTML(data.title)}</h4>
                 <span class="${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider whitespace-nowrap">${escapeHTML(data.type)}</span>

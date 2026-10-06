@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Adminerva - Assessment Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Flatpickr Datepicker Library -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   </head>
   <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     <!-- Navigation Bar -->
@@ -104,7 +110,6 @@
 
         <div class="p-6 overflow-y-auto bg-gray-50 flex-1">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Column 1 -->
             <div class="space-y-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
@@ -131,7 +136,6 @@
               </div>
             </div>
 
-            <!-- Column 2 -->
             <div class="space-y-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
@@ -158,13 +162,10 @@
                 <ul
                   id="viewObjectiveRules"
                   class="list-disc list-inside text-sm text-gray-600 space-y-1"
-                >
-                  <!-- Populated dynamically -->
-                </ul>
+                ></ul>
               </div>
             </div>
 
-            <!-- Full Width: Active Deployments -->
             <div class="col-span-1 md:col-span-2 mt-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2 mb-3"
@@ -183,9 +184,7 @@
                       <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody id="deploymentsTableBody">
-                    <!-- Populated dynamically -->
-                  </tbody>
+                  <tbody id="deploymentsTableBody"></tbody>
                 </table>
               </div>
             </div>
@@ -394,45 +393,89 @@
             &times;
           </button>
         </div>
-        <div class="p-6 bg-gray-50 space-y-4">
+        <div class="p-6 bg-gray-50 space-y-5">
           <input type="hidden" id="deployId" value="" />
 
+          <!-- Hidden ISO strings for database saving -->
+          <input type="hidden" id="deployPostDate" value="" />
+          <input type="hidden" id="deployDeadline" value="" />
+
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-1"
-              >Target Section</label
+              >Target Sections</label
             >
+            <div
+              id="deployChipsContainer"
+              class="flex flex-wrap gap-2 mb-2 min-h-[38px] p-2 bg-white border border-gray-300 rounded shadow-inner"
+            ></div>
             <select
-              id="deploySection"
+              id="deploySectionSelector"
+              onchange="addDeployChip(this.value)"
               class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white font-bold"
+            ></select>
+            <p
+              id="deployEditNotice"
+              class="text-[10px] text-blue-500 mt-1 hidden"
             >
-              <!-- Populated dynamically -->
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-bold text-gray-700 mb-1"
-              >Post Date & Time</label
-            >
-            <p class="text-[10px] text-gray-500 mb-1">
-              When students can view the task.
+              Editing a single deployment. To deploy to more sections, create a
+              new deployment.
             </p>
-            <input
-              type="datetime-local"
-              id="deployPostDate"
-              class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-            />
           </div>
 
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-1"
-              >Deadline</label
+            <label class="block text-sm font-bold text-gray-700 mb-2"
+              >Duration & Schedule</label
             >
-            <p class="text-[10px] text-gray-500 mb-1">When the task is due.</p>
-            <input
-              type="datetime-local"
-              id="deployDeadline"
-              class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-            />
+
+            <div class="grid grid-cols-5 gap-1 mb-2">
+              <button
+                onclick="setDeployRange(3, this)"
+                class="range-preset-btn bg-white border border-gray-300 text-gray-600 text-[10px] py-1.5 rounded hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 font-bold transition"
+              >
+                3 Days
+              </button>
+              <button
+                onclick="setDeployRange(7, this)"
+                class="range-preset-btn bg-white border border-gray-300 text-gray-600 text-[10px] py-1.5 rounded hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 font-bold transition"
+              >
+                7 Days
+              </button>
+              <button
+                onclick="setDeployRange(14, this)"
+                class="range-preset-btn bg-white border border-gray-300 text-gray-600 text-[10px] py-1.5 rounded hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 font-bold transition"
+              >
+                14 Days
+              </button>
+              <button
+                onclick="setDeployRange(30, this)"
+                class="range-preset-btn bg-white border border-gray-300 text-gray-600 text-[10px] py-1.5 rounded hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 font-bold transition"
+              >
+                1 Month
+              </button>
+              <button
+                onclick="openCustomRange(this)"
+                class="range-preset-btn bg-white border border-gray-300 text-gray-600 text-[10px] py-1.5 rounded hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 font-bold transition"
+              >
+                Custom
+              </button>
+            </div>
+
+            <div class="relative">
+              <span
+                class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"
+                >📅</span
+              >
+              <input
+                type="text"
+                id="deployDateRange"
+                class="w-full pl-9 p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white font-bold text-gray-700 cursor-pointer"
+                placeholder="Select dates..."
+                readonly
+              />
+            </div>
+            <p class="text-[10px] text-gray-500 mt-1">
+              First click sets Post Date. Second sets Deadline.
+            </p>
           </div>
         </div>
         <div class="p-4 border-t bg-white flex justify-end gap-3">

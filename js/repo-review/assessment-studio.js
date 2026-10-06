@@ -16,6 +16,8 @@ let allSections = [];
 let objectiveRules = [];
 let assessments = [];
 let currentAssessmentId = null;
+let deploySelectedSections = [];
+let fpInstance = null; // Flatpickr Calendar Instance
 
 function escapeHTML(str) {
   if (!str) return "";
@@ -40,13 +42,41 @@ function formatPrettyDate(isoString) {
     month: "short",
     day: "numeric",
     year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!db) return;
+
+  // Initialize Flatpickr for the Date Range functionality
+  fpInstance = flatpickr("#deployDateRange", {
+    mode: "range",
+    minDate: "today",
+    dateFormat: "M j, Y",
+    onChange: function (selectedDates) {
+      if (selectedDates.length === 2) {
+        // First click -> Post Date (Midnight)
+        const post = new Date(selectedDates[0]);
+        post.setHours(0, 0, 0, 0);
+        document.getElementById("deployPostDate").value = post.toISOString();
+
+        // Second click -> Deadline (End of Day)
+        const deadline = new Date(selectedDates[1]);
+        deadline.setHours(23, 59, 59, 999);
+        document.getElementById("deployDeadline").value =
+          deadline.toISOString();
+      } else if (selectedDates.length === 1) {
+        const post = new Date(selectedDates[0]);
+        post.setHours(0, 0, 0, 0);
+        document.getElementById("deployPostDate").value = post.toISOString();
+        document.getElementById("deployDeadline").value = "";
+      } else {
+        document.getElementById("deployPostDate").value = "";
+        document.getElementById("deployDeadline").value = "";
+      }
+    },
+  });
+
   window.showSubtleLoader("Loading Assessment Studio...");
   await fetchSectionsFromStudents();
   await loadAssessments();
@@ -91,7 +121,7 @@ function getTypeStyle(type) {
     return "bg-red-500/20 text-red-600 border-red-500/30";
   if (type === "Formative")
     return "bg-green-500/20 text-green-600 border-green-500/30";
-  return "bg-blue-500/20 text-blue-600 border-blue-500/30"; // Written Work
+  return "bg-blue-500/20 text-blue-600 border-blue-500/30";
 }
 
 function renderAssessmentGrid() {
@@ -114,13 +144,11 @@ function renderAssessmentGrid() {
       )
       .join("");
 
-    const typeColor = getTypeStyle(item.type);
-
     const card = `
             <div class="bg-white border rounded-xl shadow-sm hover:shadow-md transition cursor-pointer flex flex-col overflow-hidden" onclick="window.openViewModal('${item.id}')">
                 <div class="bg-slate-800 p-4 border-b border-slate-700">
                     <div class="flex justify-between items-start mb-2">
-                        <span class="${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider">${escapeHTML(item.type)}</span>
+                        <span class="${getTypeStyle(item.type)} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider">${escapeHTML(item.type)}</span>
                         <span class="text-slate-400 hover:text-white transition">⋮</span>
                     </div>
                     <h3 class="font-bold text-white text-lg truncate" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</h3>
@@ -245,7 +273,6 @@ window.openViewModal = function (id) {
   if (!item) return;
 
   currentAssessmentId = id;
-
   document.getElementById("viewTitle").textContent = item.title || "Untitled";
   document.getElementById("viewTargetPath").textContent = item.targetPath
     ? `Target: ${item.targetPath}`
@@ -296,11 +323,16 @@ function renderDeploymentsTable(deployments) {
   tbody.innerHTML = "";
 
   if (deployments.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400 italic">No active deployments. Click "Deploy Task" above to assign to a section.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400 italic">No active deployments. Click "Deploy Task" above to assign to sections.</td></tr>`;
     return;
   }
 
-  deployments.forEach((deploy) => {
+  // Sort by deadline closest to furthest
+  const sorted = [...deployments].sort(
+    (a, b) => new Date(a.deadline) - new Date(b.deadline),
+  );
+
+  sorted.forEach((deploy) => {
     tbody.insertAdjacentHTML(
       "beforeend",
       `
@@ -318,68 +350,174 @@ function renderDeploymentsTable(deployments) {
   });
 }
 
+function updatePresetUI(activeBtn) {
+  document.querySelectorAll(".range-preset-btn").forEach((btn) => {
+    btn.classList.remove("bg-blue-50", "border-blue-300", "text-blue-600");
+    btn.classList.add("bg-white", "border-gray-300", "text-gray-600");
+  });
+  if (activeBtn) {
+    activeBtn.classList.remove("bg-white", "border-gray-300", "text-gray-600");
+    activeBtn.classList.add("bg-blue-50", "border-blue-300", "text-blue-600");
+  }
+}
+
+window.setDeployRange = function (days, btnElement) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + days);
+
+  fpInstance.setDate([today, endDate], true); // triggers onChange
+  updatePresetUI(btnElement);
+};
+
+window.openCustomRange = function (btnElement) {
+  updatePresetUI(btnElement);
+  fpInstance.open();
+};
+
 window.openDeployModal = function (deployId = null) {
   const item = assessments.find((a) => a.id === currentAssessmentId);
   if (!item) return;
 
-  const selector = document.getElementById("deploySection");
-  selector.innerHTML = `<option value="" disabled selected>Select a section...</option>`;
-  allSections.forEach((sec) => {
-    selector.insertAdjacentHTML(
-      "beforeend",
-      `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
-    );
-  });
+  updatePresetUI(null); // Clear presets
 
   if (deployId) {
-    // Editing existing deployment
+    // Editing existing single deployment
     const deploy = (item.deployments || []).find((d) => d.id === deployId);
     document.getElementById("deployModalTitle").textContent = "Edit Deployment";
     document.getElementById("deploySaveBtn").textContent = "Update";
     document.getElementById("deployId").value = deploy.id;
-    document.getElementById("deploySection").value = deploy.section;
-    document.getElementById("deployPostDate").value = deploy.postDate || "";
-    document.getElementById("deployDeadline").value = deploy.deadline || "";
+
+    deploySelectedSections = [deploy.section]; // Lock to one section
+
+    // Load existing dates into Flatpickr
+    fpInstance.setDate(
+      [new Date(deploy.postDate), new Date(deploy.deadline)],
+      true,
+    );
+
+    // Hide multi-select dropdown
+    document.getElementById("deploySectionSelector").classList.add("hidden");
+    document.getElementById("deployEditNotice").classList.remove("hidden");
   } else {
-    // Creating new deployment
+    // Creating new batch deployment
     document.getElementById("deployModalTitle").textContent = "Deploy Task";
     document.getElementById("deploySaveBtn").textContent = "Deploy";
     document.getElementById("deployId").value = "";
-    document.getElementById("deploySection").value = "";
-    document.getElementById("deployPostDate").value = "";
-    document.getElementById("deployDeadline").value = "";
+
+    deploySelectedSections = []; // Clear previous selections
+    fpInstance.clear(); // Clear dates
+
+    // Show multi-select dropdown
+    document.getElementById("deploySectionSelector").classList.remove("hidden");
+    document.getElementById("deployEditNotice").classList.add("hidden");
   }
 
+  renderDeployChips();
+  updateDeployDropdown();
   document.getElementById("deployModal").classList.remove("hidden");
+};
+
+function updateDeployDropdown() {
+  const selector = document.getElementById("deploySectionSelector");
+  selector.innerHTML = `<option value="" disabled selected>+ Select sections to deploy to...</option>`;
+
+  const item = assessments.find((a) => a.id === currentAssessmentId);
+  const existingDeployments = item
+    ? (item.deployments || []).map((d) => d.section)
+    : [];
+
+  const available = allSections.filter(
+    (sec) => !deploySelectedSections.includes(sec),
+  );
+
+  available.forEach((sec) => {
+    const label = existingDeployments.includes(sec)
+      ? `${escapeHTML(sec)} (Already Deployed)`
+      : escapeHTML(sec);
+    selector.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${escapeHTML(sec)}">${label}</option>`,
+    );
+  });
+}
+
+function renderDeployChips() {
+  const container = document.getElementById("deployChipsContainer");
+  container.innerHTML = "";
+
+  if (deploySelectedSections.length === 0) {
+    container.innerHTML = `<span class="text-xs text-gray-400 italic py-1">No sections selected.</span>`;
+    return;
+  }
+
+  const isEditing = !!document.getElementById("deployId").value;
+
+  deploySelectedSections.forEach((sec) => {
+    const removeBtn = isEditing
+      ? ""
+      : `<button onclick="window.removeDeployChip('${escapeHTML(sec)}')" class="hover:text-red-500 ml-1 focus:outline-none">&times;</button>`;
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+            <span class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 border border-blue-200 shadow-sm">
+                ${escapeHTML(sec)} ${removeBtn}
+            </span>
+        `,
+    );
+  });
+}
+
+window.addDeployChip = function (section) {
+  if (!section || deploySelectedSections.includes(section)) return;
+  deploySelectedSections.push(section);
+  document.getElementById("deploySectionSelector").value = "";
+  renderDeployChips();
+  updateDeployDropdown();
+};
+
+window.removeDeployChip = function (section) {
+  deploySelectedSections = deploySelectedSections.filter((s) => s !== section);
+  renderDeployChips();
+  updateDeployDropdown();
 };
 
 window.saveDeployment = async function () {
   if (!currentAssessmentId) return;
 
   const deployId = document.getElementById("deployId").value;
-  const section = document.getElementById("deploySection").value;
   const postDate = document.getElementById("deployPostDate").value;
   const deadline = document.getElementById("deployDeadline").value;
 
-  if (!section || !postDate || !deadline)
-    return alert("Please fill in all deployment fields.");
+  if (deploySelectedSections.length === 0 || !postDate || !deadline) {
+    return alert("Please select at least one section and set both dates.");
+  }
 
   const item = assessments.find((a) => a.id === currentAssessmentId);
   let deployments = [...(item.deployments || [])];
 
   if (deployId) {
-    // Update existing
+    // Update existing single deployment
     const index = deployments.findIndex((d) => d.id === deployId);
     if (index > -1) {
-      deployments[index] = { id: deployId, section, postDate, deadline };
+      deployments[index] = {
+        id: deployId,
+        section: deploySelectedSections[0],
+        postDate,
+        deadline,
+      };
     }
   } else {
-    // Add new
-    deployments.push({
-      id: Date.now().toString(), // Simple unique identifier
-      section,
-      postDate,
-      deadline,
+    // Create new deployments for EVERY selected section in the batch
+    deploySelectedSections.forEach((section) => {
+      deployments.push({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+        section: section,
+        postDate: postDate,
+        deadline: deadline,
+      });
     });
   }
 
@@ -390,7 +528,7 @@ window.saveDeployment = async function () {
     });
     document.getElementById("deployModal").classList.add("hidden");
     await loadAssessments();
-    window.openViewModal(currentAssessmentId); // Refresh view table
+    window.openViewModal(currentAssessmentId);
   } catch (e) {
     alert("Failed to deploy: " + e.message);
   } finally {

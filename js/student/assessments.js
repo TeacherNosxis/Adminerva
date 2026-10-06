@@ -85,32 +85,68 @@ async function fetchAssessments() {
   `;
 
   try {
-    const q = query(
-      collection(db, "assessments"),
-      where("targetSections", "array-contains", currentSection),
-    );
+    // 🚀 THE FIX: Fetch all active assessments and filter them locally to handle complex deployment objects
+    const q = query(collection(db, "assessments"));
     const snap = await getDocs(q);
 
     allAssessments = [];
     snap.forEach((docSnap) => {
       const data = docSnap.data();
-      const postedDate = data.createdAt ? data.createdAt.toDate() : new Date();
-      const isUrgent = data.dueDate
-        ? new Date(data.dueDate) < new Date()
-        : new Date() - postedDate > 7 * 24 * 60 * 60 * 1000;
+      let isAssignedToStudent = false;
+      let activeDeadline = null;
+      let activePostDate = data.createdAt
+        ? data.createdAt.toDate()
+        : new Date();
 
-      allAssessments.push({
-        id: docSnap.id,
-        isUrgent: isUrgent,
-        postedDate: postedDate,
-        ...data,
-      });
+      // 1. Look for your NEW Active Deployments object structure
+      if (data.deployments && Array.isArray(data.deployments)) {
+        const deployment = data.deployments.find(
+          (d) => d.section === currentSection,
+        );
+        if (deployment) {
+          isAssignedToStudent = true;
+          // Safely extract Firestore Timestamps or standard date strings
+          if (deployment.deadline)
+            activeDeadline = deployment.deadline.toDate
+              ? deployment.deadline.toDate()
+              : new Date(deployment.deadline);
+          if (deployment.postDate)
+            activePostDate = deployment.postDate.toDate
+              ? deployment.postDate.toDate()
+              : new Date(deployment.postDate);
+        }
+      }
+      // 2. Fallback to the OLD simple string array if it was an older assessment
+      else if (data.targetSections && Array.isArray(data.targetSections)) {
+        if (data.targetSections.includes(currentSection)) {
+          isAssignedToStudent = true;
+          if (data.dueDate)
+            activeDeadline = data.dueDate.toDate
+              ? data.dueDate.toDate()
+              : new Date(data.dueDate);
+        }
+      }
+
+      // If a match was found, push it to the student's feed
+      if (isAssignedToStudent) {
+        const isUrgent = activeDeadline
+          ? new Date(activeDeadline) < new Date() // Past due
+          : new Date() - activePostDate > 7 * 24 * 60 * 60 * 1000; // Older than 7 days
+
+        allAssessments.push({
+          id: docSnap.id,
+          isUrgent: isUrgent,
+          postedDate: activePostDate,
+          dueDate: activeDeadline,
+          ...data,
+        });
+      }
     });
 
     renderAssessments();
   } catch (error) {
     container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments. Ensure Firestore Security Rules allow read access.</div>`;
-    console.error(error);
+    console.error("Fetch Error:", error);
   }
 }
 
@@ -164,6 +200,11 @@ function renderAssessments() {
       ? `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">⚠️ Urgent / Past Due</span>`
       : `<span class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">⏳ Pending Review</span>`;
 
+    // 🚀 NEW: Dynamically display the exact deadline in the UI if it exists
+    const deadlineString = ass.dueDate
+      ? `<span class="text-[10px] text-slate-400 font-medium ml-auto">Due: ${ass.dueDate.toLocaleDateString()}</span>`
+      : `<span class="text-[10px] text-slate-400 font-medium ml-auto">Posted: ${ass.postedDate.toLocaleDateString()}</span>`;
+
     const card = `
       <div class="bg-white p-5 rounded-xl border ${ass.isUrgent ? "border-rose-300 shadow-sm" : "border-slate-200"} hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center gap-4" onclick="viewAssessmentDetails('${ass.id}')">
         
@@ -171,15 +212,15 @@ function renderAssessments() {
           <div class="flex items-center gap-3 mb-2 flex-wrap">
             <span class="${typeColor} text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">${escapeHTML(ass.type)}</span>
             ${urgencyBadge}
-            <span class="text-[10px] text-slate-400 font-medium ml-auto">Posted: ${ass.postedDate.toLocaleDateString()}</span>
+            ${deadlineString}
           </div>
           <h3 class="text-lg font-bold text-slate-800 leading-tight">${escapeHTML(ass.title)}</h3>
           <p class="text-sm text-slate-500 mt-2 line-clamp-2">${escapeHTML(ass.taskContext || "No context provided.")}</p>
         </div>
         
         <div class="sm:border-l sm:border-slate-200 sm:pl-4 flex flex-row sm:flex-col items-center justify-between sm:justify-center w-full sm:w-32 gap-2 mt-2 sm:mt-0">
-          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Target</span>
-          <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded truncate max-w-full" title="${escapeHTML(ass.targetPath || "Any")}">${escapeHTML(ass.targetPath || "Any")}</span>
+          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Target File</span>
+          <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded truncate max-w-full" title="${escapeHTML(ass.targetPath || "Any")}">${escapeHTML(ass.targetPath || "Any")}</span>
         </div>
       </div>
     `;
