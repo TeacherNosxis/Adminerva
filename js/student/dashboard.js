@@ -110,7 +110,6 @@ onAuthStateChanged(auth, async (user) => {
     let masterToken = null;
     let masterUsername = null;
 
-    // 🚀 THE FIX: Identify the master GitHub credentials
     snap.forEach((d) => {
       const data = d.data();
       if (data.githubToken) masterToken = data.githubToken;
@@ -118,7 +117,6 @@ onAuthStateChanged(auth, async (user) => {
       userProfiles.push({ docId: d.id, ...data });
     });
 
-    // 🚀 THE FIX: Propagate credentials to all profiles in memory
     userProfiles.forEach((p) => {
       if (!p.githubToken && masterToken) p.githubToken = masterToken;
       if (!p.githubUsername && masterUsername)
@@ -157,14 +155,13 @@ async function loadDashboardProfile(studentData) {
   const overlay = document.getElementById("githubAuthOverlay");
 
   verifyStudentSetup(studentData);
-  overlay.classList.add("hidden");
+  overlay.classList.add("hidden"); // Initially hide it
 
   if (currentChart) {
     currentChart.destroy();
     currentChart = null;
   }
 
-  // 🚀 THE FIX: Splitting the missing requirement message
   if (!studentData.repoUrl || !studentData.githubUsername) {
     if (!studentData.repoUrl && studentData.githubUsername) {
       subtitle.innerHTML = `<strong class="text-amber-700">${escapeHTML(studentData.section)}:</strong> <span class='text-amber-600'>Please set your Repository URL for this section in Settings.</span>`;
@@ -214,9 +211,7 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
     const urlParts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
     const repo = urlParts.pop();
     const owner = urlParts.pop();
-    // ==========================================
-    // 🔄 AUTO-UPDATE RENAME LOGIC (DASHBOARD)
-    // ==========================================
+
     try {
       const repoInfoRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}`,
@@ -231,22 +226,15 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
           repoUrl.toLowerCase() !== actualUrl.toLowerCase() &&
           repoUrl.toLowerCase() !== repoInfo.html_url.toLowerCase()
         ) {
-          console.log(
-            `Auto-fixing renamed repository in dashboard: ${repoUrl} -> ${actualUrl}`,
-          );
-
-          // 1. Update Firestore permanently
           await setDoc(
             doc(db, "students", currentStudentProfile.docId),
             { repoUrl: actualUrl },
             { merge: true },
           );
 
-          // 2. Update local variables for the upcoming commit fetch
           owner = repoInfo.owner.login;
           repo = repoInfo.name;
 
-          // 3. Update the UI link instantly so the student sees the correct repo name
           const subtitle = document.getElementById("repoSubtitle");
           if (subtitle) {
             subtitle.innerHTML = `<strong>${escapeHTML(currentStudentProfile.section)}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${escapeHTML(currentStudentProfile.githubUsername)}</span> on <a href="${escapeHTML(actualUrl)}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${escapeHTML(actualUrl)}</a>`;
@@ -256,7 +244,6 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
     } catch (autoUpdateError) {
       console.warn("Failed to check for repo renames", autoUpdateError);
     }
-    // ==========================================
 
     let allCommits = [];
     for (let page = 1; page <= 4; page++) {
@@ -330,7 +317,6 @@ async function linkGithubAccount() {
       (p) => p.providerId === "github.com",
     )?.screenName;
 
-  // 🚀 THE FIX: Save the new identity to EVERY profile the student owns
   if (token && userProfiles.length > 0) {
     const updateData = { githubToken: token };
     if (verifiedUsername) updateData.githubUsername = verifiedUsername;
@@ -365,7 +351,6 @@ function renderCommits(commits, filter) {
       day: "numeric",
     });
 
-    // 🔒 Security Patch
     const safeUrl = escapeHTML(c.html_url);
     const safeSha = escapeHTML(c.sha.substring(0, 7));
     const safeMsg = escapeHTML(c.commit.message);
@@ -526,7 +511,6 @@ async function verifyStudentSetup(studentData) {
     banner.classList.remove("hidden");
   };
 
-  // 🚀 THE FIX: Differentiate between a missing global username vs a missing local repo
   if (!studentData.repoUrl && !studentData.githubUsername) {
     return triggerWarning(
       "bg-amber-50 border-amber-200 text-amber-800",
@@ -564,8 +548,9 @@ async function verifyStudentSetup(studentData) {
     repo = urlParts.pop();
     owner = urlParts.pop();
 
+    // 🚀 THE FIX: Check 100 commits deep to prevent false mismatch alarms
     const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=5`,
+      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
       {
         headers: {
           Authorization: `Bearer ${studentData.githubToken}`,
@@ -575,10 +560,14 @@ async function verifyStudentSetup(studentData) {
     );
 
     if (res.status === 401) {
+      // 🚀 THE FIX: Un-hide the overlay so they can ACTUALLY click the Connect button to fix the token
+      const overlay = document.getElementById("githubAuthOverlay");
+      if (overlay) overlay.classList.remove("hidden");
+
       return triggerWarning(
         "bg-red-50 border-red-200 text-red-800",
         "Token Expired or Revoked",
-        "The connected GitHub account token is no longer valid. The account must be reconnected.",
+        "Your GitHub session has expired. Please click <strong>Connect Account</strong> on the chart to reauthorize.",
       );
     }
     if (res.status === 404) {
@@ -612,23 +601,39 @@ async function verifyStudentSetup(studentData) {
       const stuEmail = (studentData.email || "").toLowerCase().trim();
       const stuName = (studentData.name || "").toLowerCase().trim();
 
+      // 🚀 THE FIX: Use Two-Pass Fuzzy Matching so students sharing computers aren't flagged
       const hasCommit = commits.some((c) => {
-        const login = (c.author?.login || "").toLowerCase();
-        const commitEmail = (c.commit?.author?.email || "").toLowerCase();
-        const commitName = (c.commit?.author?.name || "").toLowerCase();
+        const login = (c.author?.login || "").toLowerCase().trim();
+        const commitEmail = (c.commit?.author?.email || "")
+          .toLowerCase()
+          .trim();
+        const commitName = (c.commit?.author?.name || "").toLowerCase().trim();
 
-        return (
-          (ghUsername && login === ghUsername) ||
-          (stuEmail && commitEmail === stuEmail) ||
-          (stuName && commitName === stuName)
-        );
+        // Pass 1: Strict Match
+        if (ghUsername && login === ghUsername) return true;
+        if (stuEmail && commitEmail === stuEmail) return true;
+
+        // Pass 2: Fuzzy Name Match
+        if (stuName && commitName === stuName) return true;
+
+        const nameParts = stuName.split(" ").filter((w) => w.length > 2);
+        if (commitName && nameParts.length > 0) {
+          const matches = nameParts.filter((part) => commitName.includes(part));
+          if (
+            matches.length >= 2 ||
+            (nameParts.length === 1 && matches.length === 1)
+          )
+            return true;
+        }
+
+        return false;
       });
 
       if (!hasCommit && commits.length > 0) {
         return triggerWarning(
           "bg-amber-50 border-amber-200 text-amber-800",
           "Identity Mismatch Detected",
-          `We see code in this repository, but none of it matches the linked GitHub account (<strong>@${escapeHTML(studentData.githubUsername)}</strong>). Are you pushing code using a different account?`,
+          `We checked the last 100 commits, but none match your linked GitHub account (<strong>@${escapeHTML(studentData.githubUsername)}</strong>). Are you pushing code using a different local Git name?`,
         );
       }
 

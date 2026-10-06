@@ -270,7 +270,7 @@ function renderGroupedUI(repoGroups) {
             <div class="bg-slate-800 p-4 flex justify-between items-center cursor-pointer hover:bg-slate-700 transition" onclick="toggleAccordion('${accordionId}')">
                 <div>
                     <h3 class="font-bold text-white text-lg">${escapeHTML(group.owner)} / ${escapeHTML(group.repo)}</h3>
-                    <a href="${group.url}" target="_blank" class="text-xs text-cyan-400 hover:underline" onclick="event.stopPropagation()">${group.url}</a>
+                    <a href="${group.cleanUrl}" target="_blank" class="text-xs text-cyan-400 hover:underline" onclick="event.stopPropagation()">${group.cleanUrl}</a>
                 </div>
                 <div class="text-slate-300 transform transition-transform duration-200 font-bold" id="icon-${accordionId}">▼</div>
             </div>
