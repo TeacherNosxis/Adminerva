@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
     />
-    <title>LessonReview - AI Curriculum Planner</title>
+    <title>Adminerva - Curriculum Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -16,14 +16,17 @@
         }
       }
       @media print {
-        body > nav,
-        #adminerva-nav,
-        body > div.max-w-screen-2xl,
-        body > #globalLoader,
-        body > #aiClarificationModal,
-        body > #loadPlanModal {
+        body,
+        html {
+          background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        /* 🚀 THE FIX: Hide EVERYTHING attached to the body except the document wrapper */
+        body > *:not(#printDocumentWrapper) {
           display: none !important;
         }
+
         #printDocumentWrapper {
           display: block !important;
           position: relative !important;
@@ -68,31 +71,45 @@
           line-height: 1.2 !important;
         }
       }
-      #printDocumentWrapper {
-        display: none;
-      }
     </style>
   </head>
-  <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
+  <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     <div id="adminerva-nav" data-module="lesson" data-page="planner"></div>
     <script src="js/core/adminerva-nav.js"></script>
 
     <!-- Main Workspace -->
     <div
-      class="max-w-screen-2xl mx-auto w-full p-4 sm:p-6 mt-2 flex-1 flex flex-col gap-4 sm:gap-6"
+      class="max-w-screen-xl mx-auto w-full p-4 sm:p-6 mt-4 flex-1 flex flex-col gap-6"
     >
       <!-- TOP SECTION: Configuration Banner -->
-      <div
-        class="w-full bg-white p-5 sm:p-6 rounded-lg shadow-sm border border-gray-200"
-      >
-        <h2
-          class="text-lg sm:text-xl font-bold text-gray-800 border-b pb-2 mb-4"
+      <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <!-- UI FIX: Unified Assessment Studio Header -->
+        <div
+          class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 border-b pb-4 gap-4"
         >
-          Lesson Configuration
-        </h2>
+          <div>
+            <h2 class="text-2xl font-bold text-gray-800">Curriculum Planner</h2>
+            <p class="text-sm text-gray-500 mt-1">
+              Configure parameters and generate structured lesson plans.
+            </p>
+          </div>
+          <div class="flex gap-2 w-full sm:w-auto">
+            <button
+              onclick="openLoadPlanModal()"
+              class="flex-1 sm:flex-none bg-purple-600 text-white px-5 py-2.5 rounded text-sm font-bold hover:bg-purple-700 transition shadow flex justify-center items-center gap-2"
+            >
+              📂 Load Saved
+            </button>
+            <button
+              onclick="generateBlankPlan()"
+              class="flex-1 sm:flex-none bg-slate-700 text-white border border-slate-600 px-5 py-2.5 rounded text-sm font-bold hover:bg-slate-600 transition shadow flex justify-center items-center gap-2"
+            >
+              📝 Create Blank
+            </button>
+          </div>
+        </div>
 
-        <!-- NEW STREAMLINED 5-COLUMN GRID -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-5">
           <div>
             <label
               class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
@@ -102,7 +119,7 @@
               type="text"
               id="lpSchoolYear"
               value="2026-2027"
-              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500 focus:outline-none"
             />
           </div>
 
@@ -113,7 +130,7 @@
             >
             <select
               id="lpGradeLevel"
-              class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-blue-50 border-blue-200 focus:ring-blue-500 shadow-sm font-bold"
+              class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-blue-50 border-blue-200 focus:ring-blue-500 shadow-sm font-bold focus:outline-none"
             >
               <option value="Grade 11">Grade 11 (5 Sessions)</option>
               <option value="Grade 12">Grade 12 (4 Sessions)</option>
@@ -127,7 +144,7 @@
             >
             <select
               id="lpAcademicTerm"
-              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm focus:outline-none"
             >
               <option value="FIRST SEMESTER/FIRST QUARTER">
                 FIRST SEMESTER/FIRST QUARTER
@@ -151,7 +168,7 @@
             >
             <select
               id="lpCourseWeek"
-              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm focus:outline-none"
             >
               <option value="Week 1">Week 1</option>
               <option value="Week 2">Week 2</option>
@@ -173,12 +190,12 @@
             >
             <select
               id="lpDateRange"
-              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm"
+              class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm font-bold bg-white focus:ring-blue-500 shadow-sm focus:outline-none"
             ></select>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-5">
           <div>
             <label
               class="block text-[10px] sm:text-xs font-extrabold text-blue-700 uppercase mb-2"
@@ -187,7 +204,7 @@
             <textarea
               id="lpCustomInstructions"
               rows="4"
-              class="w-full p-3 sm:p-3 border border-blue-200 rounded text-base sm:text-sm bg-blue-50 focus:ring-blue-500 shadow-inner"
+              class="w-full p-3 sm:p-3 border border-blue-200 rounded text-base sm:text-sm bg-blue-50 focus:ring-blue-500 shadow-inner focus:outline-none"
               placeholder="E.g., Make Session 4-6 a hands-on laboratory performance task involving an e-wallet calculator app..."
             ></textarea>
           </div>
@@ -203,31 +220,19 @@
           </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row flex-wrap gap-3 mt-5 sm:mt-4">
+        <div class="flex justify-end mt-6">
           <button
             onclick="initiateGenerationFlow()"
-            class="w-full sm:w-auto sm:flex-1 bg-blue-600 text-white font-bold py-3.5 sm:py-3 px-4 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2"
+            class="w-full sm:w-auto bg-blue-600 text-white font-bold py-3 px-8 rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2 text-sm"
           >
-            ✨ Generate with AI
-          </button>
-          <button
-            onclick="generateBlankPlan()"
-            class="w-full sm:w-auto bg-emerald-600 text-white font-bold py-3.5 sm:py-3 px-6 rounded hover:bg-emerald-700 shadow-md transition flex justify-center items-center gap-2"
-          >
-            📝 Create from scratch
-          </button>
-          <button
-            onclick="openLoadPlanModal()"
-            class="w-full sm:w-auto bg-purple-600 text-white font-bold py-3.5 sm:py-3 px-6 rounded hover:bg-purple-700 shadow-md transition flex justify-center items-center gap-2"
-          >
-            📂 Load Saved
+            ✨ Generate Curriculum
           </button>
         </div>
       </div>
 
       <!-- BOTTOM SECTION: Full Width Output & Editor -->
       <div
-        class="w-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden"
+        class="w-full bg-white rounded-lg shadow-md border border-gray-200 flex flex-col overflow-hidden min-h-[500px]"
       >
         <div
           id="weeklyOverviewContainer"
@@ -235,22 +240,21 @@
         ></div>
 
         <div
-          class="bg-blue-600 text-white px-4 sm:px-6 py-3 border-b flex justify-between items-center"
+          class="bg-slate-800 text-white px-4 sm:px-6 py-4 border-b flex justify-between items-center"
         >
           <h3 id="planHeaderTitle" class="font-bold text-base sm:text-lg">
             Generated Plan
           </h3>
           <span
             id="planHeaderBadge"
-            class="bg-blue-800 px-3 py-1 rounded text-[10px] sm:text-xs font-bold whitespace-nowrap"
+            class="bg-slate-600 px-3 py-1 rounded text-[10px] sm:text-xs font-bold whitespace-nowrap"
             >No Data</span
           >
         </div>
 
-        <!-- Output container has touch-pan-x for table scrolling on mobile -->
         <div
           id="outputContainer"
-          class="p-4 sm:p-6 overflow-x-auto overflow-y-auto touch-pan-x bg-gray-50 min-h-[400px] sm:min-h-[500px]"
+          class="p-4 sm:p-6 overflow-x-auto overflow-y-auto touch-pan-x bg-gray-50 flex-1"
         >
           <div
             class="text-center text-gray-400 italic mt-16 sm:mt-20 text-sm sm:text-base"
@@ -264,7 +268,7 @@
         >
           <button
             onclick="window.exportToGoogleDocs()"
-            class="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-2.5 px-4 rounded shadow flex items-center gap-2 print:hidden"
+            class="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 sm:py-2.5 px-4 rounded shadow flex items-center gap-2 print:hidden text-sm sm:text-base"
           >
             <svg
               xmlns="https://www.w3.org/2000/svg"
@@ -286,13 +290,13 @@
           </button>
           <button
             onclick="exportPDF()"
-            class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-blue-600 text-white font-bold rounded shadow-sm hover:bg-blue-700 transition flex items-center gap-2 text-sm sm:text-base"
+            class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-slate-700 text-white font-bold rounded shadow-sm hover:bg-slate-800 transition flex items-center gap-2 text-sm sm:text-base"
           >
             <span>🖨️</span> Print PDF Only
           </button>
           <button
             onclick="saveAndPrint()"
-            class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-green-600 text-white font-bold rounded shadow-sm hover:bg-green-700 transition flex items-center gap-2 text-sm sm:text-base"
+            class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-emerald-600 text-white font-bold rounded shadow-sm hover:bg-emerald-700 transition flex items-center gap-2 text-sm sm:text-base"
           >
             <span>✅</span> Save & Print
           </button>
@@ -303,15 +307,15 @@
     <!-- AI CLARIFICATION MODAL -->
     <div
       id="aiClarificationModal"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[110] items-center justify-center p-4"
+      class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4"
     >
       <div
-        class="bg-white rounded-lg max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-gray-300 flex flex-col gap-4"
+        class="bg-white rounded-xl max-w-lg w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4"
       >
         <div class="flex items-center gap-3 border-b pb-3">
           <span class="text-2xl">💡</span>
-          <h3 class="font-bold text-base sm:text-lg text-blue-900">
-            AI Curriculum Assistant Has a Question
+          <h3 class="font-bold text-base sm:text-lg text-slate-800">
+            AI Assistant Has a Question
           </h3>
         </div>
         <p class="text-xs sm:text-sm text-gray-600">
@@ -330,7 +334,7 @@
           <textarea
             id="userClarificationInput"
             rows="3"
-            class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500"
+            class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 focus:ring-blue-500 focus:outline-none"
             placeholder="Type your answer here..."
           ></textarea>
         </div>
@@ -356,15 +360,15 @@
     <!-- LOAD SAVED PLANS MODAL -->
     <div
       id="loadPlanModal"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[120] items-end sm:items-center justify-center p-4"
+      class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-4"
     >
       <div
-        class="bg-white rounded-xl sm:rounded-lg max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-gray-300 flex flex-col max-h-[85vh] sm:max-h-[80vh]"
+        class="bg-white rounded-xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[80vh]"
       >
         <div
           class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-3"
         >
-          <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
+          <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
             📂 Saved Lesson Plans
           </h3>
           <div
@@ -373,7 +377,7 @@
             <select
               id="modalSyFilter"
               onchange="openLoadPlanModal()"
-              class="flex-1 sm:flex-none p-3 sm:p-1.5 border border-gray-300 rounded text-base sm:text-sm font-bold text-blue-900 bg-blue-50 focus:ring-blue-500 shadow-sm cursor-pointer"
+              class="flex-1 sm:flex-none p-3 sm:p-1.5 border border-gray-300 rounded text-base sm:text-sm font-bold text-blue-900 bg-blue-50 focus:ring-blue-500 shadow-sm cursor-pointer focus:outline-none"
             ></select>
             <div class="flex items-center gap-2 sm:gap-3">
               <button
@@ -385,9 +389,9 @@
               </button>
               <button
                 onclick="closeLoadPlanModal()"
-                class="text-gray-400 hover:text-red-500 font-bold text-2xl sm:text-xl px-2"
+                class="text-slate-400 hover:text-red-500 font-bold text-2xl sm:text-xl px-2 leading-none"
               >
-                ✖
+                &times;
               </button>
             </div>
           </div>
@@ -414,7 +418,7 @@
     <!-- GLOBAL LOADING OVERLAY -->
     <div
       id="globalLoader"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col text-center px-4"
+      class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center flex-col text-center px-4"
     >
       <div
         class="animate-spin rounded-full h-12 sm:h-16 w-12 sm:w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4 sm:mb-6"
@@ -438,14 +442,7 @@
     </div>
 
     <!-- PRINT-ONLY CURRICULUM MAP CONTAINER -->
-    <div
-      id="printDocumentWrapper"
-      style="
-        font-family: &quot;Arial Narrow&quot;, Arial, sans-serif;
-        font-size: 10pt;
-      "
-    >
-      <!-- (Print content remains exactly as you had it) -->
+    <div id="printDocumentWrapper">
       <div
         id="printHeaderBannerContainer"
         style="text-align: center; margin-bottom: 0"
@@ -501,99 +498,25 @@
           <span id="printSemester"></span> — <span id="printQuarter"></span>
         </div>
       </div>
-      <table
-        class="print-table"
-        style="
-          width: 100%;
-          border-collapse: collapse;
-          font-family: &quot;Arial Narrow&quot;, Arial, sans-serif;
-          font-size: 10pt;
-        "
-      >
+      <table class="print-table">
         <tbody
           style="-webkit-print-color-adjust: exact; print-color-adjust: exact"
         >
           <tr>
-            <th
-              style="
-                width: 8%;
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: center;
-                background-color: #b4c6e7;
-              "
-            >
-              Content
-            </th>
-            <th
-              style="
-                width: 14%;
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: center;
-                background-color: #b4c6e7;
-              "
-            >
-              Learning Standards
-            </th>
-            <th
-              style="
-                width: 14%;
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: center;
-                background-color: #b4c6e7;
-              "
-            >
-              Learning Competencies
-            </th>
-            <th
-              style="
-                width: 4%;
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: center;
-                background-color: #b4c6e7;
-              "
-            >
-              Time Frame
-            </th>
-            <th
-              style="
-                width: 32%;
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: center;
-                background-color: #b4c6e7;
-              "
-            >
+            <th style="width: 8%">Content</th>
+            <th style="width: 14%">Learning Standards</th>
+            <th style="width: 14%">Learning Competencies</th>
+            <th style="width: 4%">Time Frame</th>
+            <th style="width: 32%">
               Learning Experiences & Activities<br /><span
                 id="printScopeHeader"
                 style="font-weight: normal; font-size: 10pt"
               ></span>
             </th>
-            <th
-              style="
-                width: 14%;
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: center;
-                background-color: #b4c6e7;
-              "
-            >
+            <th style="width: 14%">
               Learning Materials &<br />Technology Integration
             </th>
-            <th
-              style="
-                width: 14%;
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: center;
-                background-color: #b4c6e7;
-              "
-            >
-              Remarks and Interventions
-            </th>
+            <th style="width: 14%">Remarks and Interventions</th>
           </tr>
         </tbody>
         <tbody id="printTableBody"></tbody>
