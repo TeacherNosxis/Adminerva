@@ -8,7 +8,8 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 let allAssessments = [];
-let studentSection = "";
+let userProfiles = [];
+let currentSection = "";
 
 // Security Patch
 function escapeHTML(str) {
@@ -39,7 +40,30 @@ onAuthStateChanged(auth, async (user) => {
     const snap = await getDocs(q);
 
     if (!snap.empty) {
-      studentSection = snap.docs[0].data().section;
+      userProfiles = [];
+      snap.forEach((d) => userProfiles.push({ id: d.id, ...d.data() }));
+
+      const selector = document.getElementById("sectionSelectorAssessments");
+
+      // If student is in multiple classes/clubs, show the dropdown
+      if (userProfiles.length > 1 && selector) {
+        selector.classList.remove("hidden");
+        selector.innerHTML = "";
+        userProfiles.forEach((profile, index) => {
+          selector.insertAdjacentHTML(
+            "beforeend",
+            `<option value="${index}">${escapeHTML(profile.section)}</option>`,
+          );
+        });
+
+        selector.addEventListener("change", (e) => {
+          currentSection = userProfiles[e.target.value].section;
+          fetchAssessments();
+        });
+      }
+
+      // Load initial view
+      currentSection = userProfiles[0].section;
       fetchAssessments();
     }
   } catch (error) {
@@ -48,20 +72,28 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 async function fetchAssessments() {
-  if (!studentSection) return;
+  if (!currentSection) return;
   const container = document.getElementById("assignmentsFeed");
+
+  // Show loading skeleton while switching sections
+  container.innerHTML = `
+    <div class="animate-pulse bg-white p-5 rounded-xl border border-slate-200">
+      <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
+      <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+      <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+    </div>
+  `;
 
   try {
     const q = query(
       collection(db, "assessments"),
-      where("targetSections", "array-contains", studentSection),
+      where("targetSections", "array-contains", currentSection),
     );
     const snap = await getDocs(q);
 
     allAssessments = [];
     snap.forEach((docSnap) => {
       const data = docSnap.data();
-      // Calculate a fallback "Urgent" flag for items older than 7 days if no deadline exists yet
       const postedDate = data.createdAt ? data.createdAt.toDate() : new Date();
       const isUrgent = data.dueDate
         ? new Date(data.dueDate) < new Date()
@@ -77,7 +109,7 @@ async function fetchAssessments() {
 
     renderAssessments();
   } catch (error) {
-    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments. Check console.</div>`;
+    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments. Ensure Firestore Security Rules allow read access.</div>`;
     console.error(error);
   }
 }
@@ -107,7 +139,6 @@ function renderAssessments() {
     if (sortOption === "newest") return b.postedDate - a.postedDate;
     if (sortOption === "oldest") return a.postedDate - b.postedDate;
     if (sortOption === "deadline") {
-      // Prioritize actual due dates, fallback to posted date
       const dateA = a.dueDate ? new Date(a.dueDate) : a.postedDate;
       const dateB = b.dueDate ? new Date(b.dueDate) : b.postedDate;
       return dateA - dateB;
@@ -117,7 +148,7 @@ function renderAssessments() {
   // 3. Render
   container.innerHTML = "";
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="py-12 text-center text-slate-400 font-medium italic border-2 border-dashed border-slate-200 rounded-xl bg-white">No assignments found matching your criteria.</div>`;
+    container.innerHTML = `<div class="py-12 text-center text-slate-400 font-medium italic border-2 border-dashed border-slate-200 rounded-xl bg-white">No assignments found for ${escapeHTML(currentSection)}.</div>`;
     return;
   }
 
@@ -156,7 +187,6 @@ function renderAssessments() {
   });
 }
 
-// Bind Event Listeners for Filters
 document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("searchAssInput")
@@ -169,7 +199,6 @@ document.addEventListener("DOMContentLoaded", () => {
     ?.addEventListener("change", renderAssessments);
 });
 
-// Window function for the modal
 window.viewAssessmentDetails = function (id) {
   const ass = allAssessments.find((a) => a.id === id);
   if (!ass) return;

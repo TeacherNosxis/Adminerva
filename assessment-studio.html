@@ -20,7 +20,7 @@
           <div>
             <h2 class="text-2xl font-bold text-gray-800">Assessment Studio</h2>
             <p class="text-sm text-gray-500 mt-1">
-              Design assessment blueprints and deploy them to class sections.
+              Design assessment blueprints and schedule deployments.
             </p>
           </div>
           <button
@@ -67,7 +67,7 @@
               onclick="deleteAssessment()"
               class="text-red-400 hover:text-red-300 text-xs font-bold transition flex items-center gap-1 border border-red-500/30 bg-red-500/10 px-2 py-0.5 rounded"
             >
-              🗑️ Delete
+              🗑️ Delete Blueprint
             </button>
           </div>
 
@@ -87,16 +87,16 @@
             </div>
             <div class="flex gap-2">
               <button
-                onclick="openAssignModal()"
+                onclick="openDeployModal()"
                 class="bg-blue-600 text-white px-5 py-2 rounded text-sm font-bold hover:bg-blue-700 transition shadow flex items-center gap-2"
               >
-                <span>👥</span> Assign Sections
+                <span>🚀</span> Deploy Task
               </button>
               <button
                 onclick="openEditModal()"
                 class="bg-slate-700 text-white border border-slate-600 px-5 py-2 rounded text-sm font-bold hover:bg-slate-600 transition shadow flex items-center gap-2"
               >
-                <span>✏️</span> Edit
+                <span>✏️</span> Edit Blueprint
               </button>
             </div>
           </div>
@@ -104,6 +104,7 @@
 
         <div class="p-6 overflow-y-auto bg-gray-50 flex-1">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Column 1 -->
             <div class="space-y-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
@@ -130,6 +131,7 @@
               </div>
             </div>
 
+            <!-- Column 2 -->
             <div class="space-y-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
@@ -159,6 +161,32 @@
                 >
                   <!-- Populated dynamically -->
                 </ul>
+              </div>
+            </div>
+
+            <!-- Full Width: Active Deployments -->
+            <div class="col-span-1 md:col-span-2 mt-4">
+              <h3
+                class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2 mb-3"
+              >
+                Active Deployments
+              </h3>
+              <div class="bg-white border rounded shadow-sm overflow-hidden">
+                <table class="w-full text-left text-sm text-gray-600">
+                  <thead
+                    class="bg-gray-100 text-xs uppercase font-bold text-gray-500 border-b"
+                  >
+                    <tr>
+                      <th class="px-4 py-3">Section</th>
+                      <th class="px-4 py-3">Post Date</th>
+                      <th class="px-4 py-3">Deadline</th>
+                      <th class="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="deploymentsTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -230,7 +258,7 @@
                     type="text"
                     id="assessPath"
                     class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm font-mono placeholder-gray-400"
-                    placeholder="src/Main.java"
+                    placeholder="src/test/java/*/Main.java"
                   />
                 </div>
               </div>
@@ -297,7 +325,7 @@
                 class="bg-white p-4 border rounded shadow-sm border-l-4 border-l-gray-800"
               >
                 <label class="block text-sm font-bold text-gray-700 mb-2"
-                  >Objective Rules</label
+                  >Objective Rules (Supports wildcards `*`)</label
                 >
                 <div id="rulesContainer" class="space-y-2 mb-3"></div>
                 <div class="flex gap-2">
@@ -343,64 +371,85 @@
       </div>
     </div>
 
-    <!-- ASSIGN SECTIONS MODAL -->
+    <!-- DEPLOYMENT MODAL (Scheduling & Deadlines) -->
     <div
-      id="assignModal"
+      id="deployModal"
       class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[130] p-4"
     >
       <div
-        class="bg-white rounded-xl shadow-2xl max-w-md w-full flex flex-col overflow-hidden"
+        class="bg-white rounded-xl shadow-2xl max-w-sm w-full flex flex-col overflow-hidden"
       >
         <div
           class="p-5 border-b bg-slate-800 flex justify-between items-center"
         >
-          <h2 class="text-lg font-bold text-white">Assign to Sections</h2>
+          <h2 id="deployModalTitle" class="text-lg font-bold text-white">
+            Deploy Task
+          </h2>
           <button
             onclick="
-              document.getElementById('assignModal').classList.add('hidden')
+              document.getElementById('deployModal').classList.add('hidden')
             "
             class="text-slate-400 hover:text-white text-2xl font-bold"
           >
             &times;
           </button>
         </div>
-        <div class="p-6 bg-gray-50">
-          <p class="text-xs text-gray-500 mb-4">
-            Assigning sections will make this task active for students in
-            RepoFetch and their modules.
-          </p>
+        <div class="p-6 bg-gray-50 space-y-4">
+          <input type="hidden" id="deployId" value="" />
 
-          <div
-            class="flex flex-wrap gap-2 mb-4 min-h-[40px] p-2 bg-white border rounded shadow-inner"
-            id="assignChipsContainer"
-          >
-            <!-- Chips injected here -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1"
+              >Target Section</label
+            >
+            <select
+              id="deploySection"
+              class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white font-bold"
+            >
+              <!-- Populated dynamically -->
+            </select>
           </div>
 
-          <select
-            id="assignSelector"
-            onchange="addAssignChip(this.value)"
-            class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white font-bold"
-          >
-            <option value="" disabled selected>
-              + Select a section to assign...
-            </option>
-          </select>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1"
+              >Post Date & Time</label
+            >
+            <p class="text-[10px] text-gray-500 mb-1">
+              When students can view the task.
+            </p>
+            <input
+              type="datetime-local"
+              id="deployPostDate"
+              class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1"
+              >Deadline</label
+            >
+            <p class="text-[10px] text-gray-500 mb-1">When the task is due.</p>
+            <input
+              type="datetime-local"
+              id="deployDeadline"
+              class="w-full p-2.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+            />
+          </div>
         </div>
         <div class="p-4 border-t bg-white flex justify-end gap-3">
           <button
             onclick="
-              document.getElementById('assignModal').classList.add('hidden')
+              document.getElementById('deployModal').classList.add('hidden')
             "
             class="text-gray-600 font-bold px-4 py-2 hover:bg-gray-100 rounded transition"
           >
             Cancel
           </button>
           <button
-            onclick="saveAssignments()"
+            onclick="saveDeployment()"
+            id="deploySaveBtn"
             class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition shadow"
           >
-            Deploy Assignment
+            Deploy
           </button>
         </div>
       </div>

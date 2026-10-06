@@ -15,10 +15,7 @@ import {
 let allSections = [];
 let objectiveRules = [];
 let assessments = [];
-
-// Trackers for modals
 let currentAssessmentId = null;
-let assignSelectedSections = []; // used for the assign modal
 
 function escapeHTML(str) {
   if (!str) return "";
@@ -33,6 +30,19 @@ function escapeHTML(str) {
         "'": "&#039;",
       })[match],
   );
+}
+
+function formatPrettyDate(isoString) {
+  if (!isoString) return "Not set";
+  const date = new Date(isoString);
+  if (isNaN(date)) return "Invalid Date";
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -94,7 +104,10 @@ function renderAssessmentGrid() {
   }
 
   assessments.forEach((item) => {
-    const sectionsHtml = (item.targetSections || [])
+    const deployments = item.deployments || [];
+    const uniqueSections = [...new Set(deployments.map((d) => d.section))];
+
+    const sectionsHtml = uniqueSections
       .map(
         (sec) =>
           `<span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-bold shadow-sm">${escapeHTML(sec)}</span>`,
@@ -116,11 +129,11 @@ function renderAssessmentGrid() {
                     <p class="text-sm text-gray-600 line-clamp-2 mb-4">${escapeHTML(item.taskContext || "No context provided.")}</p>
                     <div class="mt-auto">
                         <div class="text-[10px] font-bold text-gray-400 uppercase mb-1 flex justify-between">
-                            <span>Assigned Sections</span>
-                            <span class="text-blue-500">${(item.targetSections || []).length} Active</span>
+                            <span>Deployed To</span>
+                            <span class="text-blue-500">${deployments.length} Active Deployments</span>
                         </div>
                         <div class="flex flex-wrap gap-1">
-                            ${sectionsHtml || `<span class="text-xs text-gray-400 italic">Unassigned - Template Only</span>`}
+                            ${sectionsHtml || `<span class="text-xs text-gray-400 italic">Template Only - Not Deployed</span>`}
                         </div>
                     </div>
                 </div>
@@ -131,11 +144,10 @@ function renderAssessmentGrid() {
 }
 
 // ==========================================
-// VIEW, CREATE & EDIT MODALS
+// CORE BLUEPRINT MANAGEMENT
 // ==========================================
 window.openCreateModal = function () {
-  currentAssessmentId = null; // We are creating, not editing
-
+  currentAssessmentId = null;
   document.getElementById("createModalTitle").textContent =
     "Create Assessment Blueprint";
   document.getElementById("saveAssessmentBtn").textContent = "Save Blueprint";
@@ -175,59 +187,6 @@ window.openEditModal = function () {
   document.getElementById("createModal").classList.remove("hidden");
 };
 
-window.openViewModal = function (id) {
-  const item = assessments.find((a) => a.id === id);
-  if (!item) return;
-
-  currentAssessmentId = id;
-
-  // Inject data into view modal
-  document.getElementById("viewTitle").textContent = item.title || "Untitled";
-  document.getElementById("viewTargetPath").textContent = item.targetPath
-    ? `Target: ${item.targetPath}`
-    : "Target: No specific path set";
-  document.getElementById("viewTaskContext").textContent =
-    item.taskContext || "No context provided.";
-  document.getElementById("viewEvalCriteria").textContent =
-    item.evalCriteria || "No rubric provided.";
-  document.getElementById("viewAIPersona").textContent =
-    item.aiPersona || "No persona set.";
-
-  // Style Badge
-  const badge = document.getElementById("viewTypeBadge");
-  badge.textContent = item.type || "Unknown";
-  badge.className = `text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider inline-block ${getTypeStyle(item.type)}`;
-
-  // Inject Rules
-  const rulesList = document.getElementById("viewObjectiveRules");
-  rulesList.innerHTML = "";
-  if (item.rules && item.rules.length > 0) {
-    item.rules.forEach((rule) => {
-      const color =
-        rule.type === "Banned"
-          ? "text-red-500 bg-red-50"
-          : "text-green-600 bg-green-50";
-      rulesList.insertAdjacentHTML(
-        "beforeend",
-        `<li><span class="font-mono ${color} px-1 rounded">${escapeHTML(rule.type)}: ${escapeHTML(rule.value)}</span></li>`,
-      );
-    });
-  } else {
-    rulesList.innerHTML = `<li class="text-gray-400 italic text-xs">No objective filters set.</li>`;
-  }
-
-  document.getElementById("viewModal").classList.remove("hidden");
-};
-
-window.closeModals = function () {
-  document.getElementById("createModal").classList.add("hidden");
-  document.getElementById("viewModal").classList.add("hidden");
-  document.getElementById("assignModal").classList.add("hidden");
-};
-
-// ==========================================
-// DATABASE OPERATIONS
-// ==========================================
 window.saveAssessment = async function () {
   const title = document.getElementById("assessTitle").value.trim();
   if (!title) return alert("Please enter an Assessment Title.");
@@ -246,11 +205,9 @@ window.saveAssessment = async function () {
 
   try {
     if (currentAssessmentId) {
-      // Update existing
       await updateDoc(doc(db, "assessments", currentAssessmentId), payload);
     } else {
-      // Create new (initialize targetSections as empty array)
-      payload.targetSections = [];
+      payload.deployments = [];
       payload.createdAt = serverTimestamp();
       await addDoc(collection(db, "assessments"), payload);
     }
@@ -265,19 +222,203 @@ window.saveAssessment = async function () {
 
 window.deleteAssessment = async function () {
   if (!currentAssessmentId) return;
-
   if (
     confirm(
-      "Are you sure you want to permanently delete this Assessment Blueprint? It will be removed from all assigned sections.",
+      "Are you sure you want to permanently delete this Assessment Blueprint? It will be immediately revoked from all deployed sections.",
     )
   ) {
-    window.showSubtleLoader("Deleting...");
+    window.showSubtleLoader("Deleting Blueprint...");
     try {
       await deleteDoc(doc(db, "assessments", currentAssessmentId));
       window.closeModals();
       await loadAssessments();
     } catch (e) {
       alert("Error deleting: " + e.message);
+    } finally {
+      window.hideSubtleLoader();
+    }
+  }
+};
+
+window.openViewModal = function (id) {
+  const item = assessments.find((a) => a.id === id);
+  if (!item) return;
+
+  currentAssessmentId = id;
+
+  document.getElementById("viewTitle").textContent = item.title || "Untitled";
+  document.getElementById("viewTargetPath").textContent = item.targetPath
+    ? `Target: ${item.targetPath}`
+    : "Target: No specific path set";
+  document.getElementById("viewTaskContext").textContent =
+    item.taskContext || "No context provided.";
+  document.getElementById("viewEvalCriteria").textContent =
+    item.evalCriteria || "No rubric provided.";
+  document.getElementById("viewAIPersona").textContent =
+    item.aiPersona || "No persona set.";
+
+  const badge = document.getElementById("viewTypeBadge");
+  badge.textContent = item.type || "Unknown";
+  badge.className = `text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider inline-block ${getTypeStyle(item.type)}`;
+
+  const rulesList = document.getElementById("viewObjectiveRules");
+  rulesList.innerHTML = "";
+  if (item.rules && item.rules.length > 0) {
+    item.rules.forEach((rule) => {
+      const color =
+        rule.type === "Banned"
+          ? "text-red-500 bg-red-50"
+          : "text-green-600 bg-green-50";
+      rulesList.insertAdjacentHTML(
+        "beforeend",
+        `<li><span class="font-mono ${color} px-1 rounded">${escapeHTML(rule.type)}: ${escapeHTML(rule.value)}</span></li>`,
+      );
+    });
+  } else {
+    rulesList.innerHTML = `<li class="text-gray-400 italic text-xs">No objective filters set.</li>`;
+  }
+
+  renderDeploymentsTable(item.deployments || []);
+  document.getElementById("viewModal").classList.remove("hidden");
+};
+
+window.closeModals = function () {
+  document.getElementById("createModal").classList.add("hidden");
+  document.getElementById("viewModal").classList.add("hidden");
+  document.getElementById("deployModal").classList.add("hidden");
+};
+
+// ==========================================
+// DEPLOYMENT LOGIC (DATES & DEADLINES)
+// ==========================================
+function renderDeploymentsTable(deployments) {
+  const tbody = document.getElementById("deploymentsTableBody");
+  tbody.innerHTML = "";
+
+  if (deployments.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400 italic">No active deployments. Click "Deploy Task" above to assign to a section.</td></tr>`;
+    return;
+  }
+
+  deployments.forEach((deploy) => {
+    tbody.insertAdjacentHTML(
+      "beforeend",
+      `
+            <tr class="border-b last:border-0 hover:bg-gray-50 transition">
+                <td class="px-4 py-3 font-bold text-gray-800">${escapeHTML(deploy.section)}</td>
+                <td class="px-4 py-3">${formatPrettyDate(deploy.postDate)}</td>
+                <td class="px-4 py-3 font-bold text-blue-600">${formatPrettyDate(deploy.deadline)}</td>
+                <td class="px-4 py-3 text-right">
+                    <button onclick="window.openDeployModal('${deploy.id}')" class="text-xs font-bold text-slate-500 hover:text-slate-800 mr-2">Edit</button>
+                    <button onclick="window.deleteDeployment('${deploy.id}')" class="text-xs font-bold text-red-400 hover:text-red-600">Remove</button>
+                </td>
+            </tr>
+        `,
+    );
+  });
+}
+
+window.openDeployModal = function (deployId = null) {
+  const item = assessments.find((a) => a.id === currentAssessmentId);
+  if (!item) return;
+
+  const selector = document.getElementById("deploySection");
+  selector.innerHTML = `<option value="" disabled selected>Select a section...</option>`;
+  allSections.forEach((sec) => {
+    selector.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
+    );
+  });
+
+  if (deployId) {
+    // Editing existing deployment
+    const deploy = (item.deployments || []).find((d) => d.id === deployId);
+    document.getElementById("deployModalTitle").textContent = "Edit Deployment";
+    document.getElementById("deploySaveBtn").textContent = "Update";
+    document.getElementById("deployId").value = deploy.id;
+    document.getElementById("deploySection").value = deploy.section;
+    document.getElementById("deployPostDate").value = deploy.postDate || "";
+    document.getElementById("deployDeadline").value = deploy.deadline || "";
+  } else {
+    // Creating new deployment
+    document.getElementById("deployModalTitle").textContent = "Deploy Task";
+    document.getElementById("deploySaveBtn").textContent = "Deploy";
+    document.getElementById("deployId").value = "";
+    document.getElementById("deploySection").value = "";
+    document.getElementById("deployPostDate").value = "";
+    document.getElementById("deployDeadline").value = "";
+  }
+
+  document.getElementById("deployModal").classList.remove("hidden");
+};
+
+window.saveDeployment = async function () {
+  if (!currentAssessmentId) return;
+
+  const deployId = document.getElementById("deployId").value;
+  const section = document.getElementById("deploySection").value;
+  const postDate = document.getElementById("deployPostDate").value;
+  const deadline = document.getElementById("deployDeadline").value;
+
+  if (!section || !postDate || !deadline)
+    return alert("Please fill in all deployment fields.");
+
+  const item = assessments.find((a) => a.id === currentAssessmentId);
+  let deployments = [...(item.deployments || [])];
+
+  if (deployId) {
+    // Update existing
+    const index = deployments.findIndex((d) => d.id === deployId);
+    if (index > -1) {
+      deployments[index] = { id: deployId, section, postDate, deadline };
+    }
+  } else {
+    // Add new
+    deployments.push({
+      id: Date.now().toString(), // Simple unique identifier
+      section,
+      postDate,
+      deadline,
+    });
+  }
+
+  window.showSubtleLoader("Applying deployment schedule...");
+  try {
+    await updateDoc(doc(db, "assessments", currentAssessmentId), {
+      deployments,
+    });
+    document.getElementById("deployModal").classList.add("hidden");
+    await loadAssessments();
+    window.openViewModal(currentAssessmentId); // Refresh view table
+  } catch (e) {
+    alert("Failed to deploy: " + e.message);
+  } finally {
+    window.hideSubtleLoader();
+  }
+};
+
+window.deleteDeployment = async function (deployId) {
+  if (!currentAssessmentId) return;
+  if (
+    confirm(
+      "Remove this deployment? The assignment will be withdrawn from the section.",
+    )
+  ) {
+    const item = assessments.find((a) => a.id === currentAssessmentId);
+    const deployments = (item.deployments || []).filter(
+      (d) => d.id !== deployId,
+    );
+
+    window.showSubtleLoader("Removing deployment...");
+    try {
+      await updateDoc(doc(db, "assessments", currentAssessmentId), {
+        deployments,
+      });
+      await loadAssessments();
+      window.openViewModal(currentAssessmentId);
+    } catch (e) {
+      alert("Error: " + e.message);
     } finally {
       window.hideSubtleLoader();
     }
@@ -291,7 +432,6 @@ window.addObjectiveRule = function () {
   const type = document.getElementById("newRuleType").value;
   const value = document.getElementById("newRuleValue").value.trim();
   if (!value) return;
-
   objectiveRules.push({ type, value });
   document.getElementById("newRuleValue").value = "";
   renderRules();
@@ -325,83 +465,3 @@ function renderRules() {
     );
   });
 }
-
-// ==========================================
-// SECTION ASSIGNMENT LOGIC
-// ==========================================
-window.openAssignModal = function () {
-  const item = assessments.find((a) => a.id === currentAssessmentId);
-  if (!item) return;
-
-  assignSelectedSections = [...(item.targetSections || [])];
-  renderAssignChips();
-  updateAssignDropdown();
-
-  document.getElementById("assignModal").classList.remove("hidden");
-};
-
-function updateAssignDropdown() {
-  const selector = document.getElementById("assignSelector");
-  selector.innerHTML = `<option value="" disabled selected>+ Select a section to assign...</option>`;
-
-  const available = allSections.filter(
-    (sec) => !assignSelectedSections.includes(sec),
-  );
-  available.forEach((sec) => {
-    selector.insertAdjacentHTML(
-      "beforeend",
-      `<option value="${escapeHTML(sec)}">${escapeHTML(sec)}</option>`,
-    );
-  });
-}
-
-function renderAssignChips() {
-  const container = document.getElementById("assignChipsContainer");
-  container.innerHTML = "";
-  if (assignSelectedSections.length === 0) {
-    container.innerHTML = `<span class="text-xs text-gray-400 italic py-1">No active sections.</span>`;
-    return;
-  }
-  assignSelectedSections.forEach((sec) => {
-    container.insertAdjacentHTML(
-      "beforeend",
-      `
-            <span class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 border border-blue-200 shadow-sm">
-                ${escapeHTML(sec)} <button onclick="window.removeAssignChip('${escapeHTML(sec)}')" class="hover:text-red-500 ml-1 focus:outline-none">&times;</button>
-            </span>
-        `,
-    );
-  });
-}
-
-window.addAssignChip = function (section) {
-  if (!section || assignSelectedSections.includes(section)) return;
-  assignSelectedSections.push(section);
-  document.getElementById("assignSelector").value = "";
-  renderAssignChips();
-  updateAssignDropdown();
-};
-
-window.removeAssignChip = function (section) {
-  assignSelectedSections = assignSelectedSections.filter((s) => s !== section);
-  renderAssignChips();
-  updateAssignDropdown();
-};
-
-window.saveAssignments = async function () {
-  if (!currentAssessmentId) return;
-  window.showSubtleLoader("Deploying assignments...");
-
-  try {
-    await updateDoc(doc(db, "assessments", currentAssessmentId), {
-      targetSections: assignSelectedSections,
-    });
-    document.getElementById("assignModal").classList.add("hidden");
-    await loadAssessments(); // Refresh cards to show new assignment count
-    window.openViewModal(currentAssessmentId); // Refresh view modal state
-  } catch (e) {
-    alert("Failed to assign: " + e.message);
-  } finally {
-    window.hideSubtleLoader();
-  }
-};
