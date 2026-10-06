@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Adminerva - Assessment Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Flatpickr Datepicker Library -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
@@ -13,11 +12,9 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   </head>
   <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
-    <!-- Navigation Bar -->
     <div id="adminerva-nav" data-module="repo" data-page="studio"></div>
     <script src="js/core/adminerva-nav.js"></script>
 
-    <!-- Main Workspace -->
     <div class="max-w-screen-xl mx-auto w-full p-6 mt-4 flex-1">
       <div
         class="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[70vh]"
@@ -36,14 +33,10 @@
             <span class="text-xl leading-none">+</span> New Blueprint
           </button>
         </div>
-
-        <!-- Assessment Cards Grid -->
         <div
           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           id="assessmentGrid"
-        >
-          <!-- Dynamically populated -->
-        </div>
+        ></div>
       </div>
     </div>
 
@@ -62,7 +55,6 @@
           >
             &times;
           </button>
-
           <div class="flex items-center gap-4 mb-3 mt-2">
             <span
               id="viewTypeBadge"
@@ -76,7 +68,6 @@
               🗑️ Delete Blueprint
             </button>
           </div>
-
           <div
             class="flex flex-col md:flex-row justify-between items-start md:items-end w-full gap-4 pr-8"
           >
@@ -135,21 +126,20 @@
                 ></p>
               </div>
             </div>
-
             <div class="space-y-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2"
               >
-                Automated Grading Rules
+                Automated Checker Rules
               </h3>
               <div
                 class="bg-white p-4 rounded border shadow-sm border-l-4 border-l-purple-500"
               >
                 <div class="font-bold text-sm text-gray-800 mb-1">
-                  AI Persona
+                  System Persona
                 </div>
                 <p
-                  id="viewAIPersona"
+                  id="viewSystemPersona"
                   class="text-sm text-gray-600 italic whitespace-pre-wrap"
                 ></p>
               </div>
@@ -165,7 +155,6 @@
                 ></ul>
               </div>
             </div>
-
             <div class="col-span-1 md:col-span-2 mt-4">
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2 mb-3"
@@ -267,7 +256,7 @@
               <h3
                 class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b pb-2 text-purple-600"
               >
-                Grading Intelligence Setup
+                Automated Checking Setup
               </h3>
               <div
                 class="space-y-4 bg-white p-4 border rounded shadow-sm border-l-4 border-l-purple-500"
@@ -276,14 +265,14 @@
                   <label
                     class="flex justify-between text-sm font-bold text-gray-700 mb-1"
                   >
-                    AI Persona
+                    System Persona
                     <span class="text-[10px] font-normal text-gray-400"
                       >(Hidden)</span
                     >
                   </label>
                   <input
                     type="text"
-                    id="aiPersona"
+                    id="systemPersona"
                     class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 text-sm italic"
                     value="You are a strict Java high school programming teacher grading a student's code."
                   />
@@ -395,8 +384,6 @@
         </div>
         <div class="p-6 bg-gray-50 space-y-5">
           <input type="hidden" id="deployId" value="" />
-
-          <!-- Hidden ISO strings for database saving -->
           <input type="hidden" id="deployPostDate" value="" />
           <input type="hidden" id="deployDeadline" value="" />
 
@@ -426,7 +413,6 @@
             <label class="block text-sm font-bold text-gray-700 mb-2"
               >Duration & Schedule</label
             >
-
             <div class="grid grid-cols-5 gap-1 mb-2">
               <button
                 onclick="setDeployRange(3, this)"

@@ -336,14 +336,79 @@ window.toggleAccordion = function (id) {
     icon.style.transform = "rotate(0deg)";
   }
 };
-
-window.openGradingModal = function (studentId, owner, repo) {
+window.openGradingModal = async function (studentId, owner, repo) {
   const student = globalStudentsData[studentId];
   if (!student) return;
 
-  document.getElementById("modalStudentName").textContent = student.name;
+  document.getElementById("modalStudentName").textContent =
+    `${student.name} (@${student.githubUsername || "Unlinked"})`;
   document.getElementById("modalStudentRepo").textContent = `${owner}/${repo}`;
   document.getElementById("gradingModal").classList.remove("hidden");
+
+  const listContainer = document.getElementById("dynamicAssessmentsList");
+  listContainer.innerHTML = `<div class="text-center text-gray-400 italic py-4 text-sm">Loading assigned tasks...</div>`;
+
+  try {
+    // Fetch all blueprints
+    const snap = await getDocs(collection(db, "assessments"));
+    let activeTasks = [];
+
+    snap.forEach((doc) => {
+      const data = doc.data();
+      const deployments = data.deployments || [];
+      const sectionDeployment = deployments.find(
+        (d) => d.section === currentClassSection,
+      );
+
+      if (sectionDeployment) {
+        activeTasks.push({
+          id: doc.id,
+          deployment: sectionDeployment,
+          ...data,
+        });
+      }
+    });
+
+    listContainer.innerHTML = "";
+
+    if (activeTasks.length === 0) {
+      listContainer.innerHTML = `<div class="text-center text-gray-500 py-4 text-sm border-2 border-dashed border-gray-300 rounded">No tasks are currently deployed to ${escapeHTML(currentClassSection)}.</div>`;
+      return;
+    }
+
+    activeTasks.sort(
+      (a, b) =>
+        new Date(a.deployment.deadline) - new Date(b.deployment.deadline),
+    );
+
+    activeTasks.forEach((task) => {
+      const taskCardId = `task-card-${studentId}-${task.id}`;
+
+      const cardHtml = `
+            <div id="${taskCardId}" class="p-4 bg-white border rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-blue-300 transition">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="bg-blue-50 text-blue-600 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${escapeHTML(task.type)}</span>
+                        <h4 class="font-bold text-sm text-gray-800">${escapeHTML(task.title)}</h4>
+                    </div>
+                    <p class="text-[10px] text-gray-500 font-mono truncate">Target: ${escapeHTML(task.targetPath)}</p>
+                    <p class="text-[10px] text-red-500 font-bold mt-1">Due: ${new Date(task.deployment.deadline).toLocaleDateString()}</p>
+                </div>
+                
+                <!-- Grade Action Area -->
+                <div class="grade-action-area shrink-0">
+                    <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}')" class="bg-purple-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-purple-700 transition shadow-sm whitespace-nowrap flex items-center gap-2">
+                        ✨ Run Auto-Check
+                    </button>
+                </div>
+            </div>
+        `;
+      listContainer.insertAdjacentHTML("beforeend", cardHtml);
+    });
+  } catch (err) {
+    console.error(err);
+    listContainer.innerHTML = `<div class="text-center text-red-500 font-bold py-4 text-sm">Failed to load tasks.</div>`;
+  }
 };
 
 window.closeGradingModal = function () {
