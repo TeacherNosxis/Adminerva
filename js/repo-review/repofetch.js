@@ -11,6 +11,7 @@ import {
 
 const CACHE_VERSION = 7;
 let globalStudentsData = {};
+let currentClassSection = "";
 
 function escapeHTML(str) {
   if (!str) return "";
@@ -66,13 +67,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// Single Unified Action
 window.fetchAndSyncRepos = async function () {
   const ghToken = localStorage.getItem("Adminerva_github_token");
   if (!ghToken) return alert("Missing GitHub PAT in settings.");
 
   const section = document.getElementById("sectionSelect").value;
   if (!section) return;
+  currentClassSection = section;
 
   window.showSubtleLoader(`Loading ${section} from database...`);
   globalStudentsData = {};
@@ -94,7 +95,6 @@ window.fetchAndSyncRepos = async function () {
       if (!repoInfo) return;
 
       if (!repoGroups[repoInfo.groupId]) {
-        // Initialize apiError as null during setup
         repoGroups[repoInfo.groupId] = {
           ...repoInfo,
           members: [],
@@ -128,60 +128,101 @@ window.fetchAndSyncRepos = async function () {
     renderGroupedUI(repoGroups);
 
     // ==========================================
-    // PHASE 2: SILENT GITHUB SYNC & DB UPDATE
+    // PHASE 2: CONCURRENT GITHUB SYNC (Promise.all)
     // ==========================================
     let requiresUIRefresh = false;
+    let processed = 0;
 
-    for (let i = 0; i < groupKeys.length; i++) {
-      const groupId = groupKeys[i];
+    const syncPromises = groupKeys.map(async (groupId) => {
       const group = repoGroups[groupId];
-      window.showSubtleLoader(
-        `Checking GitHub for new commits ${i + 1}/${groupKeys.length}: ${group.repo}...`,
-      );
 
       try {
-        const res = await fetch(
-          `https://api.github.com/repos/${group.owner}/${group.repo}/commits?per_page=100`,
+        // First: Call main repo endpoint to gracefully handle URL renames & 404s
+        let actualOwner = group.owner;
+        let actualRepo = group.repo;
+
+        const repoInfoRes = await fetch(
+          `https://api.github.com/repos/${actualOwner}/${actualRepo}`,
           {
-            headers: { Authorization: `Bearer ${ghToken}` },
+            headers: {
+              Authorization: `Bearer ${ghToken}`,
+              Accept: "application/vnd.github+json",
+            },
           },
         );
 
-        // Targeted Error Handling
+        if (repoInfoRes.ok) {
+          const repoInfo = await repoInfoRes.json();
+          actualOwner = repoInfo.owner.login;
+          actualRepo = repoInfo.name;
+        } else if (repoInfoRes.status === 404) {
+          group.apiError = "Private Repo or Broken Link (404)";
+          requiresUIRefresh = true;
+          processed++;
+          window.showSubtleLoader(
+            `Syncing GitHub... ${processed}/${groupKeys.length}`,
+          );
+          return;
+        } else if (repoInfoRes.status === 403) {
+          group.apiError = "API Rate Limit Reached (403)";
+          requiresUIRefresh = true;
+          processed++;
+          window.showSubtleLoader(
+            `Syncing GitHub... ${processed}/${groupKeys.length}`,
+          );
+          return;
+        }
+
+        // Second: Fetch Commits (Using the validated actualOwner/actualRepo)
+        const res = await fetch(
+          `https://api.github.com/repos/${actualOwner}/${actualRepo}/commits?per_page=100`,
+          {
+            headers: {
+              Authorization: `Bearer ${ghToken}`,
+              Accept: "application/vnd.github+json",
+            },
+          },
+        );
+
         if (!res.ok) {
-          if (res.status === 404) {
-            group.apiError = "Private Repo or Broken Link (404)";
-          } else if (res.status === 403) {
-            group.apiError = "GitHub API Rate Limit Reached (403)";
-          } else if (res.status === 409) {
-            group.apiError = "Empty Repository (409)";
-          } else if (res.status === 401) {
+          if (res.status === 409) group.apiError = "Empty Repository (409)";
+          else if (res.status === 401)
             group.apiError = "Invalid GitHub Token (401)";
-          } else {
-            group.apiError = `HTTP Error ${res.status}`;
-          }
-          requiresUIRefresh = true; // Force UI refresh to show the badge
-          continue;
-        } else {
-          // Clear any previous errors if fetch succeeds
-          if (group.apiError !== null) {
-            group.apiError = null;
-            requiresUIRefresh = true;
-          }
+          else group.apiError = `HTTP Error ${res.status}`;
+          requiresUIRefresh = true;
+          processed++;
+          window.showSubtleLoader(
+            `Syncing GitHub... ${processed}/${groupKeys.length}`,
+          );
+          return;
+        }
+
+        if (group.apiError !== null) {
+          group.apiError = null;
+          requiresUIRefresh = true;
         }
 
         const commits = await res.json();
-        if (commits.length === 0) continue;
+        if (commits.length === 0) {
+          processed++;
+          window.showSubtleLoader(
+            `Syncing GitHub... ${processed}/${groupKeys.length}`,
+          );
+          return;
+        }
 
-        // Optimization: If the latest SHA matches the cache, skip counting entirely!
+        // Optimization Check
         if (group.latestSha === commits[0].sha) {
-          continue;
+          processed++;
+          window.showSubtleLoader(
+            `Syncing GitHub... ${processed}/${groupKeys.length}`,
+          );
+          return;
         }
 
         requiresUIRefresh = true;
         let updatedStats = {};
 
-        // Setup stats for recounting
         group.members.forEach((m) => {
           updatedStats[m.id] = {
             count: 0,
@@ -191,7 +232,6 @@ window.fetchAndSyncRepos = async function () {
           };
         });
 
-        // Tally commits
         commits.forEach((c) => {
           const authorLogin = (c.author?.login || "").toLowerCase().trim();
           const authorEmail = (c.commit?.author?.email || "")
@@ -223,7 +263,7 @@ window.fetchAndSyncRepos = async function () {
 
           if (matchedMember) {
             updatedStats[matchedMember.id].count++;
-            matchedMember.commitCount = updatedStats[matchedMember.id].count; // Update local memory
+            matchedMember.commitCount = updatedStats[matchedMember.id].count;
           }
         });
 
@@ -232,7 +272,7 @@ window.fetchAndSyncRepos = async function () {
         await setDoc(
           cacheRef,
           {
-            repoUrl: group.url,
+            repoUrl: group.cleanUrl, // Fixed the caching URL reference
             latestSha: commits[0].sha,
             studentStats: updatedStats,
             cacheVersion: CACHE_VERSION,
@@ -244,9 +284,16 @@ window.fetchAndSyncRepos = async function () {
         group.apiError = "Network/Fetch Error";
         requiresUIRefresh = true;
       }
-    }
 
-    // Only re-render if we found new commits or new errors that changed the UI state
+      processed++;
+      window.showSubtleLoader(
+        `Syncing GitHub... ${processed}/${groupKeys.length}`,
+      );
+    });
+
+    // Run all Github fetches concurrently!
+    await Promise.all(syncPromises);
+
     if (requiresUIRefresh) {
       window.showSubtleLoader("Applying fresh updates to view...");
       renderGroupedUI(repoGroups);
@@ -336,6 +383,7 @@ window.toggleAccordion = function (id) {
     icon.style.transform = "rotate(0deg)";
   }
 };
+
 window.openGradingModal = async function (studentId, owner, repo) {
   const student = globalStudentsData[studentId];
   if (!student) return;
@@ -349,7 +397,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
   listContainer.innerHTML = `<div class="text-center text-gray-400 italic py-4 text-sm">Loading assigned tasks...</div>`;
 
   try {
-    // Fetch all blueprints
     const snap = await getDocs(collection(db, "assessments"));
     let activeTasks = [];
 
@@ -395,7 +442,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
                     <p class="text-[10px] text-red-500 font-bold mt-1">Due: ${new Date(task.deployment.deadline).toLocaleDateString()}</p>
                 </div>
                 
-                <!-- Grade Action Area -->
                 <div class="grade-action-area shrink-0">
                     <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}')" class="bg-purple-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-purple-700 transition shadow-sm whitespace-nowrap flex items-center gap-2">
                         ✨ Run Auto-Check
