@@ -452,10 +452,10 @@ window.openGradingModal = async function (studentId, owner, repo) {
               <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px] shadow-inner">
                   <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${gradeRecord.score}</div>
                   <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
-                      <p class="text-[9px] font-bold text-gray-500 uppercase mb-0.5 tracking-wider">Up to Date</p>
-                      <p class="text-[10px] text-gray-700 leading-tight line-clamp-2" title="${escapeHTML(gradeRecord.feedback)}">${escapeHTML(gradeRecord.feedback)}</p>
+                      <p class="text-[9px] font-bold text-gray-500 uppercase mb-1 tracking-wider">Up to Date</p>
+                      <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(gradeRecord.feedback)}</div>
                   </div>
-                  <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1" title="Force Re-evaluate">🔄</button>
+                  <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0" title="Force Re-evaluate">🔄</button>
               </div>
           `;
       } else {

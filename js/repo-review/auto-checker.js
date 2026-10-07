@@ -210,9 +210,9 @@ window.startAutoCheck = async function (
             ${fileRawText.substring(0, 80000)} 
             \`\`\`
             
-            Evaluate the provided code strictly based on the rubric. 
+            Evaluate the provided code strictly based on the rubric provided. Calculate the total score carefully by adding up the points earned for each rubric criteria.
             Return ONLY a valid JSON object matching this exact format:
-            {"score": <number 0-100>, "feedback": "<1 to 2 short sentences explaining the score>"}
+            {"score": <number representing the final calculated total score>, "feedback": "<3 to 10 sentences explaining the score breakdown and specific feedback>"}
       `;
 
       const aiRes = await fetch(
@@ -300,17 +300,17 @@ function renderGradeResult(
   currentSha,
 ) {
   let scoreColor = "text-green-600";
-  if (score < 75) scoreColor = "text-red-600";
+  if (score < 75) scoreColor = "text-red-600"; // You may want to adjust these color thresholds later based on your new point scales!
   if (score >= 75 && score < 90) scoreColor = "text-yellow-600";
 
   container.innerHTML = `
         <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px] shadow-inner">
             <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${score}</div>
             <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
-                <p class="text-[9px] font-mono text-gray-400 truncate mb-0.5" title="${escapeHTML(exactPath)}">File(s): ${escapeHTML(exactPath)}</p>
-                <p class="text-[10px] text-gray-700 leading-tight line-clamp-2" title="${escapeHTML(feedback)}">${escapeHTML(feedback)}</p>
+                <p class="text-[9px] font-mono text-gray-400 truncate mb-1" title="${escapeHTML(exactPath)}">File(s): ${escapeHTML(exactPath)}</p>
+                <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(feedback)}</div>
             </div>
-            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1" title="Force Re-evaluate">🔄</button>
+            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0" title="Force Re-evaluate">🔄</button>
         </div>
     `;
 }

@@ -2,13 +2,13 @@ import { db, auth } from "../core/firebase-core.js";
 import {
   collection,
   getDocs,
-  getDoc,
   doc,
   updateDoc,
   deleteDoc,
   addDoc,
   query,
   orderBy,
+  onSnapshot,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
@@ -42,26 +42,40 @@ onAuthStateChanged(auth, async (user) => {
     fetchIssues();
   }
 });
-
 // ==========================================
-// 1. FEED RENDERER
+// 1. REAL-TIME FEED LISTENER
 // ==========================================
-async function fetchIssues() {
+function fetchIssues() {
   const container = document.getElementById("issuesFeed");
-  try {
-    const q = query(collection(db, "issues"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
 
-    allIssues = [];
-    snap.forEach((docSnap) => {
-      allIssues.push({ id: docSnap.id, ...docSnap.data() });
-    });
+  // onSnapshot listens continuously for any live changes in the database
+  const q = query(collection(db, "issues"), orderBy("createdAt", "desc"));
 
-    renderIssues();
-  } catch (error) {
-    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load issues.</div>`;
-    console.error(error);
-  }
+  onSnapshot(
+    q,
+    (snapshot) => {
+      allIssues = [];
+      snapshot.forEach((docSnap) => {
+        allIssues.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      renderIssues();
+
+      // If the modal is currently open, dynamically refresh its stats (like upvotes or status changes) in real time too
+      if (currentOpenIssueId) {
+        const activeIssue = allIssues.find((i) => i.id === currentOpenIssueId);
+        if (activeIssue) {
+          document.getElementById("upvoteCount").textContent = (
+            activeIssue.upvotes || []
+          ).length;
+        }
+      }
+    },
+    (error) => {
+      container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load live issues.</div>`;
+      console.error(error);
+    },
+  );
 }
 
 function renderIssues() {
@@ -259,39 +273,49 @@ document.getElementById("upvoteBtn").addEventListener("click", async () => {
   // Database Sync
   await updateDoc(doc(db, "issues", currentOpenIssueId), { upvotes });
 });
+// ==========================================
+// 2. REAL-TIME COMMENTS LISTENER
+// ==========================================
+let unsubscribeComments = null; // Track connection so it doesn't duplicate when opening different issues
 
-async function loadComments(issueId) {
+function loadComments(issueId) {
   const feed = document.getElementById("commentsFeed");
-  feed.innerHTML = `<div class="text-center py-4 text-xs text-slate-400">Loading comments...</div>`;
+  feed.innerHTML = `<div class="text-center py-4 text-xs text-slate-400">Connecting to live chat...</div>`;
 
-  try {
-    const q = query(
-      collection(db, `issues/${issueId}/comments`),
-      orderBy("createdAt", "asc"),
-    );
-    const snap = await getDocs(q);
+  // If we were listening to a different issue's comments previously, cut that connection
+  if (unsubscribeComments) {
+    unsubscribeComments();
+  }
 
-    feed.innerHTML = "";
-    document.getElementById("commentCount").textContent = snap.size;
+  const q = query(
+    collection(db, `issues/${issueId}/comments`),
+    orderBy("createdAt", "asc"),
+  );
 
-    if (snap.empty) {
-      feed.innerHTML = `<div class="text-center py-6 text-xs text-slate-400 italic">No comments yet. Start the discussion!</div>`;
-      return;
-    }
+  unsubscribeComments = onSnapshot(
+    q,
+    (snapshot) => {
+      feed.innerHTML = "";
+      document.getElementById("commentCount").textContent = snapshot.size;
 
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      const timeStr = data.createdAt
-        ? data.createdAt.toDate().toLocaleString()
-        : "Just now";
-      const isAdmin = data.role === "superadmin";
-      const tag = isAdmin
-        ? `<span class="bg-cyan-100 text-cyan-800 text-[8px] font-bold px-1.5 py-0.5 rounded ml-2">ADMIN</span>`
-        : "";
+      if (snapshot.empty) {
+        feed.innerHTML = `<div class="text-center py-6 text-xs text-slate-400 italic">No comments yet. Start the discussion!</div>`;
+        return;
+      }
 
-      feed.insertAdjacentHTML(
-        "beforeend",
-        `
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const timeStr = data.createdAt
+          ? data.createdAt.toDate().toLocaleString()
+          : "Just now";
+        const isAdmin = data.role === "superadmin";
+        const tag = isAdmin
+          ? `<span class="bg-cyan-100 text-cyan-800 text-[8px] font-bold px-1.5 py-0.5 rounded ml-2">ADMIN</span>`
+          : "";
+
+        feed.insertAdjacentHTML(
+          "beforeend",
+          `
                 <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm relative group">
                     <div class="flex justify-between items-start mb-1">
                         <span class="text-xs font-bold text-slate-700 flex items-center">${escapeHTML(data.authorEmail.split("@")[0])} ${tag}</span>
@@ -301,14 +325,16 @@ async function loadComments(issueId) {
                     ${isSuperAdmin ? `<button onclick="deleteComment('${docSnap.id}')" class="absolute top-2 right-2 text-red-300 hover:text-red-500 text-xs hidden group-hover:block">🗑️</button>` : ""}
                 </div>
             `,
-      );
-    });
+        );
+      });
 
-    feed.scrollTop = feed.scrollHeight; // Scroll to bottom
-  } catch (e) {
-    console.error(e);
-    feed.innerHTML = `<div class="text-center py-4 text-xs text-red-400">Error loading comments.</div>`;
-  }
+      feed.scrollTop = feed.scrollHeight; // Auto-scroll to latest comment
+    },
+    (error) => {
+      console.error(error);
+      feed.innerHTML = `<div class="text-center py-4 text-xs text-red-400">Error loading live comments.</div>`;
+    },
+  );
 }
 
 document
