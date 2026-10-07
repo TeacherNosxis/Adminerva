@@ -10,7 +10,6 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// Utility: Safely escape HTML to prevent XSS
 function escapeHTML(str) {
   if (!str) return "";
   return String(str).replace(
@@ -75,7 +74,7 @@ function getRepoId(repoUrl) {
   }
 }
 
-let activeSectionStudents = []; // Cache to use during updates
+let activeSectionStudents = [];
 
 window.loadRepobankData = async function () {
   const section = document.getElementById("sectionSelect").value;
@@ -183,7 +182,6 @@ window.loadRepobankData = async function () {
         });
         membersHtml += `</div>`;
 
-        // Card Container with dynamic ID for localized loading states
         const cardId = `repobank-card-${repoId}`;
         const html = `
             <div id="${cardId}" class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col h-full relative">
@@ -231,9 +229,6 @@ window.loadRepobankData = async function () {
   }
 };
 
-// ==============================================
-// THE MANUAL ARCHITECTURAL MAPPER ENGINE
-// ==============================================
 window.updateRepoMemory = async function (repoId, owner, repo) {
   const ghToken = localStorage.getItem("Adminerva_github_token");
   const geminiKey = localStorage.getItem("Adminerva_gemini_token");
@@ -250,7 +245,6 @@ window.updateRepoMemory = async function (repoId, owner, repo) {
   if (!taskCard) return;
 
   const actionArea = taskCard.querySelector(".action-container");
-  const originalBtn = actionArea.innerHTML;
 
   const updateStatus = (message) => {
     actionArea.innerHTML = `<span class="text-xs font-bold text-blue-500 flex items-center gap-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div> ${message}</span>`;
@@ -267,20 +261,17 @@ window.updateRepoMemory = async function (repoId, owner, repo) {
     const defaultBranch = repoData.default_branch;
 
     updateStatus("Mapping Architecture...");
-    // Grab the entire file tree recursively
     const treeRes = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`,
       { headers: { Authorization: `Bearer ${ghToken}` } },
     );
     const treeData = await treeRes.json();
 
-    // Target core architectural files and logic files (Max 50 to prevent overflow)
     const allowedExts = /\.(java|kt|dart|xml|js|ts|json|gradle|sql|md)$/i;
     const matchedFiles = (treeData.tree || []).filter(
       (f) => f.type === "blob" && allowedExts.test(f.path),
     );
 
-    // Prioritize root config files and main source files over deep assets
     matchedFiles.sort(
       (a, b) => a.path.split("/").length - b.path.split("/").length,
     );
@@ -290,9 +281,15 @@ window.updateRepoMemory = async function (repoId, owner, repo) {
     let combinedCode = "";
 
     const filePromises = filesToProcess.map(async (file) => {
+      // FIXED CORS ERROR: Routing through main API with raw header
       const fileRes = await fetch(
-        `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`,
-        { headers: { Authorization: `Bearer ${ghToken}` } },
+        `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${defaultBranch}`,
+        {
+          headers: {
+            Authorization: `Bearer ${ghToken}`,
+            Accept: "application/vnd.github.v3.raw",
+          },
+        },
       );
       if (fileRes.ok) return { path: file.path, text: await fileRes.text() };
       return null;
@@ -305,7 +302,6 @@ window.updateRepoMemory = async function (repoId, owner, repo) {
       }
     });
 
-    // Figure out who is in this group
     const groupMembers = activeSectionStudents.filter(
       (s) => getRepoId(s.repoUrl || "") === repoId,
     );
@@ -372,7 +368,6 @@ window.updateRepoMemory = async function (repoId, owner, repo) {
 
     updateStatus("Committing to Memory...");
 
-    // Save to RepoBank Database
     await setDoc(
       doc(db, "repobank", repoId),
       {
@@ -385,7 +380,6 @@ window.updateRepoMemory = async function (repoId, owner, repo) {
       { merge: true },
     );
 
-    // Refresh UI to show new data
     actionArea.innerHTML = `<span class="text-xs font-bold text-green-600">✅ Memory Updated</span>`;
     setTimeout(() => window.loadRepobankData(), 1500);
   } catch (error) {

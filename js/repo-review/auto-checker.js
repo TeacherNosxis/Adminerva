@@ -31,20 +31,15 @@ function wildcardToRegex(wildcardPath) {
   }
   let path = wildcardPath.trim();
 
-  // If the path doesn't point to a specific file, assume we want files INSIDE it
   if (!path.match(/\.[a-zA-Z0-9]+$/)) {
     path = path.replace(/\/$/, "") + "/*";
   }
 
   let escaped = path.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-
-  // UNANCHORED REGEX: Notice there is no "^" and no "$" here!
-  // This allows it to ignore the "app/" wrapper folder completely.
   const regexStr = escaped.replace(/\\\*/g, ".*");
   return new RegExp(regexStr, "i");
 }
 
-// NOTE: Added 'currentSha' to the parameters
 window.startAutoCheck = async function (
   studentId,
   owner,
@@ -123,9 +118,15 @@ window.startAutoCheck = async function (
       let pathsFound = [];
 
       const filePromises = filesToProcess.map(async (file) => {
+        // FIXED CORS ERROR: Routing through main API with raw header
         const fileRes = await fetch(
-          `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`,
-          { headers: { Authorization: `Bearer ${ghToken}` } },
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${defaultBranch}`,
+          {
+            headers: {
+              Authorization: `Bearer ${ghToken}`,
+              Accept: "application/vnd.github.v3.raw",
+            },
+          },
         );
         if (fileRes.ok) {
           const text = await fileRes.text();
@@ -153,9 +154,15 @@ window.startAutoCheck = async function (
       }
     } else {
       updateStatus("Reading Code...");
+      // FIXED CORS ERROR: Routing through main API with raw header
       const fileRes = await fetch(
-        `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${targetFilePath}`,
-        { headers: { Authorization: `Bearer ${ghToken}` } },
+        `https://api.github.com/repos/${owner}/${repo}/contents/${targetFilePath}?ref=${defaultBranch}`,
+        {
+          headers: {
+            Authorization: `Bearer ${ghToken}`,
+            Accept: "application/vnd.github.v3.raw",
+          },
+        },
       );
       if (!fileRes.ok) throw new Error("Could not read file contents.");
       const text = await fileRes.text();
@@ -250,7 +257,7 @@ window.startAutoCheck = async function (
         score: finalScore,
         feedback: finalFeedback,
         targetPath: displayPathText,
-        gradedSha: currentSha, // NOTE: Saves the exact commit it checked!
+        gradedSha: currentSha,
         gradedAt: serverTimestamp(),
       },
       { merge: true },

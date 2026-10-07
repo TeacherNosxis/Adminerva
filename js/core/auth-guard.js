@@ -99,7 +99,7 @@ onAuthStateChanged(auth, async (user) => {
       : "";
     emailDisplay.textContent = userEmail + mockNotice;
   }
-};);
+});
 
 // Centralized Sign Out
 document.addEventListener("click", (e) => {
