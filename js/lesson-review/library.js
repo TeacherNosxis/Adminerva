@@ -311,7 +311,6 @@ window.extractPDF = async function () {
   if (!gemKey)
     return alert("Missing Gemini API Key. Please check your Global Settings.");
 
-  // 🚀 THE FIX: Capture target folder immediately so background upload is safe
   const targetFolderId = activeFolderId;
   const folder = libraryData.find((f) => f.id === targetFolderId);
   let updatedDocs = [...(folder.documents || [])];
@@ -322,92 +321,96 @@ window.extractPDF = async function () {
     for (let i = 0; i < fileInput.files.length; i++) {
       const file = fileInput.files[i];
 
-      if (i > 0) {
-        if (typeof window.showSubtleLoader === "function") {
-          window.showSubtleLoader(
-            `Cooling down API (${i + 1}/${fileInput.files.length})...`,
-          );
-        }
-        await delay(4000);
-      }
-
+      // 1. FAST RAW UPLOAD TO GEMINI SERVERS
       if (typeof window.showSubtleLoader === "function") {
         window.showSubtleLoader(
-          `Extracting PDF (${i + 1} of ${fileInput.files.length}): ${file.name}`,
+          `Uploading PDF to Cloud (${i + 1}/${fileInput.files.length}): ${file.name}`,
         );
       }
 
-      const base64String = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${encodeURIComponent(gemKey)}`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "X-Goog-Upload-Command": "start, upload, finalize",
+          "X-Goog-Upload-Header-Content-Length": file.size.toString(),
+          "X-Goog-Upload-Header-Content-Type": file.type,
+          "Content-Type": file.type,
+        },
+        body: file, // Uploading the raw physical file, avoiding massive Base64 strings
       });
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(gemKey)}`;
+      if (!uploadRes.ok)
+        throw new Error(
+          `Upload failed for ${file.name}: ${uploadRes.statusText}`,
+        );
+      const uploadData = await uploadRes.json();
+      const fileInfo = uploadData.file;
 
-      // 🚀 THE FIX: Auto-Retry Loop for 503 Overloads
-      let retries = 3;
-      let response;
-      let result;
-      let extractionSuccess = false;
+      // 2. POLL SERVER UNTIL OCR IS COMPLETE
+      let isProcessing = true;
+      let activeFileUri = fileInfo.uri;
 
-      while (retries >= 0 && !extractionSuccess) {
-        response = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
-                  },
-                  {
-                    inline_data: {
-                      mime_type: "application/pdf",
-                      data: base64String,
-                    },
-                  },
-                ],
-              },
-            ],
-          }),
-        });
-
-        if (response.status === 503) {
-          console.warn(
-            `[Gemini 503 Overload] Retrying ${file.name}... (${retries} attempts left)`,
-          );
-          if (typeof window.showSubtleLoader === "function") {
-            window.showSubtleLoader(
-              `API Busy. Retrying ${file.name}... (${retries} left)`,
-            );
-          }
-          await delay(5000);
-          retries--;
-          continue;
-        }
-
-        if (!response.ok)
-          throw new Error(
-            `API Error on ${file.name}: Status ${response.status}.`,
-          );
-
-        result = await response.json();
-
-        if (!result.candidates || result.candidates.length === 0) {
-          throw new Error(
-            `The AI refused to read "${file.name}". It may have triggered safety filters.`,
+      while (isProcessing) {
+        if (typeof window.showSubtleLoader === "function") {
+          window.showSubtleLoader(
+            `Analyzing visual diagrams and OCR for ${file.name}...`,
           );
         }
 
-        extractionSuccess = true;
+        const checkUrl = `https://generativelanguage.googleapis.com/v1beta/${fileInfo.name}?key=${encodeURIComponent(gemKey)}`;
+        const checkRes = await fetch(checkUrl);
+        const checkData = await checkRes.json();
+
+        if (checkData.state === "ACTIVE") {
+          isProcessing = false;
+        } else if (checkData.state === "FAILED") {
+          throw new Error(
+            `Google failed to process the visuals inside ${file.name}.`,
+          );
+        } else {
+          await delay(3000); // Wait 3 seconds and check status again
+        }
       }
 
-      if (!extractionSuccess) {
+      // 3. EXTRACT ALL DATA USING THE PROCESSED FILE URI
+      if (typeof window.showSubtleLoader === "function") {
+        window.showSubtleLoader(
+          `Extracting text structure from ${file.name}...`,
+        );
+      }
+
+      const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(gemKey)}`;
+
+      const generateRes = await fetch(generateUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
+                },
+                {
+                  file_data: { mime_type: file.type, file_uri: activeFileUri }, // Sending the lightweight URI instead of the heavy file
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (!generateRes.ok)
         throw new Error(
-          `Failed to extract ${file.name} after multiple API overloads.`,
+          `Extraction failed for ${file.name}: Status ${generateRes.status}`,
+        );
+
+      const result = await generateRes.json();
+
+      if (!result.candidates || result.candidates.length === 0) {
+        throw new Error(
+          `The AI refused to read "${file.name}". It may have triggered safety filters.`,
         );
       }
 
@@ -418,6 +421,12 @@ window.extractPDF = async function () {
         text: extractedText,
         updatedAt: new Date().toISOString(),
       });
+
+      // 4. INSTANT CLEANUP: Delete the temporary file from Google's servers immediately
+      fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${fileInfo.name}?key=${encodeURIComponent(gemKey)}`,
+        { method: "DELETE" },
+      ).catch(() => {});
     }
 
     await updateDoc(doc(db, "reference_folders", targetFolderId), {
@@ -433,7 +442,6 @@ window.extractPDF = async function () {
     fileInput.value = "";
     renderFolders();
 
-    // Only re-render documents if the user is still looking at the original folder we uploaded to
     if (activeFolderId === targetFolderId) {
       renderDocuments(folder.documents);
     }
