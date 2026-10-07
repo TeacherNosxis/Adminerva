@@ -49,6 +49,8 @@ window.startAutoCheck = async function (
 ) {
   const ghToken = localStorage.getItem("Adminerva_github_token");
   const geminiKey = localStorage.getItem("Adminerva_gemini_token");
+  const aiModel =
+    localStorage.getItem("Adminerva_ai_model") || "gemini-3.7-flash";
 
   if (!ghToken || !geminiKey) {
     alert(
@@ -214,7 +216,7 @@ window.startAutoCheck = async function (
       `;
 
       const aiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

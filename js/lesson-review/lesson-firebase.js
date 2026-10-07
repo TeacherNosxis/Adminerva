@@ -20,14 +20,12 @@ function escapeHTML(str) {
     .replace(/'/g, "&#039;");
 }
 
-// initFirebase is now a simple wrapper or can be called immediately since db is ready
 window.initFirebase = function () {
   if (window.loadLibraryFolders) {
     window.loadLibraryFolders();
   }
 };
 
-// Ensure all database queries use the imported 'db' directly:
 window.loadLibraryFolders = async function () {
   const container = document.getElementById("libraryFolderContainer");
   if (!container) return;
@@ -51,7 +49,6 @@ window.loadLibraryFolders = async function () {
 
     libraryData.forEach((folder) => {
       const docCount = folder.documents ? folder.documents.length : 0;
-      // 🔒 Security Patch: Sanitize folder inputs
       const safeId = escapeHTML(folder.id);
       const safeName = escapeHTML(folder.name);
 
@@ -164,7 +161,7 @@ window.saveLessonPlan = async function () {
       ).map((cb) => cb.value),
       weekly_overview: window.currentWeeklyOverview,
       sessions: window.currentPlan,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString(), // This is the key we use to find recent plans
     };
 
     await setDoc(doc(db, "lesson_plans", safeDocId), planData);
@@ -253,7 +250,6 @@ window.openLoadPlanModal = async function () {
         .reverse()
         .forEach((sy) => {
           const selected = sy === currentSelection ? "selected" : "";
-          // 🔒 Security Patch: Sanitize SY options
           const safeSy = escapeHTML(sy);
           syFilter.insertAdjacentHTML(
             "beforeend",
@@ -271,6 +267,20 @@ window.openLoadPlanModal = async function () {
       return;
     }
 
+    // 🚀 NEW: Find the absolute most recently saved plan based on timestamp
+    let latestPlan = allPlans[0];
+    allPlans.forEach((p) => {
+      const currentTs = p.timestamp ? new Date(p.timestamp).getTime() : 0;
+      const latestTs = latestPlan.timestamp
+        ? new Date(latestPlan.timestamp).getTime()
+        : 0;
+      if (currentTs > latestTs) {
+        latestPlan = p;
+      }
+    });
+    const latestTerm = latestPlan ? latestPlan.safeTerm : null;
+    const latestSubject = latestPlan ? latestPlan.subjectGrade : null;
+
     const groupedPlans = {};
     allPlans.forEach((plan) => {
       const term = plan.safeTerm;
@@ -283,8 +293,9 @@ window.openLoadPlanModal = async function () {
 
     Object.keys(groupedPlans)
       .sort()
-      .forEach((term, termIndex) => {
-        const isTermOpen = termIndex === 0 ? "open" : "";
+      .forEach((term) => {
+        // 🚀 ONLY OPEN the main term accordion if it holds the most recent plan
+        const isTermOpen = term === latestTerm ? "open" : "";
         let subjectAccordionsHTML = "";
 
         Object.keys(groupedPlans[term])
@@ -318,15 +329,19 @@ window.openLoadPlanModal = async function () {
                 );
               });
 
-              // 🔒 Security Patch: Escape all strings before DOM injection
               const safeWeekStr = escapeHTML(data.safeWeek);
               const safeDateStr = escapeHTML(shortDate);
               const safeId = escapeHTML(data.id);
-              // Securely escape the JSON object before embedding it into the onclick attribute
               const safeDataObjStr = escapeHTML(JSON.stringify(data));
 
+              // 🚀 UX BONUS: Highlight the exact row of the most recent plan slightly yellow
+              const isLatestRow =
+                data.id === latestPlan.id
+                  ? "bg-amber-50/50 border-l-4 border-amber-400 hover:bg-amber-100"
+                  : "hover:bg-blue-50";
+
               rowsHTML += `
-                        <tr class="border-b border-gray-100 hover:bg-blue-50 transition">
+                        <tr class="border-b border-gray-100 ${isLatestRow} transition">
                             <td class="px-4 py-3 font-bold text-blue-900 w-1/4">${safeWeekStr}</td>
                             <td class="px-4 py-3 text-xs text-gray-600 font-medium">🗓️ ${safeDateStr}</td>
                             <td class="px-4 py-3 text-right">
@@ -339,8 +354,14 @@ window.openLoadPlanModal = async function () {
                     `;
             });
 
+            // 🚀 ONLY OPEN the sub-accordion if it holds the most recent plan
+            const isSubjectOpen =
+              term === latestTerm && subjectGrade === latestSubject
+                ? "open"
+                : "";
+
             subjectAccordionsHTML += `
-                    <details class="group/sub border border-gray-200 rounded-md mb-3 overflow-hidden shadow-sm" open>
+                    <details class="group/sub border border-gray-200 rounded-md mb-3 overflow-hidden shadow-sm" ${isSubjectOpen}>
                         <summary class="flex justify-between items-center bg-gray-50 p-3 cursor-pointer select-none hover:bg-gray-100 transition">
                             <span class="font-bold text-sm text-gray-800">📘 ${escapeHTML(subjectGrade)}</span>
                             <span class="text-gray-400 group-open/sub:rotate-180 transition-transform">▼</span>
@@ -487,7 +508,6 @@ window.openArchiveManager = async function () {
       );
       const icon = item.collection === "lesson_plans" ? "📘" : "🖥️";
 
-      // 🔒 Security Patch: Escape archive data
       const safeTitle = escapeHTML(item.title);
       const safeCollection = escapeHTML(item.collection);
       const safeId = escapeHTML(item.id);

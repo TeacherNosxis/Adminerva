@@ -232,6 +232,8 @@ window.loadRepobankData = async function () {
 window.updateRepoMemory = async function (repoId, owner, repo) {
   const ghToken = localStorage.getItem("Adminerva_github_token");
   const geminiKey = localStorage.getItem("Adminerva_gemini_token");
+  // Default to Pro here since mapping takes a massive context window
+  const aiModel = localStorage.getItem("Adminerva_ai_model") || "gemini-3.5";
 
   if (!ghToken || !geminiKey) {
     alert(
@@ -342,7 +344,7 @@ window.updateRepoMemory = async function (repoId, owner, repo) {
         `;
 
     const aiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
