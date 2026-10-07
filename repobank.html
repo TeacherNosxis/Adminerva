@@ -11,7 +11,7 @@
   </head>
   <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     <!-- Navigation -->
-    <div id="adminerva-nav" data-module="educator" data-page="repobank"></div>
+    <div id="adminerva-nav" data-module="repo" data-page="repobank"></div>
 
     <div
       class="max-w-screen-2xl mx-auto w-full p-4 sm:p-6 mt-2 sm:mt-4 flex-1 flex flex-col gap-6"
@@ -27,7 +27,8 @@
             🧠 Repobank Directory
           </h2>
           <p class="text-xs sm:text-sm text-gray-500 mt-1">
-            AI-generated long-term memory, project concepts, and role tracking.
+            System-generated long-term memory, project concepts, and role
+            tracking.
           </p>
         </div>
         <div
@@ -40,7 +41,7 @@
           <select
             id="sectionSelect"
             onchange="loadRepobankData()"
-            class="w-full sm:w-auto p-3 sm:p-2 border border-gray-300 rounded font-semibold focus:ring-purple-500 bg-gray-50 min-w-[200px] text-base sm:text-sm"
+            class="w-full sm:w-auto p-3 sm:p-2 border border-gray-300 rounded font-semibold focus:ring-blue-500 bg-gray-50 min-w-[200px] text-base sm:text-sm"
           ></select>
         </div>
       </div>
@@ -55,23 +56,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Loader -->
-    <div
-      id="globalLoader"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-[100] items-center justify-center flex-col"
-    >
-      <div
-        class="animate-spin rounded-full h-12 sm:h-16 w-12 sm:w-16 border-t-4 border-purple-500 border-solid mb-4"
-      ></div>
-      <p
-        id="loaderMessage"
-        class="text-white font-bold text-sm sm:text-lg tracking-wider"
-      >
-        Loading Memory Banks...
-      </p>
-    </div>
-
+    <!-- Core Scripts -->
     <script src="js/core/adminerva-loader.js"></script>
     <script src="js/core/adminerva-nav.js"></script>
     <script type="module" src="js/core/auth-guard.js"></script>
