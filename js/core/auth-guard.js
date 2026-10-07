@@ -85,15 +85,8 @@ onAuthStateChanged(auth, async (user) => {
     !isIssuesPage
   ) {
     window.location.href = "student-dashboard.html";
-  } else if (
-    activeRole === "teacher" &&
-    currentPath.includes("settings.html")
-  ) {
-    alert(
-      "Unauthorized: Super Administrator privileges required for Global Settings.",
-    );
-    window.location.href = "reporeviewDashboard.html";
   }
+  // 🚀 THE FIX: Teacher settings block removed. Teachers can now view settings.html freely.
 
   // 5. Security cleared: Display the UI
   const pageBody = document.getElementById("pageBody");
@@ -106,7 +99,7 @@ onAuthStateChanged(auth, async (user) => {
       : "";
     emailDisplay.textContent = userEmail + mockNotice;
   }
-});
+};);
 
 // Centralized Sign Out
 document.addEventListener("click", (e) => {

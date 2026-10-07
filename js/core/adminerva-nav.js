@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let centerLinks = "";
   let rightSide = "";
   let logoBlock = "";
+  let navTabsHTML = ""; // 🚀 THE FIX: Initialize this variable to prevent crashes
 
   const getStyle = (pageId) =>
     activePage === pageId
@@ -25,8 +26,14 @@ document.addEventListener("DOMContentLoaded", () => {
     ? `<a href="issues.html" class="${getStyle("issues")}">Reports</a>`
     : "";
 
+  // 🚀 THE FIX: Make the gear icon glow if we are currently on the settings page
+  const isSettingsPage = activePage === "settings";
+  const settingsIconStyle = isSettingsPage
+    ? "border-cyan-400 text-cyan-50 shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+    : "border-cyan-900 hover:border-cyan-400 text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)]";
+
   const settingsIcon = `
-        <a href="settings.html" class="bg-gray-800/80 border border-cyan-900 hover:border-cyan-400 p-2 sm:p-2 rounded text-gray-300 hover:text-cyan-50 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all duration-300 flex items-center justify-center mr-2 sm:mr-4" title="Global Settings">
+        <a href="settings.html" class="bg-gray-800/80 border ${settingsIconStyle} p-2 sm:p-2 rounded transition-all duration-300 flex items-center justify-center mr-2 sm:mr-4" title="Global Settings">
             <span class="text-lg sm:text-xl leading-none">⚙️</span>
         </a>`;
 
@@ -67,15 +74,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="tracking-widest font-extrabold text-lg sm:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
             </div>
         `;
-  } else if (activeModule === "educator" || activeModule === "repo") {
+  }
+  // 🚀 THE FIX: Grouped "settings" with "educator" so it gets the exact same navigation layout
+  else if (
+    activeModule === "educator" ||
+    activeModule === "repo" ||
+    activeModule === "settings"
+  ) {
     centerLinks = `
             <a href="reporeviewDashboard.html" class="${getStyle("dashboard")}">Analytics</a>
             <a href="repobank.html" class="${getStyle("repobank")}">RepoBank</a>
             <a href="temp-grading.html" class="${getStyle("activity-grader")}">Manual Grader</a>
             <a href="repofetch.html" class="${getStyle("repofetch")}">RepoFetch</a>
             <a href="assessment-studio.html" class="${getStyle("studio")}">Assessment Studio</a>
-            ${adminDirLink}
-            ${adminReportsLink}
+            ${adminDirLink}${adminReportsLink}
         `;
     rightSide = `
             <div class="flex items-center">
@@ -104,8 +116,20 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
     logoBlock = adminLogoBlock;
-  } else if (module === "global") {
-    // 🚀 THE FIX: A neutral sub-nav that works for all user roles
+  } else if (activeModule === "global") {
+    // 🚀 THE FIX: Changed 'module' to 'activeModule' to stop the Javascript crash
+    logoBlock = `
+            <div class="flex items-center gap-2 sm:gap-3 font-bold">
+                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-8 sm:h-10 w-auto object-contain mix-blend-lighten drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                <span class="tracking-widest font-extrabold text-lg sm:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
+            </div>
+        `;
+    centerLinks = ``;
+    rightSide = `
+            <div class="flex items-center">
+                <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+            </div>
+    `;
     navTabsHTML = `
         <div class="bg-slate-800 border-t border-slate-700 px-4 sm:px-6 py-3 flex items-center shadow-md">
             <button onclick="window.history.back()" class="text-cyan-400 hover:text-cyan-300 text-sm font-bold flex items-center gap-2 transition">
@@ -116,17 +140,6 @@ document.addEventListener("DOMContentLoaded", () => {
             </span>
         </div>
     `;
-  } else if (activeModule === "settings") {
-    centerLinks = `<span class="italic text-gray-500 font-semibold tracking-wide hidden sm:block">System Configuration</span>`;
-    rightSide = `
-            <div class="flex items-center">
-                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
-                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
-                    <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
-                </div>
-            </div>
-    `;
-    logoBlock = adminLogoBlock;
   }
 
   navContainer.innerHTML = `
@@ -149,6 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 : ""
             }
         </div>
+        ${navTabsHTML}
     </nav>`;
 
   document.addEventListener("click", async (e) => {

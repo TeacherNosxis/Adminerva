@@ -321,6 +321,16 @@ window.extractPDF = async function () {
     for (let i = 0; i < fileInput.files.length; i++) {
       const file = fileInput.files[i];
 
+      // 🚀 FREE TIER FIX: 15-second mandatory cooldown between files to respect the 15 RPM limit
+      if (i > 0) {
+        if (typeof window.showSubtleLoader === "function") {
+          window.showSubtleLoader(
+            `Free Tier Cooldown (${i + 1}/${fileInput.files.length}). Waiting 15s...`,
+          );
+        }
+        await delay(15000);
+      }
+
       // 1. FAST RAW UPLOAD TO GEMINI SERVERS
       if (typeof window.showSubtleLoader === "function") {
         window.showSubtleLoader(
@@ -337,7 +347,7 @@ window.extractPDF = async function () {
           "X-Goog-Upload-Header-Content-Type": file.type,
           "Content-Type": file.type,
         },
-        body: file, // Uploading the raw physical file, avoiding massive Base64 strings
+        body: file,
       });
 
       if (!uploadRes.ok)
@@ -369,11 +379,11 @@ window.extractPDF = async function () {
             `Google failed to process the visuals inside ${file.name}.`,
           );
         } else {
-          await delay(3000); // Wait 3 seconds and check status again
+          await delay(3000);
         }
       }
 
-      // 3. EXTRACT ALL DATA USING THE PROCESSED FILE URI
+      // 3. EXTRACT ALL DATA USING THE PROCESSED FILE URI (FREE TIER RETRY LOGIC)
       if (typeof window.showSubtleLoader === "function") {
         window.showSubtleLoader(
           `Extracting text structure from ${file.name}...`,
@@ -382,35 +392,80 @@ window.extractPDF = async function () {
 
       const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(gemKey)}`;
 
-      const generateRes = await fetch(generateUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
-                },
-                {
-                  file_data: { mime_type: file.type, file_uri: activeFileUri }, // Sending the lightweight URI instead of the heavy file
-                },
-              ],
-            },
-          ],
-        }),
-      });
+      // 🚀 FREE TIER FIX: Increased max retries from 3 to 5
+      let retries = 5;
+      let generateRes;
+      let result;
+      let extractionSuccess = false;
 
-      if (!generateRes.ok)
+      while (retries >= 0 && !extractionSuccess) {
+        generateRes = await fetch(generateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
+                  },
+                  {
+                    file_data: {
+                      mime_type: file.type,
+                      file_uri: activeFileUri,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+
+        // Intercept API Overloads (503) and Rate Limits (429)
+        if (generateRes.status === 503 || generateRes.status === 429) {
+          // 🚀 FREE TIER FIX: Exponential Backoff + Jitter
+          // Base wait doubles each time: 10s, 20s, 40s...
+          const attemptNumber = 6 - retries; // 1, 2, 3, 4, 5
+          const baseWait = Math.pow(2, attemptNumber) * 5000;
+
+          // Add 1 to 3 seconds of random "Jitter" to stagger requests
+          const jitter = Math.floor(Math.random() * 3000) + 1000;
+          const waitTime = baseWait + jitter;
+
+          console.warn(
+            `[Free Tier Overload] Retrying ${file.name} in ${(waitTime / 1000).toFixed(1)}s... (${retries} attempts left)`,
+          );
+
+          if (typeof window.showSubtleLoader === "function") {
+            window.showSubtleLoader(
+              `API Busy. Retrying in ${(waitTime / 1000).toFixed(1)}s...`,
+            );
+          }
+
+          await delay(waitTime);
+          retries--;
+          continue;
+        }
+
+        if (!generateRes.ok)
+          throw new Error(
+            `Extraction failed for ${file.name}: Status ${generateRes.status}`,
+          );
+
+        result = await generateRes.json();
+
+        if (!result.candidates || result.candidates.length === 0) {
+          throw new Error(
+            `The AI refused to read "${file.name}". It may have triggered safety filters.`,
+          );
+        }
+
+        extractionSuccess = true;
+      }
+
+      if (!extractionSuccess) {
         throw new Error(
-          `Extraction failed for ${file.name}: Status ${generateRes.status}`,
-        );
-
-      const result = await generateRes.json();
-
-      if (!result.candidates || result.candidates.length === 0) {
-        throw new Error(
-          `The AI refused to read "${file.name}". It may have triggered safety filters.`,
+          `Failed to extract ${file.name} after multiple API overloads.`,
         );
       }
 
@@ -422,7 +477,7 @@ window.extractPDF = async function () {
         updatedAt: new Date().toISOString(),
       });
 
-      // 4. INSTANT CLEANUP: Delete the temporary file from Google's servers immediately
+      // 4. INSTANT CLEANUP
       fetch(
         `https://generativelanguage.googleapis.com/v1beta/${fileInfo.name}?key=${encodeURIComponent(gemKey)}`,
         { method: "DELETE" },

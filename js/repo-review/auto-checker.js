@@ -26,12 +26,21 @@ function wildcardToRegex(wildcardPath) {
     !wildcardPath ||
     wildcardPath.trim() === "" ||
     wildcardPath.trim() === "*"
-  )
+  ) {
     return new RegExp(".*");
+  }
   let path = wildcardPath.trim();
-  if (!path.match(/\.[a-zA-Z0-9]+$/)) path = path.replace(/\/$/, "") + "/*";
+
+  // If the path doesn't point to a specific file, assume we want files INSIDE it
+  if (!path.match(/\.[a-zA-Z0-9]+$/)) {
+    path = path.replace(/\/$/, "") + "/*";
+  }
+
   let escaped = path.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  const regexStr = "^" + escaped.replace(/\\\*/g, ".*") + "$";
+
+  // UNANCHORED REGEX: Notice there is no "^" and no "$" here!
+  // This allows it to ignore the "app/" wrapper folder completely.
+  const regexStr = escaped.replace(/\\\*/g, ".*");
   return new RegExp(regexStr, "i");
 }
 

@@ -22,7 +22,6 @@
           margin: 0 !important;
           padding: 0 !important;
         }
-        /* 🚀 THE FIX: Hide EVERYTHING attached to the body except the document wrapper */
         body > *:not(#printDocumentWrapper) {
           display: none !important;
         }
@@ -83,7 +82,6 @@
     >
       <!-- TOP SECTION: Configuration Banner -->
       <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <!-- UI FIX: Unified Assessment Studio Header -->
         <div
           class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 border-b pb-4 gap-4"
         >
@@ -93,16 +91,23 @@
               Configure parameters and generate structured lesson plans.
             </p>
           </div>
-          <div class="flex gap-2 w-full sm:w-auto">
+          <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+            <!-- 🚀 NEW: Mini Settings Trigger Button -->
+            <button
+              onclick="openMiniSettings()"
+              class="flex-1 sm:flex-none bg-gray-200 text-gray-700 px-4 py-2.5 rounded text-sm font-bold hover:bg-gray-300 transition shadow flex justify-center items-center gap-2"
+            >
+              ⚙️ Defaults
+            </button>
             <button
               onclick="openLoadPlanModal()"
-              class="flex-1 sm:flex-none bg-purple-600 text-white px-5 py-2.5 rounded text-sm font-bold hover:bg-purple-700 transition shadow flex justify-center items-center gap-2"
+              class="flex-1 sm:flex-none bg-purple-600 text-white px-4 py-2.5 rounded text-sm font-bold hover:bg-purple-700 transition shadow flex justify-center items-center gap-2"
             >
               📂 Load Saved
             </button>
             <button
               onclick="generateBlankPlan()"
-              class="flex-1 sm:flex-none bg-slate-700 text-white border border-slate-600 px-5 py-2.5 rounded text-sm font-bold hover:bg-slate-600 transition shadow flex justify-center items-center gap-2"
+              class="flex-1 sm:flex-none bg-slate-700 text-white px-4 py-2.5 rounded text-sm font-bold hover:bg-slate-600 transition shadow flex justify-center items-center gap-2"
             >
               📝 Create Blank
             </button>
@@ -299,6 +304,237 @@
             class="w-full sm:w-auto justify-center px-4 sm:px-6 py-3.5 sm:py-2.5 bg-emerald-600 text-white font-bold rounded shadow-sm hover:bg-emerald-700 transition flex items-center gap-2 text-sm sm:text-base"
           >
             <span>✅</span> Save & Print
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🚀 NEW: MINI SETTINGS MODAL -->
+    <div
+      id="miniSettingsModal"
+      class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[130] flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh] overflow-hidden"
+      >
+        <div
+          class="flex justify-between items-center border-b p-5 sm:p-6 bg-slate-800"
+        >
+          <h3 class="font-bold text-lg text-white flex items-center gap-2">
+            ⚙️ Curriculum Defaults & Export Settings
+          </h3>
+          <button
+            onclick="closeMiniSettings()"
+            class="text-slate-400 hover:text-white font-bold text-2xl leading-none transition"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="p-5 sm:p-6 overflow-y-auto flex-1 bg-gray-50">
+          <div class="mb-6 p-4 bg-white border rounded-lg shadow-sm">
+            <h4
+              class="text-[10px] sm:text-xs font-bold text-gray-700 uppercase mb-1"
+            >
+              Print Header / School Logo Upload
+            </h4>
+            <p class="text-[10px] sm:text-[11px] text-gray-500 mb-3">
+              Upload your school banner/logo. It will be converted and saved
+              securely to the cloud.
+            </p>
+            <div
+              class="mb-4 p-2 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center h-24"
+            >
+              <img
+                id="headerPreview"
+                src=""
+                class="max-h-full object-contain hidden"
+              />
+              <span
+                id="headerPreviewPlaceholder"
+                class="text-xs text-gray-400 italic"
+                >No header image selected</span
+              >
+            </div>
+            <input
+              type="file"
+              id="settingsHeaderFile"
+              accept="image/*"
+              class="hidden"
+              onchange="previewHeaderImage(event)"
+            />
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
+              <button
+                type="button"
+                onclick="document.getElementById('settingsHeaderFile').click()"
+                class="flex-1 bg-slate-800 text-white font-bold px-4 py-3 sm:py-2 rounded text-sm sm:text-xs hover:bg-slate-700 transition"
+              >
+                📁 Select Image File
+              </button>
+              <button
+                type="button"
+                onclick="clearHeaderImage()"
+                class="flex-1 bg-red-100 text-red-600 font-bold px-3 py-3 sm:py-2 rounded text-sm sm:text-xs hover:bg-red-200 transition"
+              >
+                🗑️ Remove Header
+              </button>
+            </div>
+            <input type="hidden" id="settingsHeaderBase64" />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mb-6">
+            <div>
+              <label
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Teacher Name</label
+              >
+              <input
+                type="text"
+                id="setTeacherName"
+                placeholder="e.g., Joseph Sixson"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-white focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Subject Title</label
+              >
+              <input
+                type="text"
+                id="setSubjectTitle"
+                list="savedSubjectsList"
+                placeholder="Select or type a subject..."
+                class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-white focus:ring-blue-500"
+              />
+              <datalist id="savedSubjectsList"></datalist>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mb-6">
+            <div>
+              <label
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Preliminary Activities</label
+              >
+              <textarea
+                id="setPrelimActivities"
+                rows="3"
+                class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-white focus:ring-blue-500"
+                placeholder="e.g., Opening Prayer\nAttendance Checking"
+              ></textarea>
+            </div>
+            <div>
+              <label
+                class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
+                >Default Closing Activities</label
+              >
+              <textarea
+                id="setClosingActivities"
+                rows="3"
+                class="w-full p-3 sm:p-2 border border-gray-300 rounded text-base sm:text-sm bg-white focus:ring-blue-500"
+                placeholder="e.g., Summary of the lesson\nClosing Prayer"
+              ></textarea>
+            </div>
+          </div>
+
+          <h4
+            class="text-[10px] sm:text-sm font-bold text-gray-700 uppercase mb-3"
+          >
+            Footer Signatories
+          </h4>
+          <div
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-white border rounded-lg shadow-sm"
+          >
+            <div>
+              <label
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
+                >1. Submitted By</label
+              >
+              <input
+                type="text"
+                id="sigTeacher"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 mb-2"
+                placeholder="Name"
+              />
+              <input
+                type="text"
+                id="sigTeacherTitle"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50"
+                placeholder="Title"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
+                >2. Submitted To</label
+              >
+              <input
+                type="text"
+                id="sigSubjectCoord"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 mb-2"
+                placeholder="Name"
+              />
+              <input
+                type="text"
+                id="sigSubjectCoordTitle"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50"
+                placeholder="Title"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
+                >3. Noted By</label
+              >
+              <input
+                type="text"
+                id="sigGradeCoord"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 mb-2"
+                placeholder="Name"
+              />
+              <input
+                type="text"
+                id="sigGradeCoordTitle"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50"
+                placeholder="Title"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5"
+                >4. Approved By</label
+              >
+              <input
+                type="text"
+                id="sigPrincipal"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50 mb-2"
+                placeholder="Name"
+              />
+              <input
+                type="text"
+                id="sigPrincipalTitle"
+                class="w-full p-3 sm:p-2 border rounded text-base sm:text-sm bg-gray-50"
+                placeholder="Title"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="p-4 sm:p-5 border-t bg-white flex flex-col sm:flex-row justify-end gap-3"
+        >
+          <button
+            onclick="closeMiniSettings()"
+            class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-gray-200 text-gray-700 font-bold rounded hover:bg-gray-300 transition text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onclick="handleMiniSettingsSave()"
+            class="w-full sm:w-auto px-6 py-3 sm:py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 shadow-md transition flex justify-center items-center gap-2 text-sm"
+          >
+            💾 Save Settings
           </button>
         </div>
       </div>
@@ -618,6 +854,30 @@
       </svg>
     </button>
 
+    <!-- 🚀 NEW: Mini Settings Scripts -->
+    <script>
+      window.openMiniSettings = function () {
+        document
+          .getElementById("miniSettingsModal")
+          .classList.replace("hidden", "flex");
+        // Triggers the script from settings-lesson.js to pull the latest saved data
+        if (window.loadLessonReviewSettings) window.loadLessonReviewSettings();
+      };
+
+      window.closeMiniSettings = function () {
+        document
+          .getElementById("miniSettingsModal")
+          .classList.replace("flex", "hidden");
+      };
+
+      window.handleMiniSettingsSave = async function () {
+        if (window.saveLessonReviewSettings) {
+          await window.saveLessonReviewSettings();
+          closeMiniSettings();
+        }
+      };
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.min.js"></script>
     <script type="module" src="js/lesson-review/app-ui.js"></script>
     <script src="js/core/adminerva-loader.js"></script>
@@ -625,5 +885,7 @@
     <script type="module" src="js/lesson-review/lesson-firebase.js"></script>
     <script type="module" src="js/lesson-review/ai-engine.js"></script>
     <script type="module" src="js/lesson-review/document-exporter.js"></script>
+    <!-- 🚀 NEW: Importing the existing settings logic so we don't duplicate code -->
+    <script type="module" src="js/settings/settings-lesson.js"></script>
   </body>
 </html>
