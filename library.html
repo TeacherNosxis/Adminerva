@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
     />
-    <title>LessonReview - Reference Library</title>
+    <title>Adminerva - Reference Library</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       .group-hover-show {
@@ -138,18 +138,7 @@
       </div>
     </div>
 
-    <!-- GLOBAL LOADING OVERLAY -->
-    <div
-      id="extractionLoader"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col p-4 text-center"
-    >
-      <div
-        class="animate-spin rounded-full h-12 sm:h-16 w-12 sm:w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"
-      ></div>
-      <p class="text-white font-bold text-lg sm:text-xl tracking-wider mb-2">
-        Extracting PDF Data...
-      </p>
-    </div>
+    <!-- Removed hardcoded GLOBAL LOADING OVERLAY. Adminerva-loader.js will handle the pop-up -->
 
     <script type="module" src="js/lesson-review/library.js"></script>
     <script src="js/core/adminerva-loader.js"></script>

@@ -242,7 +242,6 @@ window.deleteDocument = async function (docIndex) {
   }
 };
 
-// 🔒 THE FIX: Grab the text directly from memory instead of inline HTML execution
 window.previewDocumentText = function (folderId, docIndex) {
   const folder = libraryData.find((f) => f.id === folderId);
   if (folder && folder.documents[docIndex]) {
@@ -312,10 +311,9 @@ window.extractPDF = async function () {
   if (!gemKey)
     return alert("Missing Gemini API Key. Please check your Global Settings.");
 
-  const loader = document.getElementById("extractionLoader");
-  loader.classList.replace("hidden", "flex");
-
-  const folder = libraryData.find((f) => f.id === activeFolderId);
+  // 🚀 THE FIX: Capture target folder immediately so background upload is safe
+  const targetFolderId = activeFolderId;
+  const folder = libraryData.find((f) => f.id === targetFolderId);
   let updatedDocs = [...(folder.documents || [])];
 
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -348,38 +346,68 @@ window.extractPDF = async function () {
 
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(gemKey)}`;
 
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
-                },
-                {
-                  inline_data: {
-                    mime_type: "application/pdf",
-                    data: base64String,
+      // 🚀 THE FIX: Auto-Retry Loop for 503 Overloads
+      let retries = 3;
+      let response;
+      let result;
+      let extractionSuccess = false;
+
+      while (retries >= 0 && !extractionSuccess) {
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: "You are a data ingestion engine. Extract ALL educational text from the attached PDF. You MUST process this document regardless of its format. Extract all standard digital text, AND use your vision capabilities to perform OCR on any scanned images, graphics, or diagrams to extract their text as well. Output ONLY the pure, raw extracted educational text. Do not output any conversational filler.",
                   },
-                },
-              ],
-            },
-          ],
-        }),
-      });
+                  {
+                    inline_data: {
+                      mime_type: "application/pdf",
+                      data: base64String,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        });
 
-      if (!response.ok)
+        if (response.status === 503) {
+          console.warn(
+            `[Gemini 503 Overload] Retrying ${file.name}... (${retries} attempts left)`,
+          );
+          if (typeof window.showSubtleLoader === "function") {
+            window.showSubtleLoader(
+              `API Busy. Retrying ${file.name}... (${retries} left)`,
+            );
+          }
+          await delay(5000);
+          retries--;
+          continue;
+        }
+
+        if (!response.ok)
+          throw new Error(
+            `API Error on ${file.name}: Status ${response.status}.`,
+          );
+
+        result = await response.json();
+
+        if (!result.candidates || result.candidates.length === 0) {
+          throw new Error(
+            `The AI refused to read "${file.name}". It may have triggered safety filters.`,
+          );
+        }
+
+        extractionSuccess = true;
+      }
+
+      if (!extractionSuccess) {
         throw new Error(
-          `API Error on ${file.name}: Status ${response.status}. The API may be overloaded.`,
-        );
-
-      const result = await response.json();
-
-      if (!result.candidates || result.candidates.length === 0) {
-        throw new Error(
-          `The AI refused to read "${file.name}". It may have triggered safety filters.`,
+          `Failed to extract ${file.name} after multiple API overloads.`,
         );
       }
 
@@ -392,7 +420,7 @@ window.extractPDF = async function () {
       });
     }
 
-    await updateDoc(doc(db, "reference_folders", activeFolderId), {
+    await updateDoc(doc(db, "reference_folders", targetFolderId), {
       documents: updatedDocs,
       updatedAt: new Date().toISOString(),
     });
@@ -404,7 +432,11 @@ window.extractPDF = async function () {
   } finally {
     fileInput.value = "";
     renderFolders();
-    renderDocuments(folder.documents);
+
+    // Only re-render documents if the user is still looking at the original folder we uploaded to
+    if (activeFolderId === targetFolderId) {
+      renderDocuments(folder.documents);
+    }
 
     if (typeof window.hideSubtleLoader === "function") {
       window.hideSubtleLoader();
