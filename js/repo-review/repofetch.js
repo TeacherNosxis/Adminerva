@@ -7,6 +7,7 @@ import {
   getDoc,
   query,
   where,
+  updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const CACHE_VERSION = 7;
@@ -442,20 +443,31 @@ window.openGradingModal = async function (studentId, owner, repo) {
       let actionAreaHtml = "";
 
       if (isUpToDate) {
-        // They already have a grade for this specific commit!
         let scoreColor = "text-green-600";
-        if (gradeRecord.score < 75) scoreColor = "text-red-600";
-        if (gradeRecord.score >= 75 && gradeRecord.score < 90)
+        if (gradeRecord.score < 15) scoreColor = "text-red-600";
+        if (gradeRecord.score >= 15 && gradeRecord.score < 18)
           scoreColor = "text-yellow-600";
 
+        const isPub = gradeRecord.published || false;
+
         actionAreaHtml = `
-              <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px] shadow-inner">
+              <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[360px] shadow-inner">
                   <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${gradeRecord.score}</div>
                   <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
                       <p class="text-[9px] font-bold text-gray-500 uppercase mb-1 tracking-wider">Up to Date</p>
                       <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(gradeRecord.feedback)}</div>
                   </div>
-                  <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0" title="Force Re-evaluate">🔄</button>
+                  
+                  <!-- ✨ THE NEW PUBLISH TOGGLE -->
+                  <div class="flex flex-col items-center justify-center border-l border-gray-200 pl-2 shrink-0 w-12">
+                      <span id="pub-lbl-${task.id}" class="text-[7px] font-bold ${isPub ? "text-blue-600" : "text-gray-400"} uppercase mb-1 tracking-wider">${isPub ? "Visible" : "Hidden"}</span>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" ${isPub ? "checked" : ""} onchange="window.togglePublishGrade('${studentId}', '${task.id}', this)">
+                        <div class="w-6 h-3.5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
+                  </div>
+                  
+                  <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0 border-l border-gray-200 pl-2 ml-1" title="Force Re-evaluate">🔄</button>
               </div>
           `;
       } else {
@@ -492,4 +504,23 @@ window.openGradingModal = async function (studentId, owner, repo) {
 
 window.closeGradingModal = function () {
   document.getElementById("gradingModal").classList.add("hidden");
+};
+
+window.togglePublishGrade = async function (studentId, taskId, checkbox) {
+  const gradeDocId = `${studentId}_${taskId}`;
+  const label = document.getElementById(`pub-lbl-${taskId}`);
+
+  try {
+    await updateDoc(doc(db, "student_grades", gradeDocId), {
+      published: checkbox.checked,
+    });
+    if (label) {
+      label.textContent = checkbox.checked ? "Visible" : "Hidden";
+      label.className = `text-[7px] font-bold ${checkbox.checked ? "text-blue-600" : "text-gray-400"} uppercase mb-1 tracking-wider`;
+    }
+  } catch (e) {
+    console.error("Failed to publish grade", e);
+    alert("Failed to update publish status. Check permissions.");
+    checkbox.checked = !checkbox.checked; // Revert visually if it failed
+  }
 };

@@ -83,6 +83,24 @@ async function fetchAssessments() {
       <div class="h-4 bg-slate-200 rounded w-1/2"></div>
     </div>
   `;
+  const studentProfile = userProfiles.find((p) => p.section === currentSection);
+  const studentId = studentProfile ? studentProfile.id : null;
+
+  let myGrades = {};
+  if (studentId) {
+    try {
+      const gradeSnap = await getDocs(
+        query(
+          collection(db, "student_grades"),
+          where("studentId", "==", studentId),
+          where("published", "==", true),
+        ),
+      );
+      gradeSnap.forEach((d) => {
+        myGrades[d.data().taskId] = d.data();
+      });
+    } catch (e) {}
+  }
 
   try {
     // 🚀 THE FIX: Fetch all active assessments and filter them locally to handle complex deployment objects
@@ -195,11 +213,16 @@ function renderAssessments() {
         : ass.type === "Formative"
           ? "bg-green-100 text-green-700 border-green-200"
           : "bg-blue-100 text-blue-700 border-blue-200";
+    const myGrade = myGrades[ass.id];
 
-    const urgencyBadge = ass.isUrgent
-      ? `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">⚠️ Urgent / Past Due</span>`
-      : `<span class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">⏳ Pending Review</span>`;
-
+    let urgencyBadge = "";
+    if (myGrade) {
+      urgencyBadge = `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">✅ Scored: ${myGrade.score}</span>`;
+    } else {
+      urgencyBadge = ass.isUrgent
+        ? `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">⚠️ Urgent / Past Due</span>`
+        : `<span class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">⏳ Pending Review</span>`;
+    }
     // 🚀 NEW: Dynamically display the exact deadline in the UI if it exists
     const deadlineString = ass.dueDate
       ? `<span class="text-[10px] text-slate-400 font-medium ml-auto">Due: ${ass.dueDate.toLocaleDateString()}</span>`

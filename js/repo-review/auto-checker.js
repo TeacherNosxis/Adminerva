@@ -285,7 +285,6 @@ window.startAutoCheck = async function (
     `;
   }
 };
-
 function renderGradeResult(
   container,
   score,
@@ -298,17 +297,26 @@ function renderGradeResult(
   currentSha,
 ) {
   let scoreColor = "text-green-600";
-  if (score < 15) scoreColor = "text-red-600"; // Adjusted for typical 20pt rubrics
+  if (score < 15) scoreColor = "text-red-600";
   if (score >= 15 && score < 18) scoreColor = "text-yellow-600";
 
   container.innerHTML = `
-        <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px] shadow-inner">
+        <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[360px] shadow-inner">
             <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${score}</div>
             <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
                 <p class="text-[9px] font-mono text-gray-400 truncate mb-1" title="${escapeHTML(exactPath)}">File(s): ${escapeHTML(exactPath)}</p>
                 <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(feedback)}</div>
             </div>
-            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0" title="Force Re-evaluate">🔄</button>
+            
+            <div class="flex flex-col items-center justify-center border-l border-gray-200 pl-2 shrink-0 w-12">
+                <span id="pub-lbl-${taskId}" class="text-[7px] font-bold text-gray-400 uppercase mb-1 tracking-wider">Hidden</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" class="sr-only peer" onchange="window.togglePublishGrade('${studentId}', '${taskId}', this)">
+                  <div class="w-6 h-3.5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-blue-500"></div>
+                </label>
+            </div>
+            
+            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0 border-l border-gray-200 pl-2 ml-1" title="Force Re-evaluate">🔄</button>
         </div>
     `;
 }

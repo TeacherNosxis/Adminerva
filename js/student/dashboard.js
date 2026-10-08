@@ -158,6 +158,52 @@ async function loadDashboardProfile(studentData) {
   verifyStudentSetup(studentData);
   overlay.classList.add("hidden"); // Initially hide it
   loadStudentAssessments(studentData.section);
+  // ✨ FETCH LATEST PUBLISHED GRADE
+  const gradeContainer = document.getElementById("latestGradeContainer");
+  if (gradeContainer) {
+    try {
+      const gradeQuery = query(
+        collection(db, "student_grades"),
+        where("studentId", "==", studentData.docId),
+        where("published", "==", true),
+      );
+      const gradeSnap = await getDocs(gradeQuery);
+      let publishedGrades = [];
+      gradeSnap.forEach((d) => publishedGrades.push(d.data()));
+
+      if (publishedGrades.length > 0) {
+        // Sort to get the most recently graded one
+        publishedGrades.sort(
+          (a, b) => b.gradedAt.toDate() - a.gradedAt.toDate(),
+        );
+        const latest = publishedGrades[0];
+
+        let scoreColor = "text-emerald-600";
+        if (latest.score < 15) scoreColor = "text-rose-600";
+        if (latest.score >= 15 && latest.score < 18)
+          scoreColor = "text-amber-500";
+
+        gradeContainer.innerHTML = `
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-4 shadow-inner">
+                    <div class="text-3xl font-extrabold ${scoreColor} bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-100 min-w-[70px] text-center">${latest.score}</div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-slate-800 text-sm mb-1 uppercase tracking-wider text-[10px]">Score Breakdown</h4>
+                        <p class="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto pr-2">${escapeHTML(latest.feedback)}</p>
+                    </div>
+                </div>
+              `;
+      } else {
+        gradeContainer.innerHTML = `
+                <div class="p-5 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center">
+                  <span class="text-3xl block mb-2 opacity-50">📬</span>
+                  <p class="text-sm text-slate-500 font-medium">No evaluations have been published for this repository yet.</p>
+                </div>
+              `;
+      }
+    } catch (err) {
+      console.error("Failed to load grades", err);
+    }
+  }
 
   if (currentChart) {
     currentChart.destroy();
