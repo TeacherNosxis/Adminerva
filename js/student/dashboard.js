@@ -174,6 +174,12 @@ async function loadDashboardProfile(studentData) {
     container.innerHTML =
       "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
     renderChart([], "7d");
+
+    // 🚀 THE FIX: Force the GitHub Connect overlay to appear even if the profile is incomplete
+    if (!studentData.githubToken) {
+      overlay.classList.remove("hidden");
+    }
+
     return;
   }
 

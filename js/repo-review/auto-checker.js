@@ -50,7 +50,7 @@ window.startAutoCheck = async function (
   const ghToken = localStorage.getItem("Adminerva_github_token");
   const geminiKey = localStorage.getItem("Adminerva_gemini_token");
   const aiModel =
-    localStorage.getItem("Adminerva_ai_model") || "gemini-3.7-flash";
+    localStorage.getItem("Adminerva_ai_model") || "gemini-1.5-flash-latest";
 
   if (!ghToken || !geminiKey) {
     alert(
@@ -71,10 +71,19 @@ window.startAutoCheck = async function (
   };
 
   try {
-    updateStatus("Fetching Rules...");
+    updateStatus("Fetching Context...");
+
+    // 1. Fetch BOTH the Task Rules and the specific Student's Info
     const taskSnap = await getDoc(doc(db, "assessments", taskId));
+    const studentSnap = await getDoc(doc(db, "students", studentId));
+
     if (!taskSnap.exists()) throw new Error("Blueprint missing in database.");
     const taskData = taskSnap.data();
+
+    // If the student doc doesn't exist for some reason, fallback to generic so it doesn't crash
+    const studentData = studentSnap.exists()
+      ? studentSnap.data()
+      : { name: "Unknown Student", githubUsername: "Unknown" };
 
     updateStatus("Scanning Repo...");
     let targetFilePath = taskData.targetPath || "";
@@ -120,7 +129,6 @@ window.startAutoCheck = async function (
       let pathsFound = [];
 
       const filePromises = filesToProcess.map(async (file) => {
-        // FIXED CORS ERROR: Routing through main API with raw header
         const fileRes = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${defaultBranch}`,
           {
@@ -156,7 +164,6 @@ window.startAutoCheck = async function (
       }
     } else {
       updateStatus("Reading Code...");
-      // FIXED CORS ERROR: Routing through main API with raw header
       const fileRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/contents/${targetFilePath}?ref=${defaultBranch}`,
         {
@@ -172,82 +179,73 @@ window.startAutoCheck = async function (
       displayPathText = targetFilePath.split("/").pop();
     }
 
-    updateStatus("Applying Filters...");
-    let objectiveViolations = [];
-    const rules = taskData.rules || [];
-    rules.forEach((rule) => {
-      const hasString = fileRawText.includes(rule.value);
-      if (rule.type === "Banned" && hasString) {
-        objectiveViolations.push(`Used banned code: ${rule.value}`);
-      } else if (rule.type === "Required" && !hasString) {
-        objectiveViolations.push(`Missing required code: ${rule.value}`);
-      }
-    });
+    // Pass the objective rules to the AI instead of hard-failing locally
+    updateStatus("Evaluating Code...");
+    let rulesText = "No strict objective string rules applied.";
+    if (taskData.rules && taskData.rules.length > 0) {
+      rulesText =
+        "Objective String Filters (Deduct points if the Target Student violates these):\n";
+      taskData.rules.forEach((r) => {
+        rulesText += `- ${r.type}: "${r.value}"\n`;
+      });
+    }
 
-    let finalScore = 0;
-    let finalFeedback = "";
+    const prompt = `
+          ${taskData.systemPersona || "You are a strict code evaluator."}
+          
+          Task Context: ${taskData.taskContext || "Evaluate general code quality."}
+          Rubric: ${taskData.evalCriteria || "Score based on correctness and structure."}
+          
+          CRITICAL INSTRUCTION - TARGET STUDENT ISOLATION:
+          You are grading ONLY the individual work of student: ${studentData.name} (GitHub username: @${studentData.githubUsername || "unlinked"}).
+          The codebase below contains files from multiple group members. You MUST identify which files or code blocks belong to this specific student by checking file names (e.g. files named after them) or internal code comments. 
+          DO NOT deduct points from ${studentData.name} for errors, bad logic, or missing requirements found in files clearly belonging to other students. Base your score and feedback strictly on ${studentData.name}'s specific contributions. If you cannot definitively tell which file is theirs, evaluate the general structure but assume they contributed positively.
 
-    if (
-      objectiveViolations.length > 0 &&
-      rules.some((r) => r.type === "Banned" && fileRawText.includes(r.value))
-    ) {
-      finalScore = 0;
-      finalFeedback =
-        "Objective Check Failed: " + objectiveViolations.join(", ");
-    } else {
-      updateStatus("Evaluating...");
-      const prompt = `
-            ${taskData.systemPersona || "You are a strict code evaluator."}
-            
-            Task Context: ${taskData.taskContext || "Evaluate general code quality."}
-            Rubric: ${taskData.evalCriteria || "Score based on correctness and structure."}
-            
-            Objective Checks Log:
-            ${objectiveViolations.length > 0 ? "Minor Violations: " + objectiveViolations.join(", ") : "All objective checks passed."}
-            
-            Student Code Collection:
-            \`\`\`
-            ${fileRawText.substring(0, 80000)} 
-            \`\`\`
-            
-            Evaluate the provided code strictly based on the rubric provided. Calculate the total score carefully by adding up the points earned for each rubric criteria.
-            Return ONLY a valid JSON object matching this exact format:
-            {"score": <number representing the final calculated total score>, "feedback": "<3 to 10 sentences explaining the score breakdown and specific feedback>"}
-      `;
+          ${rulesText}
+          
+          Student Code Collection:
+          \`\`\`
+          ${fileRawText.substring(0, 80000)} 
+          \`\`\`
+          
+          Evaluate the TARGET STUDENT'S code strictly based on the rubric provided. Calculate the total score carefully by adding up the points earned for each rubric criteria.
+          Return ONLY a valid JSON object matching this exact format:
+          {"score": <number representing the final calculated total score>, "feedback": "<2 to 4 sentences explaining the score breakdown and specific feedback for this student>"}
+    `;
 
-      const aiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              response_mime_type: "application/json",
-              temperature: 0.2,
-            },
-          }),
-        },
+    const aiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            response_mime_type: "application/json",
+            temperature: 0.2,
+          },
+        }),
+      },
+    );
+
+    if (!aiRes.ok) {
+      const errText = await aiRes.text();
+      console.error("[Auto-Check] Gemini API Error Details:", errText);
+      throw new Error(
+        "Automated engine failed to respond. (Check console for API details)",
       );
-
-      if (!aiRes.ok) throw new Error("Automated engine failed to respond.");
-      const aiData = await aiRes.json();
-
-      let cleanJson = aiData.candidates[0].content.parts[0].text;
-      cleanJson = cleanJson
-        .replace(/^```json\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-      const parsed = JSON.parse(cleanJson);
-
-      finalScore = parsed.score || 0;
-      finalFeedback = parsed.feedback || "No feedback generated.";
     }
+    const aiData = await aiRes.json();
 
-    if (objectiveViolations.length > 0 && finalScore > 0) {
-      finalFeedback =
-        `[Notes: ${objectiveViolations.join(", ")}] ` + finalFeedback;
-    }
+    let cleanJson = aiData.candidates[0].content.parts[0].text;
+    cleanJson = cleanJson
+      .replace(/^```json\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+    const parsed = JSON.parse(cleanJson);
+
+    let finalScore = parsed.score || 0;
+    let finalFeedback = parsed.feedback || "No feedback generated.";
 
     updateStatus("Saving Grade...");
     const gradeDocId = `${studentId}_${taskId}`;
@@ -300,8 +298,8 @@ function renderGradeResult(
   currentSha,
 ) {
   let scoreColor = "text-green-600";
-  if (score < 75) scoreColor = "text-red-600"; // You may want to adjust these color thresholds later based on your new point scales!
-  if (score >= 75 && score < 90) scoreColor = "text-yellow-600";
+  if (score < 15) scoreColor = "text-red-600"; // Adjusted for typical 20pt rubrics
+  if (score >= 15 && score < 18) scoreColor = "text-yellow-600";
 
   container.innerHTML = `
         <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[320px] shadow-inner">
