@@ -10,6 +10,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/f
 let allAssessments = [];
 let userProfiles = [];
 let currentSection = "";
+let myGrades = {};
 
 // Security Patch
 function escapeHTML(str) {
@@ -85,21 +86,26 @@ async function fetchAssessments() {
   `;
   const studentProfile = userProfiles.find((p) => p.section === currentSection);
   const studentId = studentProfile ? studentProfile.id : null;
-
-  let myGrades = {};
+  myGrades = {}; // Notice: no "let" here anymore!
   if (studentId) {
     try {
+      // Removed the second "where" clause to prevent Firebase index errors
       const gradeSnap = await getDocs(
         query(
           collection(db, "student_grades"),
           where("studentId", "==", studentId),
-          where("published", "==", true),
         ),
       );
       gradeSnap.forEach((d) => {
-        myGrades[d.data().taskId] = d.data();
+        const data = d.data();
+        if (data.published === true) {
+          // Filter in javascript instead!
+          myGrades[data.taskId] = data;
+        }
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Could not fetch grades", e);
+    }
   }
 
   try {

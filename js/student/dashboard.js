@@ -162,14 +162,20 @@ async function loadDashboardProfile(studentData) {
   const gradeContainer = document.getElementById("latestGradeContainer");
   if (gradeContainer) {
     try {
+      // Removed the second "where" clause to prevent Firebase Index errors
       const gradeQuery = query(
         collection(db, "student_grades"),
         where("studentId", "==", studentData.docId),
-        where("published", "==", true),
       );
       const gradeSnap = await getDocs(gradeQuery);
+
       let publishedGrades = [];
-      gradeSnap.forEach((d) => publishedGrades.push(d.data()));
+      gradeSnap.forEach((d) => {
+        if (d.data().published === true) {
+          // Filter in Javascript!
+          publishedGrades.push(d.data());
+        }
+      });
 
       if (publishedGrades.length > 0) {
         // Sort to get the most recently graded one
