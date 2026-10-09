@@ -7,7 +7,6 @@ import {
   getDoc,
   query,
   where,
-  updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const CACHE_VERSION = 7;
@@ -93,7 +92,7 @@ window.fetchAndSyncRepos = async function () {
         ...d.data(),
         commitCount: 0,
         latestSha: null,
-      }; // ADDED latestSha
+      };
       const repoInfo = parseRepoInfo(student.repoUrl);
       if (!repoInfo) return;
 
@@ -119,7 +118,7 @@ window.fetchAndSyncRepos = async function () {
         repoGroups[groupId].members.forEach((member) => {
           if (stats[member.id])
             member.commitCount = stats[member.id].count || 0;
-          member.latestSha = cachedData.latestSha; // ATTACH CACHED SHA
+          member.latestSha = cachedData.latestSha;
         });
         repoGroups[groupId].latestSha = cachedData.latestSha;
       }
@@ -206,11 +205,9 @@ window.fetchAndSyncRepos = async function () {
           return;
         }
 
-        // ALWAYS UPDATE THE STUDENT SHA TO THE LATEST
         group.members.forEach((m) => {
           m.latestSha = commits[0].sha;
         });
-
         if (group.latestSha === commits[0].sha) {
           processed++;
           window.showSubtleLoader(
@@ -338,7 +335,12 @@ function renderGroupedUI(repoGroups) {
     const errorBadge = group.apiError
       ? `<span class="bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30 shrink-0">⚠️ ${escapeHTML(group.apiError)}</span>`
       : "";
+
     const accordionId = `group-content-${index}`;
+    const isOpen = index === 0;
+    const displayClass = isOpen ? "flex" : "hidden flex-col";
+    const iconTransform = isOpen ? "rotate(180deg)" : "rotate(0deg)";
+
     const cardHtml = `
         <div class="bg-white border rounded-lg shadow-sm mb-4 overflow-hidden">
             <div class="bg-slate-800 p-4 flex justify-between items-center cursor-pointer hover:bg-slate-700 transition gap-4" onclick="toggleAccordion('${accordionId}')">
@@ -349,9 +351,9 @@ function renderGroupedUI(repoGroups) {
                     </div>
                     <a href="${group.cleanUrl}" target="_blank" class="text-xs text-cyan-400 hover:underline truncate block" onclick="event.stopPropagation()">${group.cleanUrl}</a>
                 </div>
-                <div class="text-slate-300 transform transition-transform duration-200 font-bold shrink-0" id="icon-${accordionId}">▼</div>
+                <div class="accordion-icon text-slate-300 transform transition-transform duration-200 font-bold shrink-0" id="icon-${accordionId}" style="transform: ${iconTransform}">▼</div>
             </div>
-            <div id="${accordionId}" class="hidden flex-col">
+            <div id="${accordionId}" class="${displayClass} accordion-content">
                 ${membersHtml}
             </div>
         </div>
@@ -367,21 +369,28 @@ function renderGroupedUI(repoGroups) {
 window.toggleAccordion = function (id) {
   const el = document.getElementById(id);
   const icon = document.getElementById(`icon-${id}`);
-  if (el.classList.contains("hidden")) {
+  const isCurrentlyHidden = el.classList.contains("hidden");
+
+  document.querySelectorAll(".accordion-content").forEach((content) => {
+    content.classList.add("hidden");
+    content.classList.remove("flex");
+  });
+
+  document.querySelectorAll(".accordion-icon").forEach((icn) => {
+    icn.style.transform = "rotate(0deg)";
+  });
+
+  if (isCurrentlyHidden) {
     el.classList.remove("hidden");
     el.classList.add("flex");
     icon.style.transform = "rotate(180deg)";
-  } else {
-    el.classList.add("hidden");
-    el.classList.remove("flex");
-    icon.style.transform = "rotate(0deg)";
   }
 };
 
 window.openGradingModal = async function (studentId, owner, repo) {
   const student = globalStudentsData[studentId];
   if (!student) return;
-  const currentStudentSha = student.latestSha; // Get the specific SHA they are currently on
+  const currentStudentSha = student.latestSha;
 
   document.getElementById("modalStudentName").textContent =
     `${student.name} (@${student.githubUsername || "Unlinked"})`;
@@ -392,7 +401,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
   listContainer.innerHTML = `<div class="text-center text-gray-400 italic py-4 text-sm"><div class="animate-spin inline-block rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2"></div>Loading assigned tasks...</div>`;
 
   try {
-    // 1. Fetch Blueprints
     const snap = await getDocs(collection(db, "assessments"));
     let activeTasks = [];
     snap.forEach((doc) => {
@@ -415,7 +423,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
       return;
     }
 
-    // 2. Fetch existing grades for this specific student
     const gradesQuery = query(
       collection(db, "student_grades"),
       where("studentId", "==", studentId),
@@ -435,8 +442,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
     activeTasks.forEach((task) => {
       const taskCardId = `task-card-${studentId}-${task.id}`;
       const gradeRecord = existingGrades[task.id];
-
-      // LOGIC: Does the SHA match?
       const isUpToDate =
         gradeRecord && gradeRecord.gradedSha === currentStudentSha;
 
@@ -458,7 +463,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
                       <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(gradeRecord.feedback)}</div>
                   </div>
                   
-                  <!-- ✨ THE NEW PUBLISH TOGGLE -->
                   <div class="flex flex-col items-center justify-center border-l border-gray-200 pl-2 shrink-0 w-12">
                       <span id="pub-lbl-${task.id}" class="text-[7px] font-bold ${isPub ? "text-blue-600" : "text-gray-400"} uppercase mb-1 tracking-wider">${isPub ? "Visible" : "Hidden"}</span>
                       <label class="relative inline-flex items-center cursor-pointer">
@@ -471,7 +475,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
               </div>
           `;
       } else {
-        // New commits exist, or it has never been graded
         actionAreaHtml = `
               <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="${gradeRecord ? "bg-amber-500 hover:bg-amber-600" : "bg-purple-600 hover:bg-purple-700"} text-white px-4 py-1.5 rounded text-xs font-bold transition shadow-sm whitespace-nowrap flex items-center gap-2">
                   ✨ ${gradeRecord ? "Evaluate New Commits" : "Run Auto-Check"}
@@ -511,9 +514,11 @@ window.togglePublishGrade = async function (studentId, taskId, checkbox) {
   const label = document.getElementById(`pub-lbl-${taskId}`);
 
   try {
-    await updateDoc(doc(db, "student_grades", gradeDocId), {
-      published: checkbox.checked,
-    });
+    await setDoc(
+      doc(db, "student_grades", gradeDocId),
+      { published: checkbox.checked },
+      { merge: true },
+    );
     if (label) {
       label.textContent = checkbox.checked ? "Visible" : "Hidden";
       label.className = `text-[7px] font-bold ${checkbox.checked ? "text-blue-600" : "text-gray-400"} uppercase mb-1 tracking-wider`;
@@ -521,6 +526,6 @@ window.togglePublishGrade = async function (studentId, taskId, checkbox) {
   } catch (e) {
     console.error("Failed to publish grade", e);
     alert("Failed to update publish status. Check permissions.");
-    checkbox.checked = !checkbox.checked; // Revert visually if it failed
+    checkbox.checked = !checkbox.checked; // Revert visually
   }
 };

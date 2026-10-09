@@ -23,7 +23,6 @@ let currentStudentProfile = null;
 let cachedCommitsData = [];
 let currentSectionAssessments = [];
 
-// 🔒 Security Patch
 function escapeHTML(str) {
   if (!str) return "";
   return String(str)
@@ -36,7 +35,6 @@ function escapeHTML(str) {
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return (window.location.href = "login.html");
-
   document.getElementById("pageBody").classList.remove("hidden");
 
   const impersonateEmail = localStorage.getItem("Adminerva_Impersonate");
@@ -156,13 +154,18 @@ async function loadDashboardProfile(studentData) {
   const overlay = document.getElementById("githubAuthOverlay");
 
   verifyStudentSetup(studentData);
-  overlay.classList.add("hidden"); // Initially hide it
+  overlay.classList.add("hidden");
   loadStudentAssessments(studentData.section);
-  // ✨ FETCH LATEST PUBLISHED GRADE
+
+  if (currentChart) {
+    currentChart.destroy();
+    currentChart = null;
+  }
+
+  // ✨ FETCH LATEST PUBLISHED GRADE (Filtered in JS for index safety)
   const gradeContainer = document.getElementById("latestGradeContainer");
   if (gradeContainer) {
     try {
-      // Removed the second "where" clause to prevent Firebase Index errors
       const gradeQuery = query(
         collection(db, "student_grades"),
         where("studentId", "==", studentData.docId),
@@ -172,13 +175,11 @@ async function loadDashboardProfile(studentData) {
       let publishedGrades = [];
       gradeSnap.forEach((d) => {
         if (d.data().published === true) {
-          // Filter in Javascript!
           publishedGrades.push(d.data());
         }
       });
 
       if (publishedGrades.length > 0) {
-        // Sort to get the most recently graded one
         publishedGrades.sort(
           (a, b) => b.gradedAt.toDate() - a.gradedAt.toDate(),
         );
@@ -211,27 +212,16 @@ async function loadDashboardProfile(studentData) {
     }
   }
 
-  if (currentChart) {
-    currentChart.destroy();
-    currentChart = null;
-  }
-
   if (!studentData.repoUrl || !studentData.githubUsername) {
     if (!studentData.repoUrl && studentData.githubUsername) {
       subtitle.innerHTML = `<strong class="text-amber-700">${escapeHTML(studentData.section)}:</strong> <span class='text-amber-600'>Please set your Repository URL for this section in Settings.</span>`;
     } else {
       subtitle.innerHTML = `<strong class="text-amber-700">${escapeHTML(studentData.section)}:</strong> <span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>`;
     }
-
     container.innerHTML =
       "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
     renderChart([], "7d");
-
-    // 🚀 THE FIX: Force the GitHub Connect overlay to appear even if the profile is incomplete
-    if (!studentData.githubToken) {
-      overlay.classList.remove("hidden");
-    }
-
+    if (!studentData.githubToken) overlay.classList.remove("hidden");
     return;
   }
 
@@ -269,15 +259,14 @@ async function loadDashboardProfile(studentData) {
 async function syncGitHubData(repoUrl, username, token, cacheRef) {
   try {
     const urlParts = repoUrl.replace(/\/$/, "").replace(".git", "").split("/");
-    const repo = urlParts.pop();
-    const owner = urlParts.pop();
+    let repo = urlParts.pop();
+    let owner = urlParts.pop();
 
     try {
       const repoInfoRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
-
       if (repoInfoRes.ok) {
         const repoInfo = await repoInfoRes.json();
         const actualUrl = repoInfo.html_url + ".git";
@@ -291,19 +280,14 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
             { repoUrl: actualUrl },
             { merge: true },
           );
-
           owner = repoInfo.owner.login;
           repo = repoInfo.name;
-
           const subtitle = document.getElementById("repoSubtitle");
-          if (subtitle) {
+          if (subtitle)
             subtitle.innerHTML = `<strong>${escapeHTML(currentStudentProfile.section)}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${escapeHTML(currentStudentProfile.githubUsername)}</span> on <a href="${escapeHTML(actualUrl)}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${escapeHTML(actualUrl)}</a>`;
-          }
         }
       }
-    } catch (autoUpdateError) {
-      console.warn("Failed to check for repo renames", autoUpdateError);
-    }
+    } catch (autoUpdateError) {}
 
     let allCommits = [];
     for (let page = 1; page <= 4; page++) {
@@ -317,7 +301,6 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
         },
       );
       if (!response.ok) break;
-
       const commits = await response.json();
       allCommits = allCommits.concat(commits);
       if (commits.length < 100) break;
@@ -330,7 +313,6 @@ async function syncGitHubData(repoUrl, username, token, cacheRef) {
         { commits: allCommits, lastSynced: new Date().toISOString() },
         { merge: true },
       );
-
       const filter = document.getElementById("timeFilter")?.value || "7d";
       renderCommits(cachedCommitsData, filter);
       renderChart(cachedCommitsData, filter);
@@ -388,10 +370,8 @@ async function linkGithubAccount() {
     });
 
     await Promise.all(updatePromises);
-
     const overlay = document.getElementById("githubAuthOverlay");
     if (overlay) overlay.classList.add("hidden");
-
     loadDashboardProfile(currentStudentProfile);
   }
 }
@@ -410,7 +390,6 @@ function renderCommits(commits, filter) {
       month: "short",
       day: "numeric",
     });
-
     const safeUrl = escapeHTML(c.html_url);
     const safeSha = escapeHTML(c.sha.substring(0, 7));
     const safeMsg = escapeHTML(c.commit.message);
@@ -466,16 +445,13 @@ function renderChart(commits, filter) {
         filter === "24h"
           ? `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}-${cd.getHours()}`
           : `${cd.getFullYear()}-${cd.getMonth()}-${cd.getDate()}`;
-
       let cutoff = new Date();
       if (filter === "24h") cutoff.setHours(now.getHours() - 24);
       else if (filter === "7d") cutoff.setDate(now.getDate() - 7);
       else if (filter === "30d") cutoff.setMonth(now.getMonth() - 1);
       else if (filter === "90d") cutoff.setMonth(now.getMonth() - 3);
 
-      if (cd >= cutoff && dataMap[key] !== undefined) {
-        dataMap[key]++;
-      }
+      if (cd >= cutoff && dataMap[key] !== undefined) dataMap[key]++;
     });
   }
 
@@ -608,7 +584,6 @@ async function verifyStudentSetup(studentData) {
     repo = urlParts.pop();
     owner = urlParts.pop();
 
-    // 🚀 THE FIX: Check 100 commits deep to prevent false mismatch alarms
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
       {
@@ -620,48 +595,41 @@ async function verifyStudentSetup(studentData) {
     );
 
     if (res.status === 401) {
-      // 🚀 THE FIX: Un-hide the overlay so they can ACTUALLY click the Connect button to fix the token
       const overlay = document.getElementById("githubAuthOverlay");
       if (overlay) overlay.classList.remove("hidden");
-
       return triggerWarning(
         "bg-red-50 border-red-200 text-red-800",
         "Token Expired or Revoked",
         "Your GitHub session has expired. Please click <strong>Connect Account</strong> on the chart to reauthorize.",
       );
     }
-    if (res.status === 404) {
+    if (res.status === 404)
       return triggerWarning(
         "bg-red-50 border-red-200 text-red-800",
         "Repository Not Found",
         "We cannot reach this code. Ensure the URL is correct and the linked GitHub account has access to it.",
       );
-    }
-    if (res.status === 403) {
+    if (res.status === 403)
       return triggerWarning(
         "bg-slate-50 border-slate-200 text-slate-800",
         "GitHub Rate Limit Reached",
         "Too many requests. Please wait a few minutes.",
       );
-    }
-    if (res.status === 409) {
+    if (res.status === 409)
       return triggerWarning(
         "bg-blue-50 border-blue-200 text-blue-800",
         "Empty Repository",
         "Your repository is linked, but it is completely empty.",
       );
-    }
 
     if (res.ok) {
       const commits = await res.json();
-
       const ghUsername = (studentData.githubUsername || "")
         .toLowerCase()
         .trim();
       const stuEmail = (studentData.email || "").toLowerCase().trim();
       const stuName = (studentData.name || "").toLowerCase().trim();
 
-      // 🚀 THE FIX: Use Two-Pass Fuzzy Matching so students sharing computers aren't flagged
       const hasCommit = commits.some((c) => {
         const login = (c.author?.login || "").toLowerCase().trim();
         const commitEmail = (c.commit?.author?.email || "")
@@ -669,11 +637,8 @@ async function verifyStudentSetup(studentData) {
           .trim();
         const commitName = (c.commit?.author?.name || "").toLowerCase().trim();
 
-        // Pass 1: Strict Match
         if (ghUsername && login === ghUsername) return true;
         if (stuEmail && commitEmail === stuEmail) return true;
-
-        // Pass 2: Fuzzy Name Match
         if (stuName && commitName === stuName) return true;
 
         const nameParts = stuName.split(" ").filter((w) => w.length > 2);
@@ -685,7 +650,6 @@ async function verifyStudentSetup(studentData) {
           )
             return true;
         }
-
         return false;
       });
 
@@ -703,9 +667,7 @@ async function verifyStudentSetup(studentData) {
     console.error("Diagnostic check failed:", e);
   }
 }
-// ==========================================
-// ASSIGNMENT WIDGET LOGIC
-// ==========================================
+
 async function loadStudentAssessments(studentSection) {
   const container = document.getElementById("studentAssessmentsContainer");
   if (!container) return;
@@ -720,13 +682,10 @@ async function loadStudentAssessments(studentSection) {
       const data = docSnap.data();
       let isAssignedToStudent = false;
 
-      // 1. Look for the NEW Active Deployments object structure
       if (data.deployments && Array.isArray(data.deployments)) {
         if (data.deployments.some((d) => d.section === studentSection))
           isAssignedToStudent = true;
-      }
-      // 2. Fallback to the OLD simple string array
-      else if (data.targetSections && Array.isArray(data.targetSections)) {
+      } else if (data.targetSections && Array.isArray(data.targetSections)) {
         if (data.targetSections.includes(studentSection))
           isAssignedToStudent = true;
       }
@@ -742,8 +701,6 @@ async function loadStudentAssessments(studentSection) {
     }
 
     container.innerHTML = "";
-
-    // Limit to 4 most recent for the mini widget
     currentSectionAssessments.slice(0, 4).forEach((data) => {
       const typeColor =
         data.type === "PETA"
@@ -786,11 +743,9 @@ window.viewAssessmentDetails = function (id) {
   document.getElementById("modalAssTitle").textContent = ass.title;
   document.getElementById("modalAssPath").textContent =
     `Target File: ${ass.targetPath || "Any"}`;
-
   document.getElementById("modalAssContext").textContent =
     ass.taskContext || "No instructions provided.";
   document.getElementById("modalAssRubric").textContent =
     ass.evalCriteria || "No specific criteria provided.";
-
   document.getElementById("assessmentModal").classList.remove("hidden");
 };

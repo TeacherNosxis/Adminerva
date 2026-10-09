@@ -10,9 +10,8 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/f
 let allAssessments = [];
 let userProfiles = [];
 let currentSection = "";
-let myGrades = {};
+let myGrades = {}; // ✨ Global grades object
 
-// Security Patch
 function escapeHTML(str) {
   if (!str) return "";
   return String(str).replace(
@@ -46,7 +45,6 @@ onAuthStateChanged(auth, async (user) => {
 
       const selector = document.getElementById("sectionSelectorAssessments");
 
-      // If student is in multiple classes/clubs, show the dropdown
       if (userProfiles.length > 1 && selector) {
         selector.classList.remove("hidden");
         selector.innerHTML = "";
@@ -63,7 +61,6 @@ onAuthStateChanged(auth, async (user) => {
         });
       }
 
-      // Load initial view
       currentSection = userProfiles[0].section;
       fetchAssessments();
     }
@@ -76,7 +73,6 @@ async function fetchAssessments() {
   if (!currentSection) return;
   const container = document.getElementById("assignmentsFeed");
 
-  // Show loading skeleton while switching sections
   container.innerHTML = `
     <div class="animate-pulse bg-white p-5 rounded-xl border border-slate-200">
       <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
@@ -84,12 +80,14 @@ async function fetchAssessments() {
       <div class="h-4 bg-slate-200 rounded w-1/2"></div>
     </div>
   `;
+
+  // ✨ FETCH GRADES FIRST (Filtered in JS to avoid Firebase Index errors)
   const studentProfile = userProfiles.find((p) => p.section === currentSection);
   const studentId = studentProfile ? studentProfile.id : null;
-  myGrades = {}; // Notice: no "let" here anymore!
+
+  myGrades = {};
   if (studentId) {
     try {
-      // Removed the second "where" clause to prevent Firebase index errors
       const gradeSnap = await getDocs(
         query(
           collection(db, "student_grades"),
@@ -99,7 +97,6 @@ async function fetchAssessments() {
       gradeSnap.forEach((d) => {
         const data = d.data();
         if (data.published === true) {
-          // Filter in javascript instead!
           myGrades[data.taskId] = data;
         }
       });
@@ -109,7 +106,6 @@ async function fetchAssessments() {
   }
 
   try {
-    // 🚀 THE FIX: Fetch all active assessments and filter them locally to handle complex deployment objects
     const q = query(collection(db, "assessments"));
     const snap = await getDocs(q);
 
@@ -122,14 +118,12 @@ async function fetchAssessments() {
         ? data.createdAt.toDate()
         : new Date();
 
-      // 1. Look for your NEW Active Deployments object structure
       if (data.deployments && Array.isArray(data.deployments)) {
         const deployment = data.deployments.find(
           (d) => d.section === currentSection,
         );
         if (deployment) {
           isAssignedToStudent = true;
-          // Safely extract Firestore Timestamps or standard date strings
           if (deployment.deadline)
             activeDeadline = deployment.deadline.toDate
               ? deployment.deadline.toDate()
@@ -139,9 +133,7 @@ async function fetchAssessments() {
               ? deployment.postDate.toDate()
               : new Date(deployment.postDate);
         }
-      }
-      // 2. Fallback to the OLD simple string array if it was an older assessment
-      else if (data.targetSections && Array.isArray(data.targetSections)) {
+      } else if (data.targetSections && Array.isArray(data.targetSections)) {
         if (data.targetSections.includes(currentSection)) {
           isAssignedToStudent = true;
           if (data.dueDate)
@@ -151,11 +143,10 @@ async function fetchAssessments() {
         }
       }
 
-      // If a match was found, push it to the student's feed
       if (isAssignedToStudent) {
         const isUrgent = activeDeadline
-          ? new Date(activeDeadline) < new Date() // Past due
-          : new Date() - activePostDate > 7 * 24 * 60 * 60 * 1000; // Older than 7 days
+          ? new Date(activeDeadline) < new Date()
+          : new Date() - activePostDate > 7 * 24 * 60 * 60 * 1000;
 
         allAssessments.push({
           id: docSnap.id,
@@ -169,7 +160,7 @@ async function fetchAssessments() {
 
     renderAssessments();
   } catch (error) {
-    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments. Ensure Firestore Security Rules allow read access.</div>`;
+    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments.</div>`;
     console.error("Fetch Error:", error);
   }
 }
@@ -182,7 +173,6 @@ function renderAssessments() {
   const filterStatus = document.getElementById("filterStatus").value;
   const sortOption = document.getElementById("sortDate").value;
 
-  // 1. Filter
   let filtered = allAssessments.filter((ass) => {
     const matchesSearch =
       ass.title.toLowerCase().includes(searchQuery) ||
@@ -194,7 +184,6 @@ function renderAssessments() {
     return matchesSearch && matchesStatus;
   });
 
-  // 2. Sort
   filtered.sort((a, b) => {
     if (sortOption === "newest") return b.postedDate - a.postedDate;
     if (sortOption === "oldest") return a.postedDate - b.postedDate;
@@ -205,7 +194,6 @@ function renderAssessments() {
     }
   });
 
-  // 3. Render
   container.innerHTML = "";
   if (filtered.length === 0) {
     container.innerHTML = `<div class="py-12 text-center text-slate-400 font-medium italic border-2 border-dashed border-slate-200 rounded-xl bg-white">No assignments found for ${escapeHTML(currentSection)}.</div>`;
@@ -219,9 +207,11 @@ function renderAssessments() {
         : ass.type === "Formative"
           ? "bg-green-100 text-green-700 border-green-200"
           : "bg-blue-100 text-blue-700 border-blue-200";
-    const myGrade = myGrades[ass.id];
 
+    // ✨ THE SCORING BADGE LOGIC
+    const myGrade = myGrades[ass.id];
     let urgencyBadge = "";
+
     if (myGrade) {
       urgencyBadge = `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">✅ Scored: ${myGrade.score}</span>`;
     } else {
@@ -229,14 +219,13 @@ function renderAssessments() {
         ? `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">⚠️ Urgent / Past Due</span>`
         : `<span class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1">⏳ Pending Review</span>`;
     }
-    // 🚀 NEW: Dynamically display the exact deadline in the UI if it exists
+
     const deadlineString = ass.dueDate
       ? `<span class="text-[10px] text-slate-400 font-medium ml-auto">Due: ${ass.dueDate.toLocaleDateString()}</span>`
       : `<span class="text-[10px] text-slate-400 font-medium ml-auto">Posted: ${ass.postedDate.toLocaleDateString()}</span>`;
 
     const card = `
-      <div class="bg-white p-5 rounded-xl border ${ass.isUrgent ? "border-rose-300 shadow-sm" : "border-slate-200"} hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center gap-4" onclick="viewAssessmentDetails('${ass.id}')">
-        
+      <div class="bg-white p-5 rounded-xl border ${ass.isUrgent && !myGrade ? "border-rose-300 shadow-sm" : "border-slate-200"} hover:shadow-md transition cursor-pointer flex flex-col sm:flex-row sm:items-center gap-4" onclick="viewAssessmentDetails('${ass.id}')">
         <div class="flex-grow">
           <div class="flex items-center gap-3 mb-2 flex-wrap">
             <span class="${typeColor} text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">${escapeHTML(ass.type)}</span>
@@ -246,7 +235,6 @@ function renderAssessments() {
           <h3 class="text-lg font-bold text-slate-800 leading-tight">${escapeHTML(ass.title)}</h3>
           <p class="text-sm text-slate-500 mt-2 line-clamp-2">${escapeHTML(ass.taskContext || "No context provided.")}</p>
         </div>
-        
         <div class="sm:border-l sm:border-slate-200 sm:pl-4 flex flex-row sm:flex-col items-center justify-between sm:justify-center w-full sm:w-32 gap-2 mt-2 sm:mt-0">
           <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Target File</span>
           <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded truncate max-w-full" title="${escapeHTML(ass.targetPath || "Any")}">${escapeHTML(ass.targetPath || "Any")}</span>
@@ -286,11 +274,9 @@ window.viewAssessmentDetails = function (id) {
   document.getElementById("modalAssTitle").textContent = ass.title;
   document.getElementById("modalAssPath").textContent =
     `Target File: ${ass.targetPath || "Any"}`;
-
   document.getElementById("modalAssContext").textContent =
     ass.taskContext || "No instructions provided.";
   document.getElementById("modalAssRubric").textContent =
     ass.evalCriteria || "No specific criteria provided.";
-
   document.getElementById("assessmentModal").classList.remove("hidden");
 };
