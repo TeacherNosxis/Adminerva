@@ -201,6 +201,11 @@ window.startAutoCheck = async function (
           The codebase below contains files from multiple group members. You MUST identify which files or code blocks belong to this specific student by checking file names (e.g. files named after them) or internal code comments. 
           DO NOT deduct points from ${studentData.name} for errors, bad logic, or missing requirements found in files clearly belonging to other students. Base your score and feedback strictly on ${studentData.name}'s specific contributions. If you cannot definitively tell which file is theirs, evaluate the general structure but assume they contributed positively.
 
+          CRITICAL INSTRUCTION - FEEDBACK TONE & POINT OF VIEW:
+          You MUST write the feedback DIRECTLY to the student. Use second-person pronouns ("you", "your work", "your code"). 
+          NEVER refer to the student by their name in the third person (e.g., NEVER say "${studentData.name} successfully met..." or "Her work demonstrates...").
+          Instead, you must say: "You successfully met..." or "Your work demonstrates...". Sound exactly like a teacher talking directly to their student.
+
           ${rulesText}
           
           Student Code Collection:
