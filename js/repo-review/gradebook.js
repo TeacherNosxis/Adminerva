@@ -28,7 +28,9 @@ let allAssessments = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadFilters();
-  document.getElementById("gbSection").addEventListener("change", loadGrid);
+  document
+    .getElementById("gbSection")
+    .addEventListener("change", updateAssessmentsForSection);
   document.getElementById("gbAssessment").addEventListener("change", loadGrid);
   document.getElementById("gbSort").addEventListener("change", loadGrid);
 });
@@ -62,13 +64,9 @@ async function loadFilters() {
 
     const assSelect = document.getElementById("gbAssessment");
     assSelect.innerHTML =
-      "<option value='' disabled selected>Select an assessment...</option>";
+      "<option value='' disabled selected>Select a section first...</option>";
     assSnap.forEach((d) => {
       allAssessments.push({ id: d.id, ...d.data() });
-      assSelect.insertAdjacentHTML(
-        "beforeend",
-        `<option value="${d.id}">${escapeHTML(d.data().title)} (${escapeHTML(d.data().type)})</option>`,
-      );
     });
   } catch (e) {
     console.error("Gradebook Load Error", e);
@@ -279,4 +277,38 @@ async function fetchCommitStats(student, elementId) {
     statsContainer.innerHTML = `<span class="text-rose-500 italic">Stats unavailable</span>`;
     console.error("Commit fetch error for", student.name, error);
   }
+}
+
+function updateAssessmentsForSection() {
+  const section = document.getElementById("gbSection").value;
+  const assSelect = document.getElementById("gbAssessment");
+  const tbody = document.getElementById("gbTableBody");
+
+  // Reset Assessment dropdown and clear the table
+  assSelect.innerHTML =
+    "<option value='' disabled selected>Select an assessment...</option>";
+  tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium italic">Select an Assessment above to load the matrix.</td></tr>`;
+
+  if (!section) return;
+
+  // Match against the deployments array defined in assessment-studio.js
+  const applicableAssessments = allAssessments.filter((ass) => {
+    return (
+      Array.isArray(ass.deployments) &&
+      ass.deployments.some((d) => d.section === section)
+    );
+  });
+
+  if (applicableAssessments.length === 0) {
+    assSelect.innerHTML =
+      "<option value='' disabled selected>No assessments deployed to this section</option>";
+    return;
+  }
+
+  applicableAssessments.forEach((d) => {
+    assSelect.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${d.id}">${escapeHTML(d.title)} (${escapeHTML(d.type)})</option>`,
+    );
+  });
 }
