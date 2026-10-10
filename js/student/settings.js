@@ -25,6 +25,10 @@ function escapeHTML(str) {
 document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
+      // ✨ UX FIX: Remove the white screen instantly!
+      const pageBody = document.getElementById("pageBody");
+      if (pageBody) pageBody.classList.remove("hidden");
+
       const email = user.email.toLowerCase();
       try {
         const q = query(

@@ -590,7 +590,6 @@ window.executeBulkGrade = async function () {
 
   window.showSubtleLoader("Initializing Bulk Grader...");
 
-  // ✨ NEW: Detailed tracking arrays
   let gradedList = [];
   let skippedList = [];
   let failedList = [];
@@ -619,11 +618,11 @@ window.executeBulkGrade = async function () {
         continue;
       }
 
+      // ✨ UPDATED: 15 second timer indication
       window.showSubtleLoader(
-        `Grading Student ${i + 1} of ${studentsToGrade.length}: ${student.name}<br><span class="text-[10px] text-amber-200">Cooling down API (10s pause)...</span>`,
+        `Grading Student ${i + 1} of ${studentsToGrade.length}: ${student.name} (Cooling down API 15s...)`,
       );
 
-      // Runs Auto-Check and captures the detailed result object
       const result = await window.startAutoCheck(
         student.id,
         repoInfo.owner,
@@ -641,11 +640,10 @@ window.executeBulkGrade = async function () {
         });
       }
 
-      // ✨ NEW: Mandatory 10-second pause between students.
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      // ✨ FIX: 15-second mandatory pause prevents Gemini 429 Token Rate Limits
+      await new Promise((resolve) => setTimeout(resolve, 15000));
     }
 
-    // ✨ NEW: Generate Detailed Logs in F12 Console
     console.log("============= BULK GRADE REPORT =============");
     console.log("🎯 Assessment:", taskName);
     console.log(`✅ Graded (${gradedList.length}):`, gradedList);
@@ -653,23 +651,31 @@ window.executeBulkGrade = async function () {
     console.log(`❌ Failed (${failedList.length}):`, failedList);
     console.log("=============================================");
 
-    // ✨ NEW: Generate Detailed Alert Popup
-    let failString = "";
+    // ✨ NEW: Populate the beautiful HTML Modal instead of an alert box
+    document.getElementById("resGradedCount").textContent = gradedList.length;
+    document.getElementById("resSkippedCount").textContent = skippedList.length;
+    document.getElementById("resFailedCount").textContent = failedList.length;
+
+    const failedContainer = document.getElementById("resFailedSection");
+    const failedUl = document.getElementById("resFailedList");
+
     if (failedList.length > 0) {
-      failString = "\n\n❌ FAILED STUDENTS:\n";
-      failedList.forEach((f) => {
-        failString += `- ${f.name} (${f.reason})\n`;
-      });
+      failedContainer.classList.remove("hidden");
+      failedUl.innerHTML = failedList
+        .map(
+          (f) => `
+            <li class="p-3 hover:bg-rose-50/50 transition flex flex-col gap-1">
+                <span class="font-bold text-slate-800 text-sm">${escapeHTML(f.name)}</span>
+                <span class="text-[11px] text-rose-500 font-mono bg-rose-50 px-2 py-1 rounded w-fit">${escapeHTML(f.reason)}</span>
+            </li>
+        `,
+        )
+        .join("");
+    } else {
+      failedContainer.classList.add("hidden");
     }
 
-    alert(
-      `✅ Bulk Grading Complete for "${taskName}"!\n\n` +
-        `✨ Successfully Graded: ${gradedList.length}\n` +
-        `⏭️ Skipped (Up-To-Date): ${skippedList.length}\n` +
-        `⚠️ Failed: ${failedList.length}` +
-        failString +
-        `\n\n(Press F12 to view the full detailed list in the Console)`,
-    );
+    document.getElementById("bulkResultModal").classList.remove("hidden");
   } catch (e) {
     console.error("Bulk Grading Error", e);
     alert("An error occurred during bulk grading: " + e.message);

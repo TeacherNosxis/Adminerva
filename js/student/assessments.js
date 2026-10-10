@@ -29,10 +29,28 @@ function escapeHTML(str) {
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return;
+
+  // ✨ UX FIX 1: Remove the white screen instantly!
+  const pageBody = document.getElementById("pageBody");
+  if (pageBody) pageBody.classList.remove("hidden");
+
+  // ✨ UX FIX 2: Show the skeleton loader instantly while Firebase thinks!
+  const container = document.getElementById("assignmentsFeed");
+  if (container) {
+    container.innerHTML = `
+        <div class="animate-pulse bg-white p-5 rounded-xl border border-slate-200">
+          <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
+          <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+          <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        </div>
+      `;
+  }
+
   const targetEmail =
     localStorage.getItem("Adminerva_Impersonate") || user.email;
 
   try {
+    // Now that the UI is loading, we can safely do the heavy database queries
     const q = query(
       collection(db, "students"),
       where("email", "==", targetEmail.toLowerCase()),
@@ -55,6 +73,15 @@ onAuthStateChanged(auth, async (user) => {
         });
         selector.addEventListener("change", (e) => {
           currentSection = userProfiles[e.target.value].section;
+
+          // Re-trigger the skeleton if they change sections
+          container.innerHTML = `
+            <div class="animate-pulse bg-white p-5 rounded-xl border border-slate-200">
+              <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
+              <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+              <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+            </div>
+          `;
           fetchAssessments();
         });
       }
@@ -70,13 +97,6 @@ onAuthStateChanged(auth, async (user) => {
 async function fetchAssessments() {
   if (!currentSection) return;
   const container = document.getElementById("assignmentsFeed");
-  container.innerHTML = `
-    <div class="animate-pulse bg-white p-5 rounded-xl border border-slate-200">
-      <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
-      <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
-      <div class="h-4 bg-slate-200 rounded w-1/2"></div>
-    </div>
-  `;
 
   const studentProfile = userProfiles.find((p) => p.section === currentSection);
   const studentId = studentProfile ? studentProfile.id : null;
@@ -94,7 +114,6 @@ async function fetchAssessments() {
         const data = d.data();
         if (data.published === true) myGrades[data.taskId] = data;
       });
-      console.log("Assignments Page Loaded Grades:", myGrades);
     } catch (e) {
       console.warn(
         "Could not fetch grades - Check your Firestore Security Rules!",
@@ -274,7 +293,6 @@ window.viewAssessmentDetails = function (id) {
   document.getElementById("modalAssRubric").textContent =
     ass.evalCriteria || "No specific criteria provided.";
 
-  // ✨ INJECT SCORE INTO MODAL
   const scoreArea = document.getElementById("modalScoreArea");
   const myGrade = myGrades[id];
   if (myGrade) {

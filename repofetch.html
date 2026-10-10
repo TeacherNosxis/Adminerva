@@ -289,6 +289,102 @@
       </div>
     </div>
 
+    <!-- ✨ NEW: Bulk Results Modal -->
+    <div
+      id="bulkResultModal"
+      class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden max-h-[90vh]"
+      >
+        <div
+          class="p-5 border-b bg-emerald-600 flex justify-between items-center"
+        >
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            ✅ Bulk Grading Complete
+          </h2>
+          <button
+            onclick="
+              document.getElementById('bulkResultModal').classList.add('hidden')
+            "
+            class="text-emerald-200 hover:text-white text-2xl font-bold"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-6">
+          <!-- Scoreboard -->
+          <div class="grid grid-cols-3 gap-4">
+            <div
+              class="bg-white border border-emerald-200 rounded-xl p-4 text-center shadow-sm"
+            >
+              <span
+                class="block text-3xl font-extrabold text-emerald-600 mb-1"
+                id="resGradedCount"
+                >0</span
+              >
+              <span
+                class="text-[10px] font-bold text-emerald-800 uppercase tracking-widest"
+                >Graded</span
+              >
+            </div>
+            <div
+              class="bg-white border border-blue-200 rounded-xl p-4 text-center shadow-sm"
+            >
+              <span
+                class="block text-3xl font-extrabold text-blue-600 mb-1"
+                id="resSkippedCount"
+                >0</span
+              >
+              <span
+                class="text-[10px] font-bold text-blue-800 uppercase tracking-widest"
+                >Skipped</span
+              >
+            </div>
+            <div
+              class="bg-white border border-rose-200 rounded-xl p-4 text-center shadow-sm"
+            >
+              <span
+                class="block text-3xl font-extrabold text-rose-600 mb-1"
+                id="resFailedCount"
+                >0</span
+              >
+              <span
+                class="text-[10px] font-bold text-rose-800 uppercase tracking-widest"
+                >Failed</span
+              >
+            </div>
+          </div>
+
+          <!-- Detailed Failure List -->
+          <div id="resFailedSection" class="hidden">
+            <h3
+              class="font-bold text-rose-800 text-xs mb-3 uppercase tracking-widest border-b border-rose-200 pb-2 flex items-center gap-2"
+            >
+              <span>⚠️</span> Failure Diagnostics
+            </h3>
+            <div
+              class="bg-white border border-rose-100 rounded-lg p-1 shadow-inner max-h-64 overflow-y-auto"
+            >
+              <ul id="resFailedList" class="divide-y divide-slate-100"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 border-t bg-white flex justify-end">
+          <button
+            onclick="
+              document.getElementById('bulkResultModal').classList.add('hidden')
+            "
+            class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow-md transition tracking-wide text-sm"
+          >
+            Acknowledge & Close
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/repo-review/repofetch.js"></script>
     <script type="module" src="js/repo-review/auto-checker.js?v=2"></script>
