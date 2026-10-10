@@ -406,3 +406,57 @@ function updateAssessmentsForSection() {
     );
   });
 }
+
+// ==========================================
+// ✨ BULK PUBLISH LOGIC
+// ==========================================
+window.bulkPublishCurrentGrid = async function () {
+  const section = document.getElementById("gbSection").value;
+  const taskId = document.getElementById("gbAssessment").value;
+  const taskSelect = document.getElementById("gbAssessment");
+
+  if (!section || !taskId) {
+    return alert("Please select a Class Section and Target Assessment first.");
+  }
+
+  const taskName = taskSelect.options[taskSelect.selectedIndex].text;
+
+  if (
+    !confirm(
+      `Are you sure you want to PUBLISH all grades for "${taskName}"?\n\nStudents in ${section} will immediately see their scores on their dashboard.`,
+    )
+  ) {
+    return;
+  }
+
+  window.showSubtleLoader("Publishing Grades...");
+  let publishedCount = 0;
+
+  try {
+    // Filter the global array for just the current section's students
+    const sectionStudents = allStudents.filter((s) => s.section === section);
+
+    for (const student of sectionStudents) {
+      const gradeDocRef = doc(db, "student_grades", `${student.id}_${taskId}`);
+      const gradeSnap = await getDoc(gradeDocRef);
+
+      // Only publish if the teacher has actually graded this student!
+      if (gradeSnap.exists()) {
+        await setDoc(gradeDocRef, { published: true }, { merge: true });
+        publishedCount++;
+      }
+    }
+
+    alert(
+      `📢 Publish Complete!\n\nSuccessfully made ${publishedCount} grades visible to students for "${taskName}".`,
+    );
+
+    // Refresh the grid so all the switches visually flip to "Visible"
+    await loadGrid();
+  } catch (e) {
+    console.error("Bulk Publish Error", e);
+    alert("An error occurred during publishing: " + e.message);
+  } finally {
+    window.hideSubtleLoader();
+  }
+};
