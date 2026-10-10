@@ -86,48 +86,40 @@ async function loadGrid() {
   tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center"><div class="animate-spin inline-block rounded-full h-6 w-6 border-b-2 border-indigo-600 mb-2"></div><p class="text-slate-400 font-bold text-sm">Crunching data...</p></td></tr>`;
 
   try {
-    // Fetch ALL grades for this specific task
     const gradesSnap = await getDocs(
       query(collection(db, "student_grades"), where("taskId", "==", taskId)),
     );
     const gradeMap = {};
     gradesSnap.forEach((d) => (gradeMap[d.data().studentId] = d.data()));
-    // Filter and Sort Students
+
     const sortMode = document.getElementById("gbSort").value || "lastName";
 
     const classStudents = allStudents
       .filter((s) => s.section === section)
       .sort((a, b) => {
-        // Sort by Needs Grading First
         if (sortMode === "needsGrading") {
           const gradeA = gradeMap[a.id];
           const gradeB = gradeMap[b.id];
           if (!gradeA && gradeB) return -1;
           if (gradeA && !gradeB) return 1;
         }
-
-        // Default: Sort by Last Name
         const getLastName = (name) =>
           name.trim().split(" ").pop().toLowerCase();
         return getLastName(a.name).localeCompare(getLastName(b.name));
       });
 
     tbody.innerHTML = "";
-
-    // 1. Create an array to hold the pending fetch requests
     const pendingStats = [];
 
     classStudents.forEach((student) => {
       const grade = gradeMap[student.id];
 
-      // 1. Repository Link & Commit Stats Format
       let repoStatus = `<span class="text-[10px] bg-rose-50 text-rose-600 font-bold px-2 py-1 rounded border border-rose-200">No Repo Linked</span>`;
       if (student.repoUrl && student.repoUrl !== "unassigned") {
         const cleanRepoUrl = student.repoUrl
           .trim()
           .replace(/\/$/, "")
           .replace(/\.git$/, "");
-        // Clean the username (remove @) so GitHub search works properly
         const cleanUsername = (student.githubUsername || "")
           .replace(/^@/, "")
           .trim();
@@ -141,11 +133,9 @@ async function loadGrid() {
             </div>
           </div>
         `;
-        // Queue the student to fetch stats LATER
         pendingStats.push(student);
       }
 
-      // 2. Score Badge Format
       let scoreBadge = `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border border-slate-200">Needs Grading</span>`;
       let pubToggle = `<span class="text-slate-300 text-xs italic font-medium">Awaiting Score</span>`;
 
@@ -156,14 +146,24 @@ async function loadGrid() {
             : grade.score < 18
               ? "bg-amber-50 text-amber-700 border-amber-200"
               : "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+        // NEW: Extract and render penalty tags for the Gradebook matrix UI
+        let tagsHtml = "";
+        const penaltyTags = grade.penaltyTags || [];
+        if (penaltyTags.length > 0) {
+          tagsHtml = `<div class="flex flex-wrap gap-1 mb-1 mt-1">
+                ${penaltyTags.map((t) => `<span class="bg-rose-50 text-rose-600 text-[8.5px] px-1.5 py-0.5 rounded border border-rose-200 font-extrabold uppercase tracking-wider shadow-sm">${escapeHTML(t)}</span>`).join("")}
+            </div>`;
+        }
+
         scoreBadge = `
                     <div class="flex flex-col gap-1 w-64">
                         <span class="${sColor} px-2 py-0.5 rounded text-lg font-extrabold border inline-block w-12 text-center shadow-sm">${grade.score}</span>
+                        ${tagsHtml}
                         <p class="text-[10px] text-slate-500 whitespace-normal leading-tight line-clamp-2" title="${escapeHTML(grade.feedback)}">${escapeHTML(grade.feedback)}</p>
                     </div>
                 `;
 
-        // 3. Publish Toggle Switch
         const isPub = grade.published || false;
         pubToggle = `
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -174,7 +174,6 @@ async function loadGrid() {
                 `;
       }
 
-      // Render Row
       tbody.insertAdjacentHTML(
         "beforeend",
         `
@@ -196,7 +195,6 @@ async function loadGrid() {
       return;
     }
 
-    // PHASE 1: Lightning-Fast Concurrent Cache Check
     const studentsNeedingGitHub = [];
 
     await Promise.all(
@@ -213,7 +211,6 @@ async function loadGrid() {
               (Date.now() - cacheData.lastUpdated) / (1000 * 60 * 60);
 
             if (cacheAgeHours < 4) {
-              // CACHE HIT: Render instantly and exit this promise
               statsContainer.innerHTML = `
               <div>Total: <span class="font-bold text-slate-800">${cacheData.totalCount}</span></div>
               <div>Recent: <span class="font-bold ${cacheData.recentCount > 0 ? "text-emerald-600" : "text-rose-500"}">${cacheData.recentCount}</span></div>
@@ -225,12 +222,10 @@ async function loadGrid() {
           console.warn("Cache read error for", student.name, e);
         }
 
-        // CACHE MISS: Add to queue for actual GitHub fetching
         studentsNeedingGitHub.push(student);
       }),
     );
 
-    // PHASE 2: Safe Batched GitHub Fetching (Only for cache misses)
     if (studentsNeedingGitHub.length > 0) {
       const batchSize = 3;
       for (let i = 0; i < studentsNeedingGitHub.length; i += batchSize) {
@@ -243,7 +238,7 @@ async function loadGrid() {
         );
 
         if (i + batchSize < studentsNeedingGitHub.length) {
-          await new Promise((r) => setTimeout(r, 250)); // Cooldown to protect API
+          await new Promise((r) => setTimeout(r, 250));
         }
       }
     }
@@ -253,7 +248,6 @@ async function loadGrid() {
   }
 }
 
-// Database Toggle Engine
 window.matrixTogglePub = async function (studentId, taskId, checkbox) {
   try {
     await setDoc(
@@ -266,7 +260,7 @@ window.matrixTogglePub = async function (studentId, taskId, checkbox) {
     span.className = `ml-3 text-[10px] font-extrabold uppercase tracking-wider ${checkbox.checked ? "text-indigo-600" : "text-slate-400"}`;
   } catch (e) {
     alert("Failed to update visibility");
-    checkbox.checked = !checkbox.checked; // Revert switch if database fails
+    checkbox.checked = !checkbox.checked;
   }
 };
 
@@ -302,7 +296,6 @@ async function fetchGitHubStats(student, elementId) {
       Accept: "application/vnd.github+json",
     };
 
-    // Fetch ALL commits for the repo, just like repofetch.js does
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
       { headers },
@@ -318,7 +311,6 @@ async function fetchGitHubStats(student, elementId) {
 
     const allCommits = await res.json();
 
-    // Apply the exact same fuzzy matching algorithm from repofetch.js
     const studentCommits = allCommits.filter((c) => {
       const authorLogin = (c.author?.login || "").toLowerCase().trim();
       const authorEmail = (c.commit?.author?.email || "").toLowerCase().trim();
@@ -328,11 +320,8 @@ async function fetchGitHubStats(student, elementId) {
       const dbEmail = (student.email || "").toLowerCase().trim();
       const dbName = (student.name || "").toLowerCase().trim();
 
-      // 1. Match by exact GitHub Username
       if (dbUser && authorLogin === dbUser) return true;
-      // 2. Match by Email Address
       if (dbEmail && authorEmail === dbEmail) return true;
-      // 3. Match by Real Name (Fallback)
       if (
         dbName &&
         authorName &&
@@ -357,7 +346,6 @@ async function fetchGitHubStats(student, elementId) {
       <div>Recent: <span class="font-bold ${recentCount > 0 ? "text-emerald-600" : "text-rose-500"}">${recentCount}</span></div>
     `;
 
-    // Save fresh stats to Firestore Cache
     await setDoc(
       doc(db, "github_stats_cache", student.id),
       {
@@ -378,14 +366,12 @@ function updateAssessmentsForSection() {
   const assSelect = document.getElementById("gbAssessment");
   const tbody = document.getElementById("gbTableBody");
 
-  // Reset Assessment dropdown and clear the table
   assSelect.innerHTML =
     "<option value='' disabled selected>Select an assessment...</option>";
   tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium italic">Select an Assessment above to load the matrix.</td></tr>`;
 
   if (!section) return;
 
-  // Match against the deployments array defined in assessment-studio.js
   const applicableAssessments = allAssessments.filter((ass) => {
     return (
       Array.isArray(ass.deployments) &&
@@ -407,9 +393,6 @@ function updateAssessmentsForSection() {
   });
 }
 
-// ==========================================
-// ✨ BULK PUBLISH LOGIC
-// ==========================================
 window.bulkPublishCurrentGrid = async function () {
   const section = document.getElementById("gbSection").value;
   const taskId = document.getElementById("gbAssessment").value;
@@ -433,14 +416,12 @@ window.bulkPublishCurrentGrid = async function () {
   let publishedCount = 0;
 
   try {
-    // Filter the global array for just the current section's students
     const sectionStudents = allStudents.filter((s) => s.section === section);
 
     for (const student of sectionStudents) {
       const gradeDocRef = doc(db, "student_grades", `${student.id}_${taskId}`);
       const gradeSnap = await getDoc(gradeDocRef);
 
-      // Only publish if the teacher has actually graded this student!
       if (gradeSnap.exists()) {
         await setDoc(gradeDocRef, { published: true }, { merge: true });
         publishedCount++;
@@ -451,7 +432,6 @@ window.bulkPublishCurrentGrid = async function () {
       `📢 Publish Complete!\n\nSuccessfully made ${publishedCount} grades visible to students for "${taskName}".`,
     );
 
-    // Refresh the grid so all the switches visually flip to "Visible"
     await loadGrid();
   } catch (e) {
     console.error("Bulk Publish Error", e);

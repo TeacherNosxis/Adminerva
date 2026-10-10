@@ -57,7 +57,6 @@ window.startAutoCheck = async function (
   const cardId = `task-card-${studentId}-${taskId}`;
   const taskCard = document.getElementById(cardId);
 
-  // ✨ HEADLESS PATCH: We no longer abort if the modal is closed. We just skip updating the UI!
   const actionArea = taskCard
     ? taskCard.querySelector(".grade-action-area")
     : null;
@@ -83,6 +82,11 @@ window.startAutoCheck = async function (
     let fileRawText = "";
     let displayPathText = targetFilePath || "Entire Repository";
 
+    // NEW: Triage & Fallback Tracking
+    let autoPenalties = [];
+    let forceFail = false;
+    let failMessage = "";
+
     const repoRes = await fetch(
       `https://api.github.com/repos/${owner}/${repo}`,
       { headers: { Authorization: `Bearer ${ghToken}` } },
@@ -97,6 +101,7 @@ window.startAutoCheck = async function (
       targetFilePath.includes("*") ||
       !targetFilePath.match(/\.[a-zA-Z0-9]+$/)
     ) {
+      // WILDCARD / FOLDER SEARCH LOGIC
       const treeRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/trees/${currentSha}?recursive=1`,
         { headers: { Authorization: `Bearer ${ghToken}` } },
@@ -110,46 +115,53 @@ window.startAutoCheck = async function (
           f.type === "blob" && matcher.test(f.path) && allowedExts.test(f.path),
       );
 
-      if (matchedFiles.length === 0)
-        throw new Error(
-          `No code files found in path: ${targetFilePath || "repository"}`,
-        );
+      if (matchedFiles.length === 0) {
+        forceFail = true;
+        failMessage = `No code files found in path: ${targetFilePath || "repository"}. Please ensure you committed your work.`;
+        autoPenalties.push("Empty Submission");
+      } else {
+        const filesToProcess = matchedFiles.slice(0, 40);
+        updateStatus(`Reading ${filesToProcess.length} File(s)...`);
 
-      const filesToProcess = matchedFiles.slice(0, 40);
-      updateStatus(`Reading ${filesToProcess.length} File(s)...`);
+        let combinedCode = "";
+        let pathsFound = [];
 
-      let combinedCode = "";
-      let pathsFound = [];
-
-      const filePromises = filesToProcess.map(async (file) => {
-        const fileRes = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${currentSha}`,
-          {
-            headers: {
-              Authorization: `Bearer ${ghToken}`,
-              Accept: "application/vnd.github.v3.raw",
+        const filePromises = filesToProcess.map(async (file) => {
+          const fileRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${currentSha}`,
+            {
+              headers: {
+                Authorization: `Bearer ${ghToken}`,
+                Accept: "application/vnd.github.v3.raw",
+              },
             },
-          },
-        );
-        if (fileRes.ok) return { path: file.path, text: await fileRes.text() };
-        return null;
-      });
+          );
+          if (fileRes.ok)
+            return { path: file.path, text: await fileRes.text() };
+          return null;
+        });
 
-      const fetchedFiles = await Promise.all(filePromises);
-      fetchedFiles.forEach((fileObj) => {
-        if (fileObj && fileObj.text.trim()) {
-          combinedCode += `\n\n--- FILE: ${fileObj.path} ---\n${fileObj.text}`;
-          pathsFound.push(fileObj.path.split("/").pop());
+        const fetchedFiles = await Promise.all(filePromises);
+        fetchedFiles.forEach((fileObj) => {
+          if (fileObj && fileObj.text.trim()) {
+            combinedCode += `\n\n--- FILE: ${fileObj.path} ---\n${fileObj.text}`;
+            pathsFound.push(fileObj.path.split("/").pop());
+          }
+        });
+
+        if (!combinedCode.trim()) {
+          forceFail = true;
+          failMessage = "Files found, but contents were empty or unreadable.";
+          autoPenalties.push("Empty Submission");
+        } else {
+          fileRawText = combinedCode;
+          if (pathsFound.length > 1)
+            displayPathText = `${pathsFound[0]} (+${pathsFound.length - 1} files)`;
+          else if (pathsFound.length === 1) displayPathText = pathsFound[0];
         }
-      });
-
-      if (!combinedCode.trim())
-        throw new Error("Files found, but contents were empty or unreadable.");
-      fileRawText = combinedCode;
-      if (pathsFound.length > 1)
-        displayPathText = `${pathsFound[0]} (+${pathsFound.length - 1} files)`;
-      else if (pathsFound.length === 1) displayPathText = pathsFound[0];
+      }
     } else {
+      // EXACT TARGET PATH LOGIC (With Tier-2 Fallback)
       updateStatus("Reading Code...");
       const fileRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/contents/${targetFilePath}?ref=${currentSha}`,
@@ -160,77 +172,161 @@ window.startAutoCheck = async function (
           },
         },
       );
-      if (!fileRes.ok) throw new Error("Could not read file contents.");
-      fileRawText = `\n\n--- FILE: ${targetFilePath} ---\n${(await fileRes.text()) || ""}`;
-      displayPathText = targetFilePath.split("/").pop();
+
+      if (fileRes.ok) {
+        fileRawText = `\n\n--- FILE: ${targetFilePath} ---\n${(await fileRes.text()) || ""}`;
+        displayPathText = targetFilePath.split("/").pop();
+      } else {
+        // FALLBACK INITIATED: File not found at exact path
+        updateStatus("File missing! Scanning repository...");
+
+        const treeRes = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/git/trees/${currentSha}?recursive=1`,
+          { headers: { Authorization: `Bearer ${ghToken}` } },
+        );
+        const treeData = await treeRes.json();
+
+        const expectedFileName = targetFilePath.split("/").pop();
+        const expectedBaseName = expectedFileName.replace(
+          /\.[a-zA-Z0-9]+$/,
+          "",
+        );
+        const expectedDir = targetFilePath
+          .replace(expectedFileName, "")
+          .replace(/\/$/, "");
+
+        let bestMatch = null;
+        for (let f of treeData.tree || []) {
+          if (f.type !== "blob") continue;
+
+          const fName = f.path.split("/").pop();
+          const fBase = fName.replace(/\.[a-zA-Z0-9]+$/, "");
+          const fDir = f.path.replace(fName, "").replace(/\/$/, "");
+
+          // 1. Exact name, wrong folder
+          if (fName === expectedFileName) {
+            bestMatch = f;
+            autoPenalties.push("Wrong Folder");
+            break;
+          }
+          // 2. Missing extension (basename matches)
+          if (fBase === expectedBaseName) {
+            bestMatch = f;
+            if (fDir === expectedDir) {
+              autoPenalties.push("Missing Extension");
+            } else {
+              autoPenalties.push("Wrong Folder");
+              autoPenalties.push("Missing Extension");
+            }
+            break;
+          }
+        }
+
+        if (bestMatch) {
+          const fallbackRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/contents/${bestMatch.path}?ref=${currentSha}`,
+            {
+              headers: {
+                Authorization: `Bearer ${ghToken}`,
+                Accept: "application/vnd.github.v3.raw",
+              },
+            },
+          );
+          fileRawText = `\n\n--- FILE: ${bestMatch.path} ---\n${(await fallbackRes.text()) || ""}`;
+          displayPathText = bestMatch.path;
+        } else {
+          forceFail = true;
+          failMessage =
+            "No matching source code was found. Please ensure you committed your file with the correct name.";
+          autoPenalties.push("Empty Submission");
+        }
+      }
     }
 
-    updateStatus("Evaluating Code...");
-    let rulesText = "No strict objective string rules applied.";
-    if (taskData.rules && taskData.rules.length > 0) {
-      rulesText =
-        "Objective String Filters (Deduct points if the Target Student violates these):\n";
-      taskData.rules.forEach((r) => {
-        rulesText += `- ${r.type}: "${r.value}"\n`;
-      });
-    }
+    let finalScore = 4;
+    let finalFeedback = failMessage;
+    let finalTags = autoPenalties;
 
-    const prompt = `
-          ${taskData.systemPersona || "You are a strict code evaluator."}
-          Task Context: ${taskData.taskContext || "Evaluate general code quality."}
-          Rubric: ${taskData.evalCriteria || "Score based on correctness and structure."}
-          
-          CRITICAL INSTRUCTION - TARGET STUDENT ISOLATION:
-          You are grading ONLY the individual work of student: ${studentData.name} (GitHub username: @${studentData.githubUsername || "unlinked"}).
-          The codebase below contains files from multiple group members. You MUST identify which files or code blocks belong to this specific student by checking file names (e.g. files named after them) or internal code comments. 
-          DO NOT deduct points from ${studentData.name} for errors, bad logic, or missing requirements found in files clearly belonging to other students. Base your score and feedback strictly on ${studentData.name}'s specific contributions. If you cannot definitively tell which file is theirs, evaluate the general structure but assume they contributed positively.
+    // TIER 3: LLM EVALUATION (If code was successfully located)
+    if (!forceFail) {
+      updateStatus("Evaluating Code...");
+      let rulesText = "No strict objective string rules applied.";
+      if (taskData.rules && taskData.rules.length > 0) {
+        rulesText =
+          "Objective String Filters (Deduct points if the Target Student violates these):\n";
+        taskData.rules.forEach((r) => {
+          rulesText += `- ${r.type}: "${r.value}"\n`;
+        });
+      }
 
-          CRITICAL INSTRUCTION - FEEDBACK TONE & POINT OF VIEW:
-          You MUST write the feedback DIRECTLY to the student. Use second-person pronouns ("you", "your work", "your code"). 
-          NEVER refer to the student by their name in the third person. Sound exactly like a teacher talking directly to their student.
+      const prompt = `
+            ${taskData.systemPersona || "You are a strict code evaluator."}
+            Task Context: ${taskData.taskContext || "Evaluate general code quality."}
+            Rubric: ${taskData.evalCriteria || "Score based on correctness and structure."}
+            
+            CRITICAL INSTRUCTION - TARGET STUDENT ISOLATION:
+            You are grading ONLY the individual work of student: ${studentData.name} (GitHub username: @${studentData.githubUsername || "unlinked"}).
+            The codebase below contains files from multiple group members. You MUST identify which files or code blocks belong to this specific student by checking file names (e.g. files named after them) or internal code comments. 
+            DO NOT deduct points from ${studentData.name} for errors, bad logic, or missing requirements found in files clearly belonging to other students. Base your score and feedback strictly on ${studentData.name}'s specific contributions.
 
-          ${rulesText}
-          
-          Student Code Collection:
-          \`\`\`
-          ${fileRawText.substring(0, 80000)} 
-          \`\`\`
-          
-          Evaluate the TARGET STUDENT'S code strictly based on the rubric provided. Calculate the total score carefully by adding up the points earned for each rubric criteria.
-          Return ONLY a valid JSON object matching this exact format:
-          {"score": <number representing the final calculated total score>, "feedback": "<2 to 4 sentences explaining the score breakdown and specific feedback for this student>"}
-    `;
+            MANDATORY PENALTY & FALLBACK RUBRIC:
+            You are an automated grading script. Evaluate the provided code against the rubric, but you MUST apply the following mandatory deductions:
+            ${autoPenalties.length > 0 ? `* Administrative Penalties: The system detected these errors: [${autoPenalties.join(", ")}]. Deduct 3 points for each from the evaluated code quality.` : ""}
+            * Syntax Errors: Deduct up to 5 points based on severity. Add "Syntax Error" to penalty_tags.
+            * Wrong Paradigm / Invalid File Format: If the student submitted Android UI code instead of Console code (or vice-versa), or mixed XML and Java inappropriately, cap their maximum score at 10/20. Add "Paradigm Mismatch" or "Invalid Format" to penalty_tags.
+            * Minimum Score: The final score must NEVER drop below 4. If the code is completely broken or logic is hardcoded to bypass testing, assign a 4 and add "Logic Bypass" to penalty_tags.
 
-    const aiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            response_mime_type: "application/json",
-            temperature: 0.2,
-          },
-        }),
-      },
-    );
+            CRITICAL JSON OUTPUT FORMAT:
+            You MUST return your evaluation strictly as a JSON object with NO markdown formatting, NO backticks, and NO conversational text. Format EXACTLY like this:
+            {"score": <number>, "penalty_tags": ["<tag1>", "<tag2>"], "teacher_note": "<2 to 4 sentences of specific feedback addressed directly to the student explaining the score and any penalties>"}
+            
+            ${rulesText}
+            
+            Student Code Collection:
+            \`\`\`
+            ${fileRawText.substring(0, 80000)} 
+            \`\`\`
+      `;
 
-    if (!aiRes.ok)
-      throw new Error(
-        "Automated engine failed to respond. (Check console for API details)",
+      const aiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              response_mime_type: "application/json",
+              temperature: 0.2,
+            },
+          }),
+        },
       );
-    const aiData = await aiRes.json();
 
-    let cleanJson = aiData.candidates[0].content.parts[0].text;
-    cleanJson = cleanJson
-      .replace(/^```json\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-    const parsed = JSON.parse(cleanJson);
+      if (!aiRes.ok)
+        throw new Error(
+          "Automated engine failed to respond. (Check console for API details)",
+        );
+      const aiData = await aiRes.json();
 
-    let finalScore = parsed.score || 0;
-    let finalFeedback = parsed.feedback || "No feedback generated.";
+      let cleanJson = aiData.candidates[0].content.parts[0].text;
+      cleanJson = cleanJson
+        .replace(/^```(json)?\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+      const parsed = JSON.parse(cleanJson);
+
+      finalScore = parsed.score || 4;
+      finalFeedback =
+        parsed.teacher_note || parsed.feedback || "No feedback generated.";
+
+      let aiTags = [];
+      if (Array.isArray(parsed.penalty_tags)) aiTags = parsed.penalty_tags;
+      else if (typeof parsed.penalty_tags === "string")
+        aiTags = [parsed.penalty_tags];
+
+      finalTags = [...new Set([...autoPenalties, ...aiTags])]; // Merge and deduplicate tags
+    }
 
     updateStatus("Saving Grade...");
     const gradeDocId = `${studentId}_${taskId}`;
@@ -241,6 +337,7 @@ window.startAutoCheck = async function (
         taskId,
         score: finalScore,
         feedback: finalFeedback,
+        penaltyTags: finalTags,
         targetPath: displayPathText,
         gradedSha: currentSha,
         gradedAt: serverTimestamp(),
@@ -248,12 +345,12 @@ window.startAutoCheck = async function (
       { merge: true },
     );
 
-    // ✨ HEADLESS PATCH: Only render if DOM elements exist
     if (actionArea) {
       renderGradeResult(
         actionArea,
         finalScore,
         finalFeedback,
+        finalTags,
         displayPathText,
         studentId,
         owner,
@@ -263,7 +360,6 @@ window.startAutoCheck = async function (
       );
     }
 
-    // ✨ RETURN SUCCESS OBJECT
     return { success: true };
   } catch (error) {
     console.error("[Auto-Check] Failed:", error);
@@ -277,7 +373,6 @@ window.startAutoCheck = async function (
       `;
     }
 
-    // ✨ RETURN FAILURE OBJECT WITH THE EXACT REASON
     return { success: false, reason: error.message };
   }
 };
@@ -286,6 +381,7 @@ function renderGradeResult(
   container,
   score,
   feedback,
+  penaltyTags,
   exactPath,
   studentId,
   owner,
@@ -297,11 +393,19 @@ function renderGradeResult(
   if (score < 15) scoreColor = "text-red-600";
   if (score >= 15 && score < 18) scoreColor = "text-yellow-600";
 
+  let tagsHtml = "";
+  if (penaltyTags && penaltyTags.length > 0) {
+    tagsHtml = `<div class="flex flex-wrap gap-1 mb-1 mt-1">
+          ${penaltyTags.map((t) => `<span class="bg-rose-50 text-rose-600 text-[8.5px] px-1.5 py-0.5 rounded border border-rose-200 font-extrabold uppercase tracking-wider shadow-sm">${escapeHTML(t)}</span>`).join("")}
+      </div>`;
+  }
+
   container.innerHTML = `
         <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[360px] shadow-inner">
             <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${score}</div>
             <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
                 <p class="text-[9px] font-mono text-gray-400 truncate mb-1" title="${escapeHTML(exactPath)}">File(s): ${escapeHTML(exactPath)}</p>
+                ${tagsHtml}
                 <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(feedback)}</div>
             </div>
             <div class="flex flex-col items-center justify-center border-l border-gray-200 pl-2 shrink-0 w-12">

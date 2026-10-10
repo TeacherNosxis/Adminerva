@@ -130,7 +130,6 @@ window.fetchAndSyncRepos = async function () {
     let requiresUIRefresh = false;
     let processed = 0;
 
-    // 1. Wrap the existing fetch logic into a reusable helper function
     const syncGroup = async (groupId) => {
       const group = repoGroups[groupId];
       try {
@@ -286,15 +285,10 @@ window.fetchAndSyncRepos = async function () {
       );
     };
 
-    // 2. Execute the sync safely using Chunking / Batches
     const batchSize = 3;
     for (let i = 0; i < groupKeys.length; i += batchSize) {
       const batch = groupKeys.slice(i, i + batchSize);
-
-      // Sync 3 repos at the same time
       await Promise.all(batch.map((groupId) => syncGroup(groupId)));
-
-      // Pause for 300ms before hitting GitHub with the next batch
       if (i + batchSize < groupKeys.length) {
         await new Promise((r) => setTimeout(r, 300));
       }
@@ -467,11 +461,21 @@ window.openGradingModal = async function (studentId, owner, repo) {
 
         const isPub = gradeRecord.published || false;
 
+        // NEW: Extract and render penalty tags directly into the UI
+        let tagsHtml = "";
+        const penaltyTags = gradeRecord.penaltyTags || [];
+        if (penaltyTags.length > 0) {
+          tagsHtml = `<div class="flex flex-wrap gap-1 mb-1 mt-1">
+                ${penaltyTags.map((t) => `<span class="bg-rose-50 text-rose-600 text-[8.5px] px-1.5 py-0.5 rounded border border-rose-200 font-extrabold uppercase tracking-wider shadow-sm">${escapeHTML(t)}</span>`).join("")}
+            </div>`;
+        }
+
         actionAreaHtml = `
               <div class="flex items-center justify-end gap-3 bg-gray-50 p-2 rounded border border-gray-200 w-full sm:w-[360px] shadow-inner">
                   <div class="text-2xl font-bold ${scoreColor} leading-none ml-2 w-10 text-center">${gradeRecord.score}</div>
                   <div class="flex-1 min-w-0 border-l border-gray-200 pl-3 ml-1">
                       <p class="text-[9px] font-bold text-gray-500 uppercase mb-1 tracking-wider">Up to Date</p>
+                      ${tagsHtml}
                       <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(gradeRecord.feedback)}</div>
                   </div>
                   <div class="flex flex-col items-center justify-center border-l border-gray-200 pl-2 shrink-0 w-12">
@@ -537,7 +541,7 @@ window.togglePublishGrade = async function (studentId, taskId, checkbox) {
     checkbox.checked = !checkbox.checked;
   }
 };
-// ✨ ADVANCED BULK GRADING LOGIC
+
 window.openBulkGradeModal = async function () {
   if (!currentClassSection)
     return alert("Please select a section and click 'Fetch & Sync' first.");
@@ -632,7 +636,6 @@ window.executeBulkGrade = async function () {
         continue;
       }
 
-      // ✨ UPDATED: 15 second timer indication
       window.showSubtleLoader(
         `Grading Student ${i + 1} of ${studentsToGrade.length}: ${student.name} (Cooling down API 15s...)`,
       );
@@ -654,7 +657,6 @@ window.executeBulkGrade = async function () {
         });
       }
 
-      // ✨ FIX: 15-second mandatory pause prevents Gemini 429 Token Rate Limits
       await new Promise((resolve) => setTimeout(resolve, 15000));
     }
 
@@ -665,7 +667,6 @@ window.executeBulkGrade = async function () {
     console.log(`❌ Failed (${failedList.length}):`, failedList);
     console.log("=============================================");
 
-    // ✨ NEW: Populate the beautiful HTML Modal instead of an alert box
     document.getElementById("resGradedCount").textContent = gradedList.length;
     document.getElementById("resSkippedCount").textContent = skippedList.length;
     document.getElementById("resFailedCount").textContent = failedList.length;
