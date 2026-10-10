@@ -523,9 +523,8 @@ window.togglePublishGrade = async function (studentId, taskId, checkbox) {
     checkbox.checked = !checkbox.checked;
   }
 };
-
-// ✨ NEW BULK GRADING FUNCTION
-window.bulkGradeAll = async function () {
+// ✨ ADVANCED BULK GRADING LOGIC
+window.openBulkGradeModal = async function () {
   if (!currentClassSection)
     return alert("Please select a section and click 'Fetch & Sync' first.");
 
@@ -537,16 +536,7 @@ window.bulkGradeAll = async function () {
       "No valid student repositories found to grade. Please fetch and sync first.",
     );
 
-  if (
-    !confirm(
-      `Are you sure you want to run the Bulk Auto-Grader?\n\nThis will sequentially evaluate all new commits for all active assignments for ${studentsToGrade.length} students. It may take several minutes to complete. Do not close the window.`,
-    )
-  ) {
-    return;
-  }
-
-  window.showSubtleLoader("Preparing Bulk Auto-Grader...");
-
+  window.showSubtleLoader("Loading active assessments...");
   try {
     const snap = await getDocs(collection(db, "assessments"));
     let activeTasks = [];
@@ -561,60 +551,190 @@ window.bulkGradeAll = async function () {
       }
     });
 
-    if (activeTasks.length === 0)
+    if (activeTasks.length === 0) {
+      window.hideSubtleLoader();
       return alert(
         `No active assignments found deployed to ${currentClassSection}.`,
       );
+    }
 
-    let gradedCount = 0;
-    let skippedCount = 0;
+    const select = document.getElementById("bulkAssessmentSelect");
+    select.innerHTML = "";
+    activeTasks.forEach((t) => {
+      select.insertAdjacentHTML(
+        "beforeend",
+        `<option value="${t.id}">${escapeHTML(t.title)} (${escapeHTML(t.type)})</option>`,
+      );
+    });
 
+    document.getElementById("bulkGradeModal").classList.remove("hidden");
+  } catch (e) {
+    alert("Failed to load assessments: " + e.message);
+  } finally {
+    window.hideSubtleLoader();
+  }
+};
+
+window.executeBulkGrade = async function () {
+  const taskId = document.getElementById("bulkAssessmentSelect").value;
+  const taskSelect = document.getElementById("bulkAssessmentSelect");
+  const taskName = taskSelect.options[taskSelect.selectedIndex].text;
+  const skipGraded = document.getElementById("bulkSkipGraded").checked;
+
+  if (!taskId) return;
+
+  document.getElementById("bulkGradeModal").classList.add("hidden");
+  const studentsToGrade = Object.values(globalStudentsData).filter(
+    (s) => s.latestSha && s.repoUrl && s.repoUrl !== "unassigned",
+  );
+
+  window.showSubtleLoader("Initializing Bulk Grader...");
+
+  let gradedCount = 0;
+  let skippedCount = 0;
+
+  try {
     for (let i = 0; i < studentsToGrade.length; i++) {
       const student = studentsToGrade[i];
       const repoInfo = parseRepoInfo(student.repoUrl);
       if (!repoInfo) continue;
 
-      const gradesQuery = query(
-        collection(db, "student_grades"),
-        where("studentId", "==", student.id),
-      );
-      const gradesSnap = await getDocs(gradesQuery);
-      const existingGrades = {};
-      gradesSnap.forEach((doc) => {
-        existingGrades[doc.data().taskId] = doc.data();
-      });
+      const gradeDocRef = doc(db, "student_grades", `${student.id}_${taskId}`);
+      const gradeSnap = await getDoc(gradeDocRef);
 
-      for (const task of activeTasks) {
-        const gradeRecord = existingGrades[task.id];
-        const isUpToDate =
-          gradeRecord && gradeRecord.gradedSha === student.latestSha;
-
-        if (isUpToDate) {
-          skippedCount++;
-          continue;
+      let shouldSkip = false;
+      if (gradeSnap.exists()) {
+        const gradeData = gradeSnap.data();
+        if (skipGraded) {
+          shouldSkip = true; // Skip immediately to save API calls
+        } else if (gradeData.gradedSha === student.latestSha) {
+          shouldSkip = true; // Skip only if their commit hasn't changed at all
         }
-
-        window.showSubtleLoader(
-          `Grading Student ${i + 1} of ${studentsToGrade.length}<br><strong class="text-blue-200">${escapeHTML(student.name)}</strong><br><span class="text-[10px] opacity-75">${escapeHTML(task.title)}</span>`,
-        );
-
-        // Runs Auto-Check sequentially, waiting for Gemini to finish before moving to the next
-        await window.startAutoCheck(
-          student.id,
-          repoInfo.owner,
-          repoInfo.repo,
-          task.id,
-          student.latestSha,
-        );
-        gradedCount++;
       }
+
+      if (shouldSkip) {
+        skippedCount++;
+        continue;
+      }
+
+      window.showSubtleLoader(
+        `Grading Student ${i + 1} of ${studentsToGrade.length}: ${student.name} (${taskName})`,
+      );
+
+      // Runs sequentially to respect API Rate Limits!
+      await window.startAutoCheck(
+        student.id,
+        repoInfo.owner,
+        repoInfo.repo,
+        taskId,
+        student.latestSha,
+      );
+      gradedCount++;
     }
+
     alert(
-      `✅ Bulk Grading Complete!\n\nCommits Evaluated: ${gradedCount}\nUp-To-Date (Skipped): ${skippedCount}`,
+      `✅ Bulk Grading Complete for "${taskName}"!\n\nCommits Evaluated: ${gradedCount}\nSkipped / Up-To-Date: ${skippedCount}`,
     );
   } catch (e) {
     console.error("Bulk Grading Error", e);
     alert("An error occurred during bulk grading: " + e.message);
+  } finally {
+    window.hideSubtleLoader();
+  }
+};
+// ==========================================
+// ✨ BULK PUBLISH LOGIC
+// ==========================================
+window.openBulkPublishModal = async function () {
+  if (!currentClassSection)
+    return alert("Please select a section and click 'Fetch & Sync' first.");
+
+  const studentsInSection = Object.values(globalStudentsData);
+  if (studentsInSection.length === 0)
+    return alert("No students found. Please fetch and sync first.");
+
+  window.showSubtleLoader("Loading active assessments...");
+  try {
+    const snap = await getDocs(collection(db, "assessments"));
+    let activeTasks = [];
+    snap.forEach((doc) => {
+      const data = doc.data();
+      if (data.deployments && Array.isArray(data.deployments)) {
+        if (data.deployments.some((d) => d.section === currentClassSection))
+          activeTasks.push({ id: doc.id, ...data });
+      } else if (data.targetSections && Array.isArray(data.targetSections)) {
+        if (data.targetSections.includes(currentClassSection))
+          activeTasks.push({ id: doc.id, ...data });
+      }
+    });
+
+    if (activeTasks.length === 0) {
+      window.hideSubtleLoader();
+      return alert(
+        `No active assignments found deployed to ${currentClassSection}.`,
+      );
+    }
+
+    const select = document.getElementById("bulkPublishSelect");
+    select.innerHTML = "";
+    activeTasks.forEach((t) => {
+      select.insertAdjacentHTML(
+        "beforeend",
+        `<option value="${t.id}">${escapeHTML(t.title)} (${escapeHTML(t.type)})</option>`,
+      );
+    });
+
+    document.getElementById("publishSectionName").textContent =
+      currentClassSection;
+    document.getElementById("bulkPublishModal").classList.remove("hidden");
+  } catch (e) {
+    alert("Failed to load assessments: " + e.message);
+  } finally {
+    window.hideSubtleLoader();
+  }
+};
+
+window.executeBulkPublish = async function () {
+  const taskId = document.getElementById("bulkPublishSelect").value;
+  const taskSelect = document.getElementById("bulkPublishSelect");
+  const taskName = taskSelect.options[taskSelect.selectedIndex].text;
+
+  if (!taskId) return;
+
+  if (
+    !confirm(
+      `Are you sure you want to PUBLISH all grades for "${taskName}"?\n\nStudents in ${currentClassSection} will immediately see their scores on their dashboard.`,
+    )
+  ) {
+    return;
+  }
+
+  document.getElementById("bulkPublishModal").classList.add("hidden");
+  const studentsInSection = Object.values(globalStudentsData);
+
+  window.showSubtleLoader("Publishing Grades...");
+
+  let publishedCount = 0;
+
+  try {
+    for (let i = 0; i < studentsInSection.length; i++) {
+      const student = studentsInSection[i];
+      const gradeDocRef = doc(db, "student_grades", `${student.id}_${taskId}`);
+      const gradeSnap = await getDoc(gradeDocRef);
+
+      // Only publish if the teacher has actually graded this student!
+      if (gradeSnap.exists()) {
+        await setDoc(gradeDocRef, { published: true }, { merge: true });
+        publishedCount++;
+      }
+    }
+
+    alert(
+      `📢 Publish Complete!\n\nSuccessfully made ${publishedCount} grades visible to students for "${taskName}".`,
+    );
+  } catch (e) {
+    console.error("Bulk Publish Error", e);
+    alert("An error occurred during publishing: " + e.message);
   } finally {
     window.hideSubtleLoader();
   }
