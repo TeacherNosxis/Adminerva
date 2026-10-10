@@ -262,6 +262,9 @@ window.startAutoCheck = async function (
         currentSha,
       );
     }
+
+    // ✨ RETURN SUCCESS OBJECT
+    return { success: true };
   } catch (error) {
     console.error("[Auto-Check] Failed:", error);
     if (actionArea) {
@@ -273,6 +276,9 @@ window.startAutoCheck = async function (
           </div>
       `;
     }
+
+    // ✨ RETURN FAILURE OBJECT WITH THE EXACT REASON
+    return { success: false, reason: error.message };
   }
 };
 

@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let centerLinks = "";
   let rightSide = "";
   let logoBlock = "";
-  let navTabsHTML = ""; // 🚀 THE FIX: Initialize this variable to prevent crashes
+  let navTabsHTML = "";
 
   const getStyle = (pageId) =>
     activePage === pageId
@@ -26,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
     ? `<a href="issues.html" class="${getStyle("issues")}">Reports</a>`
     : "";
 
-  // 🚀 THE FIX: Make the gear icon glow if we are currently on the settings page
   const isSettingsPage = activePage === "settings";
   const settingsIconStyle = isSettingsPage
     ? "border-cyan-400 text-cyan-50 shadow-[0_0_15px_rgba(6,182,212,0.6)]"
@@ -75,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
   }
-  // 🚀 THE FIX: Grouped "settings" with "educator" so it gets the exact same navigation layout
+  // ✨ Gradebook cleanly grouped into the Repo/Educator layout
   else if (
     activeModule === "educator" ||
     activeModule === "repo" ||
@@ -87,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="temp-grading.html" class="${getStyle("activity-grader")}">Manual Grader</a>
             <a href="repofetch.html" class="${getStyle("repofetch")}">RepoFetch</a>
             <a href="assessment-studio.html" class="${getStyle("studio")}">Assessment Studio</a>
+            <a href="gradebook.html" class="${getStyle("gradebook")}">Gradebook</a>
             ${adminDirLink}${adminReportsLink}
         `;
     rightSide = `
@@ -117,7 +117,6 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     logoBlock = adminLogoBlock;
   } else if (activeModule === "global") {
-    // 🚀 THE FIX: Changed 'module' to 'activeModule' to stop the Javascript crash
     logoBlock = `
             <div class="flex items-center gap-2 sm:gap-3 font-bold">
                 <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-8 sm:h-10 w-auto object-contain mix-blend-lighten drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">

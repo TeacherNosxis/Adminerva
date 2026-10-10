@@ -2,167 +2,86 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
-    />
-    <title>RepoReview - Gradebook Matrix</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gradebook Matrix | Adminerva</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
+  <body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex">
+    <!-- Sidebar Navigation -->
     <div id="adminerva-nav" data-module="repo" data-page="gradebook"></div>
-    <script src="js/core/adminerva-nav.js"></script>
 
-    <!-- Main Workspace -->
-    <div class="max-w-screen-xl mx-auto w-full p-4 sm:p-6 mt-2 sm:mt-4 flex-1">
+    <main class="flex-1 px-8 py-10 h-screen overflow-y-auto">
+      <header class="mb-8">
+        <h1
+          class="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3"
+        >
+          <span class="text-indigo-600">📊</span> Gradebook Matrix
+        </h1>
+        <p class="text-slate-500 mt-2 font-medium">
+          Audit student scores, missing submissions, and control grade
+          visibility.
+        </p>
+      </header>
+
+      <!-- Matrix Controls -->
       <div
-        class="bg-white p-5 sm:p-6 rounded-lg shadow-md border border-gray-200"
+        class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4"
       >
-        <div
-          class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-end gap-4 mb-6 pb-4 border-b border-gray-200"
-        >
-          <div>
-            <h2 class="text-xl sm:text-2xl font-bold text-gray-800">
-              Sprint Gradebook
-            </h2>
-            <p class="text-xs sm:text-sm text-gray-500 mt-1">
-              View monthly matrices and export raw data for research analysis.
-            </p>
-          </div>
-          <button
-            onclick="exportToCsv()"
-            id="exportCsvBtn"
-            class="hidden w-full sm:w-auto justify-center bg-green-600 text-white px-5 py-3 sm:py-2 rounded font-bold hover:bg-green-700 transition shadow flex items-center gap-2 text-sm"
+        <div class="flex-1">
+          <label
+            class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2"
+            >Class Section</label
           >
-            <span>📥</span> Export to CSV
-          </button>
+          <select
+            id="gbSection"
+            class="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-slate-50 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          ></select>
         </div>
-
-        <!-- Filters -->
-        <div
-          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border border-gray-200"
-        >
-          <div>
-            <label
-              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
-              >Class Section</label
-            >
-            <select
-              id="sectionSelect"
-              class="w-full p-3 sm:p-2 border rounded font-semibold focus:ring-purple-500 bg-white text-base sm:text-sm"
-            ></select>
-          </div>
-          <div>
-            <label
-              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
-              >Year</label
-            >
-            <select
-              id="yearSelect"
-              class="w-full p-3 sm:p-2 border rounded font-semibold focus:ring-purple-500 bg-white text-base sm:text-sm"
-            ></select>
-          </div>
-          <div>
-            <label
-              class="block text-[10px] sm:text-xs font-bold text-gray-600 uppercase mb-1"
-              >Month</label
-            >
-            <select
-              id="monthSelect"
-              class="w-full p-3 sm:p-2 border rounded font-semibold focus:ring-purple-500 bg-white text-base sm:text-sm"
-            >
-              <option value="0">January</option>
-              <option value="1">February</option>
-              <option value="2">March</option>
-              <option value="3">April</option>
-              <option value="4">May</option>
-              <option value="5">June</option>
-              <option value="6">July</option>
-              <option value="7">August</option>
-              <option value="8">September</option>
-              <option value="9">October</option>
-              <option value="10">November</option>
-              <option value="11">December</option>
-            </select>
-          </div>
-          <div class="sm:col-span-2 md:col-span-1 mt-2 sm:mt-0">
-            <button
-              onclick="fetchGradebook()"
-              class="w-full bg-blue-600 text-white px-6 py-3.5 sm:py-2.5 rounded font-bold hover:bg-blue-700 shadow-sm transition text-sm sm:text-base"
-            >
-              Load Matrix
-            </button>
-          </div>
-        </div>
-
-        <!-- Gradebook Matrix -->
-        <div
-          class="mt-6 sm:mt-8 overflow-x-auto w-full touch-pan-x border rounded-lg shadow-sm"
-        >
-          <table class="min-w-[600px] w-full bg-white">
-            <thead class="bg-gray-100 border-b-2 border-gray-200">
-              <tr>
-                <th
-                  class="py-3 px-4 text-left text-[10px] sm:text-xs font-bold text-gray-600 uppercase w-1/4"
-                >
-                  Student
-                </th>
-                <th
-                  class="py-3 px-2 text-center text-[10px] sm:text-xs font-bold text-gray-600 uppercase"
-                >
-                  Week 1
-                </th>
-                <th
-                  class="py-3 px-2 text-center text-[10px] sm:text-xs font-bold text-gray-600 uppercase"
-                >
-                  Week 2
-                </th>
-                <th
-                  class="py-3 px-2 text-center text-[10px] sm:text-xs font-bold text-gray-600 uppercase"
-                >
-                  Week 3
-                </th>
-                <th
-                  class="py-3 px-2 text-center text-[10px] sm:text-xs font-bold text-gray-600 uppercase"
-                >
-                  Week 4
-                </th>
-                <th
-                  class="py-3 px-4 text-center text-[10px] sm:text-xs font-extrabold text-gray-800 uppercase bg-gray-200 border-l border-gray-300"
-                >
-                  Sprint Avg
-                </th>
-              </tr>
-            </thead>
-            <tbody id="gradebookTableBody">
-              <tr>
-                <td
-                  colspan="6"
-                  class="py-8 text-center text-gray-400 italic text-sm"
-                >
-                  Select a section and load the matrix.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="flex-1">
+          <label
+            class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2"
+            >Target Assessment</label
+          >
+          <select
+            id="gbAssessment"
+            class="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-slate-50 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          ></select>
         </div>
       </div>
-    </div>
 
-    <!-- GLOBAL LOADING OVERLAY -->
-    <div
-      id="globalLoader"
-      class="hidden fixed inset-0 bg-gray-900 bg-opacity-85 z-[100] items-center justify-center flex-col"
-    >
+      <!-- The Matrix Table -->
       <div
-        class="animate-spin rounded-full h-12 sm:h-16 w-12 sm:w-16 border-t-4 border-b-4 border-blue-500 border-solid mb-4"
-      ></div>
-      <p class="text-white font-bold text-lg sm:text-xl tracking-wider mb-2">
-        Compiling Data...
-      </p>
-    </div>
+        class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+      >
+        <table class="min-w-full text-left text-sm whitespace-nowrap">
+          <thead
+            class="bg-slate-800 text-white text-[10px] uppercase font-extrabold tracking-widest"
+          >
+            <tr>
+              <th class="px-6 py-4 rounded-tl-xl">Student Roster</th>
+              <th class="px-6 py-4">Repository Status</th>
+              <th class="px-6 py-4">AI Evaluation</th>
+              <th class="px-6 py-4 rounded-tr-xl">Student Visibility</th>
+            </tr>
+          </thead>
+          <tbody id="gbTableBody" class="divide-y divide-slate-100">
+            <tr>
+              <td
+                colspan="4"
+                class="px-6 py-12 text-center text-slate-400 font-medium italic"
+              >
+                Select a Section and Assessment above to load the matrix.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- Core Scripts -->
+    <script src="js/core/adminerva-nav.js"></script>
+    <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/core/auth-guard.js"></script>
     <script type="module" src="js/repo-review/gradebook.js"></script>
-    <script src="js/core/adminerva-loader.js"></script>
   </body>
 </html>

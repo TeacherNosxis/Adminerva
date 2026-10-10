@@ -590,8 +590,10 @@ window.executeBulkGrade = async function () {
 
   window.showSubtleLoader("Initializing Bulk Grader...");
 
-  let gradedCount = 0;
-  let skippedCount = 0;
+  // ✨ NEW: Detailed tracking arrays
+  let gradedList = [];
+  let skippedList = [];
+  let failedList = [];
 
   try {
     for (let i = 0; i < studentsToGrade.length; i++) {
@@ -606,34 +608,67 @@ window.executeBulkGrade = async function () {
       if (gradeSnap.exists()) {
         const gradeData = gradeSnap.data();
         if (skipGraded) {
-          shouldSkip = true; // Skip immediately to save API calls
+          shouldSkip = true;
         } else if (gradeData.gradedSha === student.latestSha) {
-          shouldSkip = true; // Skip only if their commit hasn't changed at all
+          shouldSkip = true;
         }
       }
 
       if (shouldSkip) {
-        skippedCount++;
+        skippedList.push(student.name);
         continue;
       }
 
       window.showSubtleLoader(
-        `Grading Student ${i + 1} of ${studentsToGrade.length}: ${student.name} (${taskName})`,
+        `Grading Student ${i + 1} of ${studentsToGrade.length}: ${student.name}<br><span class="text-[10px] text-amber-200">Cooling down API (10s pause)...</span>`,
       );
 
-      // Runs sequentially to respect API Rate Limits!
-      await window.startAutoCheck(
+      // Runs Auto-Check and captures the detailed result object
+      const result = await window.startAutoCheck(
         student.id,
         repoInfo.owner,
         repoInfo.repo,
         taskId,
         student.latestSha,
       );
-      gradedCount++;
+
+      if (result && result.success) {
+        gradedList.push(student.name);
+      } else {
+        failedList.push({
+          name: student.name,
+          reason: result ? result.reason : "Unknown error",
+        });
+      }
+
+      // ✨ NEW: Mandatory 10-second pause between students.
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+    }
+
+    // ✨ NEW: Generate Detailed Logs in F12 Console
+    console.log("============= BULK GRADE REPORT =============");
+    console.log("🎯 Assessment:", taskName);
+    console.log(`✅ Graded (${gradedList.length}):`, gradedList);
+    console.log(`⏭️ Skipped (${skippedList.length}):`, skippedList);
+    console.log(`❌ Failed (${failedList.length}):`, failedList);
+    console.log("=============================================");
+
+    // ✨ NEW: Generate Detailed Alert Popup
+    let failString = "";
+    if (failedList.length > 0) {
+      failString = "\n\n❌ FAILED STUDENTS:\n";
+      failedList.forEach((f) => {
+        failString += `- ${f.name} (${f.reason})\n`;
+      });
     }
 
     alert(
-      `✅ Bulk Grading Complete for "${taskName}"!\n\nCommits Evaluated: ${gradedCount}\nSkipped / Up-To-Date: ${skippedCount}`,
+      `✅ Bulk Grading Complete for "${taskName}"!\n\n` +
+        `✨ Successfully Graded: ${gradedList.length}\n` +
+        `⏭️ Skipped (Up-To-Date): ${skippedList.length}\n` +
+        `⚠️ Failed: ${failedList.length}` +
+        failString +
+        `\n\n(Press F12 to view the full detailed list in the Console)`,
     );
   } catch (e) {
     console.error("Bulk Grading Error", e);
@@ -642,6 +677,7 @@ window.executeBulkGrade = async function () {
     window.hideSubtleLoader();
   }
 };
+
 // ==========================================
 // ✨ BULK PUBLISH LOGIC
 // ==========================================
