@@ -115,13 +115,15 @@ async function loadGrid() {
 
     tbody.innerHTML = "";
 
+    // 1. Create an array to hold the pending fetch requests
+    const pendingStats = [];
+
     classStudents.forEach((student) => {
       const grade = gradeMap[student.id];
 
       // 1. Repository Link & Commit Stats Format
       let repoStatus = `<span class="text-[10px] bg-rose-50 text-rose-600 font-bold px-2 py-1 rounded border border-rose-200">No Repo Linked</span>`;
       if (student.repoUrl && student.repoUrl !== "unassigned") {
-        // Redirect specifically to the student's commits
         const commitUrl = `${student.repoUrl}/commits?author=${student.githubUsername}`;
         repoStatus = `
           <div class="flex flex-col gap-1 w-32">
@@ -131,8 +133,8 @@ async function loadGrid() {
             </div>
           </div>
         `;
-        // Trigger async fetch for stats
-        fetchCommitStats(student, `stats-${student.id}`);
+        // Queue the student to fetch stats LATER
+        pendingStats.push(student);
       }
 
       // 2. Score Badge Format
@@ -177,13 +179,18 @@ async function loadGrid() {
                     <td class="px-6 py-4">${scoreBadge}</td>
                     <td class="px-6 py-4">${pubToggle}</td>
                 </tr>
-            `,
+        `,
       );
     });
 
     if (classStudents.length === 0) {
       tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium italic">No students found in this section.</td></tr>`;
     }
+
+    // 2. Fire the fetches NOW that the DOM elements exist
+    pendingStats.forEach((student) => {
+      fetchCommitStats(student, `stats-${student.id}`);
+    });
   } catch (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500 font-bold border border-red-200 bg-red-50">Failed to load matrix. Check permissions.</td></tr>`;
