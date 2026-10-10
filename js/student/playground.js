@@ -20,7 +20,7 @@ const languageConfig = {
 
 let editorInstance = null;
 let currentLang = "java";
-let workspaceFiles = {}; // e.g., { "Main.java": { model: <monaco.editor.ITextModel> } }
+let workspaceFiles = {};
 let activeFilename = "";
 
 // ==========================================
@@ -70,16 +70,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     bindUIEvents();
     initResizer();
+    setupWebConsoleHook();
 
-    // Check for Snapshot ID in URL, otherwise load LocalStorage or Default
     const urlParams = new URLSearchParams(window.location.search);
     const snapshotId = urlParams.get("id");
 
-    if (snapshotId) {
-      await loadSnapshot(snapshotId);
-    } else {
-      loadLocalWorkspace();
-    }
+    if (snapshotId) await loadSnapshot(snapshotId);
+    else loadLocalWorkspace();
   });
 });
 
@@ -90,7 +87,6 @@ function createWorkspace(lang, initialFiles) {
   currentLang = lang;
   document.getElementById("languageSelect").value = lang;
 
-  // Destroy old models to prevent memory leaks
   Object.values(workspaceFiles).forEach((f) => f.model.dispose());
   workspaceFiles = {};
 
@@ -109,7 +105,6 @@ function createWorkspace(lang, initialFiles) {
 function addFile(filename, content = "", autoSwitch = true) {
   if (workspaceFiles[filename]) return alert("File already exists!");
 
-  // Determine Monaco syntax based on file extension
   let syntax = languageConfig[currentLang].monaco;
   if (filename.endsWith(".css")) syntax = "css";
   if (filename.endsWith(".js")) syntax = "javascript";
@@ -118,8 +113,11 @@ function addFile(filename, content = "", autoSwitch = true) {
   const model = monaco.editor.createModel(content, syntax);
   workspaceFiles[filename] = { model };
 
-  // Bind Auto-save on every keystroke
-  model.onDidChangeContent(() => triggerAutoSave());
+  model.onDidChangeContent(() => {
+    triggerAutoSave();
+    // Clear Visual Error Squiggles when user edits code
+    monaco.editor.setModelMarkers(model, "judge0", []);
+  });
 
   renderTabs();
   if (autoSwitch) switchTab(filename);
@@ -177,7 +175,7 @@ window.promptNewFile = function () {
 };
 
 // ==========================================
-// 4. STORAGE & SNAPSHOTS
+// 4. STORAGE, ZIP, & SNAPSHOTS
 // ==========================================
 let autoSaveTimeout;
 function triggerAutoSave() {
@@ -208,18 +206,37 @@ function loadLocalWorkspace() {
   }
 }
 
+async function exportZIP() {
+  const btn = document.getElementById("exportZipBtn");
+  btn.innerHTML = `<span class="animate-spin">↻</span> Packing...`;
+  try {
+    const zip = new JSZip();
+    for (const [name, file] of Object.entries(workspaceFiles)) {
+      zip.file(name, file.model.getValue());
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Adminerva_Project_${currentLang}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Failed to export ZIP.");
+  }
+  btn.innerHTML = `📥 Export ZIP`;
+}
+
 async function shareSnapshot() {
   const btn = document.getElementById("snapshotBtn");
   btn.innerHTML = `<span class="animate-spin">↻</span> Generating...`;
-
   const state = {
     lang: currentLang,
     files: {},
     timestamp: new Date().toISOString(),
   };
-  for (const [name, file] of Object.entries(workspaceFiles)) {
+  for (const [name, file] of Object.entries(workspaceFiles))
     state.files[name] = file.model.getValue();
-  }
 
   try {
     const docRef = await addDoc(collection(db, "playground_snapshots"), state);
@@ -228,7 +245,6 @@ async function shareSnapshot() {
     btn.innerHTML = `✅ Link Copied!`;
   } catch (error) {
     btn.innerHTML = `❌ Error`;
-    console.error("Snapshot error:", error);
   }
   setTimeout(() => (btn.innerHTML = `🔗 Share Snapshot`), 3000);
 }
@@ -237,12 +253,10 @@ async function loadSnapshot(id) {
   try {
     const docSnap = await getDoc(doc(db, "playground_snapshots", id));
     if (docSnap.exists()) {
-      const state = docSnap.data();
-      createWorkspace(state.lang, state.files);
-      // Remove ID from URL so they don't overwrite the original link if they share again
+      createWorkspace(docSnap.data().lang, docSnap.data().files);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
-      alert("Snapshot not found. Loading local workspace.");
+      alert("Snapshot not found.");
       loadLocalWorkspace();
     }
   } catch (error) {
@@ -252,7 +266,7 @@ async function loadSnapshot(id) {
 }
 
 // ==========================================
-// 5. EXECUTION ENGINE (JSZip + Judge0)
+// 5. EXECUTION ENGINE & DIAGNOSTICS
 // ==========================================
 async function executeCode() {
   const runBtn = document.getElementById("runBtn");
@@ -262,9 +276,14 @@ async function executeCode() {
   runBtn.disabled = true;
   runBtn.classList.add("opacity-50");
   overlay.classList.remove("hidden");
-  consoleOut.textContent = "";
+
+  // Clear squiggles on new run
+  Object.values(workspaceFiles).forEach((f) =>
+    monaco.editor.setModelMarkers(f.model, "judge0", []),
+  );
 
   if (currentLang === "web") {
+    consoleOut.textContent = "Web Preview Running...\n\n--- Console Logs ---\n";
     executeWebPreview();
     runBtn.disabled = false;
     runBtn.classList.remove("opacity-50");
@@ -272,22 +291,19 @@ async function executeCode() {
     return;
   }
 
+  consoleOut.textContent = "";
   try {
-    // Determine Main file vs Additional files
     const config = languageConfig[currentLang];
     let mainContent =
       workspaceFiles[config.defaultFile]?.model.getValue() || "";
-
-    // If multi-file, zip the rest
     let base64Zip = null;
     const fileKeys = Object.keys(workspaceFiles);
 
     if (fileKeys.length > 1) {
       const zip = new JSZip();
       fileKeys.forEach((name) => {
-        if (name !== config.defaultFile) {
+        if (name !== config.defaultFile)
           zip.file(name, workspaceFiles[name].model.getValue());
-        }
       });
       base64Zip = await zip.generateAsync({ type: "base64" });
     }
@@ -297,7 +313,6 @@ async function executeCode() {
       language_id: config.judge0Id,
       stdin: document.getElementById("stdinInput").value,
     };
-
     if (base64Zip) payload.additional_files = base64Zip;
 
     const res = await fetch(
@@ -308,11 +323,12 @@ async function executeCode() {
         body: JSON.stringify(payload),
       },
     );
-
     const result = await res.json();
 
     if (result.stderr || result.compile_output) {
-      consoleOut.innerHTML = `<span class="text-rose-400">${escapeHTML(result.stderr || result.compile_output)}</span>\n${escapeHTML(result.stdout || "")}`;
+      const errText = result.stderr || result.compile_output;
+      consoleOut.innerHTML = `<span class="text-rose-400">${escapeHTML(errText)}</span>\n${escapeHTML(result.stdout || "")}`;
+      applyVisualDiagnostics(errText, config.defaultFile);
     } else {
       consoleOut.textContent =
         result.stdout || "Program exited with no output.";
@@ -326,25 +342,97 @@ async function executeCode() {
   }
 }
 
+// 🪄 VISUAL DIAGNOSTICS: Map Compiler Errors to Red Squiggles
+function applyVisualDiagnostics(errorText, defaultFile) {
+  const markers = [];
+  const lines = errorText.split("\n");
+  // Simple Regex to catch typical "filename:line_number:" Java/C++ errors
+  const lineRegex = new RegExp(`${defaultFile.replace(".", "\\.")}:(\\d+):`);
+
+  lines.forEach((line) => {
+    const match = line.match(lineRegex);
+    if (match) {
+      const lineNum = parseInt(match[1], 10);
+      markers.push({
+        startLineNumber: lineNum,
+        startColumn: 1,
+        endLineNumber: lineNum,
+        endColumn: 100, // Stretch squiggle across line
+        message: line.trim(),
+        severity: monaco.MarkerSeverity.Error,
+      });
+    }
+  });
+
+  if (markers.length > 0 && workspaceFiles[defaultFile]) {
+    monaco.editor.setModelMarkers(
+      workspaceFiles[defaultFile].model,
+      "judge0",
+      markers,
+    );
+  }
+}
+
+// 🕸️ WEB PREVIEW: Compile HTML/CSS/JS, Inject Timeout Guard & Console Hooks
 function executeWebPreview() {
-  // Simplistic bundler: Injects CSS and JS into the main HTML
   let html = workspaceFiles["index.html"]?.model.getValue() || "";
   let css = "",
     js = "";
 
   for (const [name, file] of Object.entries(workspaceFiles)) {
     if (name.endsWith(".css")) css += `<style>${file.model.getValue()}</style>`;
-    if (name.endsWith(".js")) js += `<script>${file.model.getValue()}</script>`;
+    if (name.endsWith(".js")) {
+      // TIMEOUT GUARD: Inject infinite loop protection (2000ms max)
+      let guardedJS =
+        `window.__adminerva_loop_start = Date.now();\n` +
+        file.model
+          .getValue()
+          .replace(
+            /(for\s*\(.*?\)\s*\{|while\s*\(.*?\)\s*\{|do\s*\{)/g,
+            (match) => {
+              return (
+                match +
+                ` if (Date.now() - window.__adminerva_loop_start > 2000) { console.error('Adminerva Timeout Guard: Infinite loop broken.'); break; } `
+              );
+            },
+          );
+      js += `<script>${guardedJS}</script>`;
+    }
   }
 
-  // Inject just before </head> or </body>
-  if (html.includes("</head>")) html = html.replace("</head>", css + "</head>");
-  else html = css + html;
+  // CONSOLE HOOK: Pipe iframe console.logs back to our Terminal
+  const consoleHook = `
+    <script>
+      const _log = console.log, _warn = console.warn, _err = console.error;
+      console.log = function(...args) { _log(...args); window.parent.postMessage({type: 'console', method: 'log', data: args.join(' ')}, '*'); };
+      console.warn = function(...args) { _warn(...args); window.parent.postMessage({type: 'console', method: 'warn', data: args.join(' ')}, '*'); };
+      console.error = function(...args) { _err(...args); window.parent.postMessage({type: 'console', method: 'error', data: args.join(' ')}, '*'); };
+      window.onerror = function(msg, url, line) { console.error(msg + ' (Line ' + line + ')'); return false; };
+    </script>
+  `;
+
+  if (html.includes("</head>"))
+    html = html.replace("</head>", consoleHook + css + "</head>");
+  else html = consoleHook + css + html;
 
   if (html.includes("</body>")) html = html.replace("</body>", js + "</body>");
   else html += js;
 
   document.getElementById("webPreviewFrame").srcdoc = html;
+}
+
+// Receive messages from iframe console hook
+function setupWebConsoleHook() {
+  window.addEventListener("message", function (e) {
+    if (e.data && e.data.type === "console") {
+      const consoleOut = document.getElementById("consoleOutput");
+      let colorClass = "text-slate-300";
+      if (e.data.method === "warn") colorClass = "text-amber-400";
+      if (e.data.method === "error") colorClass = "text-rose-400";
+      consoleOut.innerHTML += `<div class="${colorClass}">> ${escapeHTML(e.data.data)}</div>`;
+      consoleOut.scrollTop = consoleOut.scrollHeight;
+    }
+  });
 }
 
 // ==========================================
@@ -353,10 +441,11 @@ function executeWebPreview() {
 async function askMinerva() {
   let apiKey = localStorage.getItem("Adminerva_Gemini_Key");
   if (!apiKey) {
-    const proceed = confirm(
-      "No Gemini API Key found!\n\nTo use Minerva AI Tutor, please add your free Gemini key in Account Settings.\n\nWould you like to go to Settings now?",
-    );
-    if (proceed) {
+    if (
+      confirm(
+        "No Gemini API Key found!\n\nTo use Minerva AI Tutor, please add your free Gemini key in Account Settings.\n\nWould you like to go to Settings now?",
+      )
+    ) {
       window.location.href = "student-settings.html";
     }
     return;
@@ -365,15 +454,16 @@ async function askMinerva() {
   const btn = document.getElementById("aiTutorBtn");
   const consoleOut = document.getElementById("consoleOutput");
 
+  // Force open terminal to see the AI response
+  document.getElementById("consoleTab").click();
   btn.innerHTML = `<span class="animate-spin">✨</span> Thinking...`;
 
-  // Construct context from all files and current console output
   let context = `I am a student learning to program in ${currentLang}.\nHere are my files:\n`;
   for (const [name, file] of Object.entries(workspaceFiles)) {
     context += `\n--- ${name} ---\n${file.model.getValue()}\n`;
   }
   const errorText = consoleOut.textContent;
-  if (errorText.includes("Error") || errorText.includes("Exception")) {
+  if (errorText.includes("error") || errorText.includes("Exception")) {
     context += `\n\nI just got this error output:\n${errorText}`;
   }
 
@@ -393,16 +483,10 @@ async function askMinerva() {
     const data = await res.json();
     const reply = data.candidates[0].content.parts[0].text;
 
-    // Print AI response to console
-    consoleOut.innerHTML += `\n\n<span class="text-purple-400 font-bold">--- ✨ Minerva Tutor ---</span>\n<span class="text-purple-300">${escapeHTML(reply)}</span>\n`;
+    consoleOut.innerHTML += `\n\n<span class="text-purple-400 font-bold">--- ✨ Minerva Tutor ---</span>\n<span class="text-purple-300">${escapeHTML(reply)}</span>\n\n`;
     consoleOut.scrollTop = consoleOut.scrollHeight;
   } catch (error) {
-    alert(
-      "Minerva Error: " +
-        error.message +
-        "\nIf your key is invalid, clear your browser local storage and try again.",
-    );
-    localStorage.removeItem("Adminerva_Gemini_Key"); // Clear bad key
+    alert("Minerva Error: " + error.message);
   } finally {
     btn.innerHTML = `✨ Ask Minerva`;
   }
@@ -416,22 +500,36 @@ function bindUIEvents() {
     .getElementById("languageSelect")
     .addEventListener("change", (e) => createWorkspace(e.target.value));
   document.getElementById("runBtn").addEventListener("click", executeCode);
+  document.getElementById("exportZipBtn").addEventListener("click", exportZIP);
+  document.getElementById("saveProjectBtn").addEventListener("click", () => {
+    triggerAutoSave();
+    alert("Workspace Saved Locally!");
+  });
+  document
+    .getElementById("loadProjectBtn")
+    .addEventListener("click", loadLocalWorkspace);
+  document
+    .getElementById("snapshotBtn")
+    .addEventListener("click", shareSnapshot);
+  document.getElementById("aiTutorBtn").addEventListener("click", askMinerva);
+
+  // 🪄 Code Formatter Action
+  document.getElementById("formatBtn").addEventListener("click", () => {
+    editorInstance.getAction("editor.action.formatDocument").run();
+  });
+
   document.getElementById("resetBtn").addEventListener("click", () => {
     if (confirm("Wipe all files and reset workspace?"))
       createWorkspace(currentLang);
   });
+
   document
     .getElementById("clearConsoleBtn")
     .addEventListener(
       "click",
       () => (document.getElementById("consoleOutput").textContent = ""),
     );
-  document
-    .getElementById("snapshotBtn")
-    .addEventListener("click", shareSnapshot);
-  document.getElementById("aiTutorBtn").addEventListener("click", askMinerva);
 
-  // Terminal/Web Tab Toggling
   document.getElementById("consoleTab").addEventListener("click", () => {
     document.getElementById("consoleOutput").classList.remove("hidden");
     document.getElementById("webPreviewContainer").classList.add("hidden");
@@ -469,7 +567,7 @@ function bindUIEvents() {
 
 function updateOutputView() {
   if (currentLang === "web") {
-    document.getElementById("consoleTab").classList.add("hidden");
+    document.getElementById("consoleTab").classList.remove("hidden"); // Kept visible so they can view intercepted console logs
     document.getElementById("previewTab").classList.remove("hidden");
     document.getElementById("previewTab").click();
     document.getElementById("stdinContainer").classList.add("hidden");
@@ -488,10 +586,9 @@ function initResizer() {
   const container = document.getElementById("workspaceContainer");
   let isDragging = false;
 
-  resizer.addEventListener("mousedown", (e) => {
+  resizer.addEventListener("mousedown", () => {
     isDragging = true;
     document.body.style.cursor = "col-resize";
-    // Overlay to prevent iframe from swallowing mouse events during drag
     if (currentLang === "web")
       document.getElementById("executionOverlay").classList.remove("hidden");
   });
@@ -502,14 +599,11 @@ function initResizer() {
     let newLeftWidth =
       ((e.clientX - containerRect.left) / containerRect.width) * 100;
 
-    // Enforce 20% minimums
     if (newLeftWidth < 20) newLeftWidth = 20;
     if (newLeftWidth > 80) newLeftWidth = 80;
 
     leftPane.style.width = `${newLeftWidth}%`;
     rightPane.style.width = `calc(${100 - newLeftWidth}% - 8px)`;
-
-    // Force Monaco to recalculate its internal layout boundaries
     if (editorInstance) editorInstance.layout();
   });
 

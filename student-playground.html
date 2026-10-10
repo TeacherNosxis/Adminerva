@@ -91,6 +91,21 @@
             >
               📂 Load
             </button>
+            <button
+              id="exportZipBtn"
+              class="text-xs font-bold text-slate-600 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-emerald-200 flex items-center gap-1"
+              title="Download Workspace as ZIP"
+            >
+              📥 Export ZIP
+            </button>
+            <div class="h-5 w-px bg-slate-300 mx-1"></div>
+            <button
+              id="formatBtn"
+              class="text-xs font-bold text-slate-600 hover:text-amber-600 bg-slate-100 hover:bg-amber-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-amber-200 flex items-center gap-1"
+              title="Auto-format code indentation"
+            >
+              🪄 Format
+            </button>
             <span
               id="autoSaveIndicator"
               class="text-[10px] text-slate-400 font-medium ml-2 opacity-0 transition-opacity"
@@ -101,38 +116,37 @@
 
         <!-- Right: Execution & Submission -->
         <div class="flex items-center gap-2 ml-auto">
-          
-          <button id="snapshotBtn" class="text-xs font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-indigo-200 flex items-center gap-1" title="Generate Shareable Link">
+          <button
+            id="snapshotBtn"
+            class="text-xs font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-indigo-200 flex items-center gap-1"
+            title="Generate Shareable Link"
+          >
             🔗 Share Snapshot
           </button>
 
-          <button id="aiTutorBtn" class="text-xs font-bold text-slate-500 hover:text-purple-600 bg-slate-100 hover:bg-purple-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-purple-200 flex items-center gap-1" title="Ask Minerva for Hints">
+          <button
+            id="aiTutorBtn"
+            class="text-xs font-bold text-slate-500 hover:text-purple-600 bg-slate-100 hover:bg-purple-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-purple-200 flex items-center gap-1"
+            title="Ask Minerva for Hints"
+          >
             ✨ Ask Minerva
           </button>
 
           <!-- Disabled Submission Button -->
           <div class="relative group">
-            <button disabled class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded border border-slate-200 opacity-60 cursor-not-allowed flex items-center gap-1">
+            <button
+              disabled
+              class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded border border-slate-200 opacity-60 cursor-not-allowed flex items-center gap-1"
+            >
               <span>📤</span> Submit
             </button>
           </div>
-          
-          <button id="runBtn" class="text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-5 py-1.5 rounded-lg transition shadow-md flex items-center gap-2 border border-emerald-700 ml-2">
-            <span>▶</span> Run
-          </button>
-        </div>
 
           <button
-            id="resetBtn"
-            class="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition border border-slate-200 shadow-sm"
-          >
-            Reset Files
-          </button>
-          <button
             id="runBtn"
-            class="text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-6 py-2 rounded-lg transition shadow-md flex items-center gap-2 border border-emerald-700"
+            class="text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-5 py-1.5 rounded-lg transition shadow-md flex items-center gap-2 border border-emerald-700 ml-2"
           >
-            <span>▶</span> Run Code
+            <span>▶</span> Run
           </button>
         </div>
       </header>
