@@ -8,10 +8,10 @@
     />
     <title>Code Playground | Student Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Monaco Editor Loader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <!-- JSZip for bundling multi-file projects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-      /* Hide scrollbar for the output frame but allow scrolling */
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
@@ -19,13 +19,27 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
+      /* Custom scrollbar for editor/output */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
     </style>
   </head>
   <body
     class="bg-slate-50 font-sans text-slate-800 h-screen flex flex-col hidden overflow-hidden"
     id="pageBody"
   >
-    <!-- ✨ Notice the new data-module and data-page -->
     <div
       id="adminerva-nav"
       data-module="student-playground"
@@ -35,10 +49,11 @@
     <main class="flex-grow flex flex-col w-full h-[calc(100vh-4rem)]">
       <!-- IDE Toolbar -->
       <header
-        class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-10 shadow-sm"
+        class="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap justify-between items-center gap-3 shrink-0 z-10 shadow-sm relative"
       >
-        <div class="flex items-center gap-3 w-full sm:w-auto">
-          <div class="flex items-center gap-2">
+        <!-- Left: Workspace Controls -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 mr-2">
             <span class="text-xl">⚡</span>
             <h1
               class="text-lg font-extrabold text-slate-900 tracking-tight hidden md:block"
@@ -47,12 +62,9 @@
             </h1>
           </div>
 
-          <div class="h-6 w-px bg-slate-300 hidden sm:block mx-2"></div>
-
-          <!-- Language Selector -->
           <select
             id="languageSelect"
-            class="w-full sm:w-auto text-sm border-slate-300 rounded-md shadow-sm focus:ring-cyan-500 focus:border-cyan-500 font-bold bg-slate-50 px-3 py-2 text-slate-700 cursor-pointer outline-none border transition"
+            class="text-sm border-slate-300 rounded-md shadow-sm focus:ring-cyan-500 focus:border-cyan-500 font-bold bg-slate-50 px-3 py-1.5 text-slate-700 cursor-pointer outline-none border transition"
           >
             <option value="java" selected>Java (JDK 17)</option>
             <option value="python">Python 3</option>
@@ -62,23 +74,59 @@
             <option value="dart">Dart</option>
           </select>
 
-          <!-- Template Selector -->
-          <select
-            id="templateSelect"
-            class="hidden sm:block text-sm border-slate-300 rounded-md shadow-sm focus:ring-cyan-500 focus:border-cyan-500 font-medium bg-white px-3 py-2 text-slate-600 cursor-pointer outline-none border transition max-w-[150px]"
-          >
-            <option value="default">Hello World</option>
-            <option value="loop">For Loop Demo</option>
-            <option value="oop">Basic OOP Class</option>
-          </select>
+          <!-- Project Management -->
+          <div class="h-5 w-px bg-slate-300 mx-1"></div>
+          <div class="flex items-center gap-2">
+            <button
+              id="saveProjectBtn"
+              class="text-xs font-bold text-slate-600 hover:text-cyan-600 bg-slate-100 hover:bg-cyan-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-cyan-200 flex items-center gap-1"
+              title="Save Workspace locally"
+            >
+              💾 Save
+            </button>
+            <button
+              id="loadProjectBtn"
+              class="text-xs font-bold text-slate-600 hover:text-cyan-600 bg-slate-100 hover:bg-cyan-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-cyan-200 flex items-center gap-1"
+              title="Load Saved Workspace"
+            >
+              📂 Load
+            </button>
+            <span
+              id="autoSaveIndicator"
+              class="text-[10px] text-slate-400 font-medium ml-2 opacity-0 transition-opacity"
+              >Saved locally just now</span
+            >
+          </div>
         </div>
 
-        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <!-- Right: Execution & Submission -->
+        <div class="flex items-center gap-2 ml-auto">
+          
+          <button id="snapshotBtn" class="text-xs font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-indigo-200 flex items-center gap-1" title="Generate Shareable Link">
+            🔗 Share Snapshot
+          </button>
+
+          <button id="aiTutorBtn" class="text-xs font-bold text-slate-500 hover:text-purple-600 bg-slate-100 hover:bg-purple-50 px-3 py-1.5 rounded transition border border-slate-200 hover:border-purple-200 flex items-center gap-1" title="Ask Minerva for Hints">
+            ✨ Ask Minerva
+          </button>
+
+          <!-- Disabled Submission Button -->
+          <div class="relative group">
+            <button disabled class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded border border-slate-200 opacity-60 cursor-not-allowed flex items-center gap-1">
+              <span>📤</span> Submit
+            </button>
+          </div>
+          
+          <button id="runBtn" class="text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-5 py-1.5 rounded-lg transition shadow-md flex items-center gap-2 border border-emerald-700 ml-2">
+            <span>▶</span> Run
+          </button>
+        </div>
+
           <button
             id="resetBtn"
             class="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition border border-slate-200 shadow-sm"
           >
-            Reset Code
+            Reset Files
           </button>
           <button
             id="runBtn"
@@ -91,51 +139,71 @@
 
       <!-- Workspace Area -->
       <div
-        class="flex-grow flex flex-col lg:flex-row overflow-hidden bg-slate-900"
+        class="flex-grow flex overflow-hidden bg-[#0d1117] w-full"
+        id="workspaceContainer"
       >
-        <!-- Left Pane: Code Editor -->
+        <!-- Left Pane: Multi-File Code Editor -->
         <div
-          class="w-full lg:w-3/5 h-1/2 lg:h-full flex flex-col border-b lg:border-b-0 lg:border-r border-slate-700 relative"
+          id="editorPane"
+          class="flex flex-col h-full relative"
+          style="width: 60%; min-width: 25%"
         >
+          <!-- File Tabs Bar -->
           <div
-            class="bg-slate-800 px-4 py-2 flex justify-between items-center border-b border-slate-700 shrink-0"
+            class="bg-slate-900 border-b border-slate-700 flex items-center overflow-x-auto no-scrollbar shrink-0 h-9"
+            id="fileTabsContainer"
           >
-            <span
-              class="text-xs font-bold text-slate-400 uppercase tracking-widest"
-              id="editorTabLabel"
-              >Main.java</span
+            <!-- Tabs injected via JS -->
+            <button
+              id="addFileBtn"
+              class="text-slate-400 hover:text-white px-3 h-full flex items-center justify-center font-bold text-lg hover:bg-slate-800 transition"
+              title="Add new file"
             >
-            <div class="flex gap-1.5">
-              <div class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
-              <div class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
-              <div class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
-            </div>
+              +
+            </button>
           </div>
+
           <!-- Monaco Mount Point -->
-          <div id="editorContainer" class="flex-grow w-full relative">
+          <div
+            id="editorContainer"
+            class="flex-grow w-full relative bg-[#0f172a]"
+          >
             <div
               id="editorLoading"
-              class="absolute inset-0 flex items-center justify-center bg-slate-900 z-10"
+              class="absolute inset-0 flex items-center justify-center bg-[#0f172a] z-10"
             >
               <span class="text-cyan-400 font-bold animate-pulse text-sm"
-                >Initializing Monaco Engine...</span
+                >Initializing Workspace...</span
               >
             </div>
           </div>
         </div>
 
-        <!-- Right Pane: Output Console / Web Preview -->
+        <!-- Draggable Resizer Splitter -->
         <div
-          class="w-full lg:w-2/5 h-1/2 lg:h-full flex flex-col bg-[#0d1117] relative"
+          id="dragResizer"
+          class="w-1.5 sm:w-2 bg-slate-800 hover:bg-cyan-500 cursor-col-resize shrink-0 z-20 flex items-center justify-center transition-colors group border-x border-slate-700 hover:border-cyan-400"
         >
           <div
-            class="bg-slate-800 px-4 py-2 flex justify-between items-center border-b border-slate-700 shrink-0"
+            class="h-8 w-0.5 bg-slate-600 group-hover:bg-white rounded-full"
+          ></div>
+        </div>
+
+        <!-- Right Pane: Input / Output Console -->
+        <div
+          id="outputPane"
+          class="flex flex-col h-full relative"
+          style="width: calc(40% - 8px); min-width: 20%"
+        >
+          <!-- Output Header -->
+          <div
+            class="bg-slate-900 px-4 flex justify-between items-center border-b border-slate-700 shrink-0 h-9"
           >
-            <div class="flex gap-4">
+            <div class="flex gap-4 h-full items-end">
               <span
                 class="text-xs font-bold text-cyan-400 uppercase tracking-widest border-b-2 border-cyan-400 pb-1 cursor-pointer"
                 id="consoleTab"
-                >Terminal Output</span
+                >Terminal</span
               >
               <span
                 class="text-xs font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition pb-1 cursor-pointer hidden"
@@ -151,17 +219,31 @@
             </button>
           </div>
 
+          <!-- Stdin Input Area -->
+          <div
+            id="stdinContainer"
+            class="bg-slate-800 border-b border-slate-700 shrink-0 p-2"
+          >
+            <label
+              class="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 pl-1"
+              >Standard Input (stdin)</label
+            >
+            <textarea
+              id="stdinInput"
+              class="w-full h-16 bg-slate-900 border border-slate-700 rounded text-xs text-slate-300 p-2 focus:outline-none focus:border-cyan-500 font-mono resize-y"
+              placeholder="Type input for Scanner or input() here..."
+            ></textarea>
+          </div>
+
           <!-- Output Views -->
-          <div class="flex-grow relative overflow-hidden p-4">
-            <!-- Terminal Output (For Java, Python, C#, C++, Dart) -->
+          <div class="flex-grow relative overflow-hidden bg-[#0d1117] p-3">
             <pre
               id="consoleOutput"
-              class="w-full h-full text-sm font-mono text-slate-300 overflow-y-auto no-scrollbar whitespace-pre-wrap break-words"
+              class="w-full h-full text-sm font-mono text-slate-300 overflow-y-auto whitespace-pre-wrap break-words"
             >
-System ready. Waiting for execution...</pre
+Workspace loaded. Waiting for execution...</pre
             >
 
-            <!-- Web Preview (For HTML/CSS/JS) -->
             <div
               id="webPreviewContainer"
               class="hidden absolute inset-0 bg-white"
@@ -173,14 +255,14 @@ System ready. Waiting for execution...</pre
               ></iframe>
             </div>
 
-            <!-- Execution Loader Overlay -->
+            <!-- Execution Loader -->
             <div
               id="executionOverlay"
-              class="hidden absolute inset-0 bg-[#0d1117]/80 backdrop-blur-[2px] flex items-center justify-center z-20"
+              class="hidden absolute inset-0 bg-[#0d1117]/90 backdrop-blur-[2px] flex items-center justify-center z-20"
             >
               <div class="flex flex-col items-center gap-3">
                 <svg
-                  class="animate-spin h-6 w-6 text-emerald-500"
+                  class="animate-spin h-8 w-8 text-emerald-500"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -201,7 +283,7 @@ System ready. Waiting for execution...</pre
                 </svg>
                 <span
                   class="text-xs font-bold text-emerald-400 tracking-widest uppercase"
-                  >Compiling Code...</span
+                  >Building & Compiling...</span
                 >
               </div>
             </div>
@@ -210,11 +292,9 @@ System ready. Waiting for execution...</pre
       </div>
     </main>
 
-    <!-- Adminerva Core Scripts -->
     <script src="js/core/adminerva-nav.js"></script>
     <script src="js/core/adminerva-loader.js"></script>
     <script type="module" src="js/core/auth-guard.js"></script>
-    <!-- Playground Logic -->
     <script type="module" src="js/student/playground.js"></script>
   </body>
 </html>

@@ -162,3 +162,74 @@ if (repoForm) {
     }
   });
 }
+// ==========================================
+// BYOK: GEMINI API KEY MANAGEMENT
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  const keyInput = document.getElementById("geminiApiKeyInput");
+  const toggleBtn = document.getElementById("toggleKeyVisibilityBtn");
+  const form = document.getElementById("geminiKeyForm");
+  const removeBtn = document.getElementById("removeKeyBtn");
+  const statusBox = document.getElementById("apiKeyStatus");
+
+  if (!form || !keyInput) return;
+
+  // Load existing key from localStorage if present
+  const storedKey = localStorage.getItem("Adminerva_Gemini_Key");
+  if (storedKey) {
+    keyInput.value = storedKey;
+    removeBtn?.classList.remove("hidden");
+  }
+
+  // Toggle Visibility between Password & Plaintext
+  toggleBtn?.addEventListener("click", () => {
+    const isPassword = keyInput.type === "password";
+    keyInput.type = isPassword ? "text" : "password";
+    toggleBtn.textContent = isPassword ? "Hide" : "Show";
+  });
+
+  // Save Key to LocalStorage
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const val = keyInput.value.trim();
+
+    if (!val) {
+      statusBox.textContent = "Please enter an API key.";
+      statusBox.className =
+        "text-xs font-bold text-center text-amber-500 mt-2 block";
+      statusBox.classList.remove("hidden");
+      return;
+    }
+
+    // Basic format sanity check for Gemini Keys
+    if (!val.startsWith("AIza")) {
+      statusBox.textContent =
+        "Warning: Valid Gemini keys typically begin with 'AIza'.";
+      statusBox.className =
+        "text-xs font-bold text-center text-amber-500 mt-2 block";
+      statusBox.classList.remove("hidden");
+    }
+
+    localStorage.setItem("Adminerva_Gemini_Key", val);
+    removeBtn?.classList.remove("hidden");
+
+    statusBox.textContent = "✅ Gemini API Key saved locally!";
+    statusBox.className =
+      "text-xs font-bold text-center text-emerald-500 mt-2 block";
+    statusBox.classList.remove("hidden");
+    setTimeout(() => statusBox.classList.add("hidden"), 3000);
+  });
+
+  // Remove Key
+  removeBtn?.addEventListener("click", () => {
+    localStorage.removeItem("Adminerva_Gemini_Key");
+    keyInput.value = "";
+    removeBtn.classList.add("hidden");
+
+    statusBox.textContent = "API Key removed.";
+    statusBox.className =
+      "text-xs font-bold text-center text-slate-500 mt-2 block";
+    statusBox.classList.remove("hidden");
+    setTimeout(() => statusBox.classList.add("hidden"), 3000);
+  });
+});

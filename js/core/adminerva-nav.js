@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="text-lg sm:text-xl leading-none">⚙️</span>
         </a>`;
 
-  // ✨ NEW: Global Report Issue Icon
+  // Global Report Issue Icon
   const reportIcon = `
         <button onclick="document.getElementById('bug-modal').classList.remove('hidden')" class="bg-gray-800/80 border border-gray-700 hover:border-rose-400 text-gray-400 hover:text-rose-400 p-2 sm:p-2 rounded transition-all duration-300 flex items-center justify-center mr-2 sm:mr-4" title="Report Issue">
             <span class="text-lg sm:text-xl leading-none">🐞</span>
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
     `;
 
-  // ✨ NEW: Student Interactive Dropdown Block
+  // Student Interactive Dropdown Block
   const studentLogoBlock = `
         <div class="relative group cursor-pointer py-1">
             <div class="flex items-center gap-2 sm:gap-3 font-bold transition">
@@ -97,8 +97,11 @@ document.addEventListener("DOMContentLoaded", () => {
     rightSide = `
             <div class="flex items-center">
                 ${reportIcon}
-                <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
-                <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 py-1">
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-tight cursor-pointer">Sign Out</button>
+                    <span id="userEmailDisplay" class="text-[9px] sm:text-[10px] text-slate-400 leading-tight truncate max-w-[130px] my-0.5"></span>
+                    <span class="text-[8px] sm:text-[9px] font-bold text-cyan-500 uppercase tracking-widest leading-tight">Student</span>
+                </div>
             </div>
         `;
     logoBlock = studentLogoBlock;
@@ -112,8 +115,11 @@ document.addEventListener("DOMContentLoaded", () => {
     rightSide = `
             <div class="flex items-center">
                 ${reportIcon}
-                <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
-                <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 py-1">
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-tight cursor-pointer">Sign Out</button>
+                    <span id="userEmailDisplay" class="text-[9px] sm:text-[10px] text-slate-400 leading-tight truncate max-w-[130px] my-0.5"></span>
+                    <span class="text-[8px] sm:text-[9px] font-bold text-cyan-500 uppercase tracking-widest leading-tight">Student</span>
+                </div>
             </div>
         `;
     logoBlock = studentLogoBlock;
@@ -190,7 +196,9 @@ document.addEventListener("DOMContentLoaded", () => {
     rightSide = `
             <div class="flex items-center">
                 ${reportIcon}
-                <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 py-1">
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-tight cursor-pointer mb-1">Sign Out</button>
+                </div>
             </div>
     `;
     navTabsHTML = `

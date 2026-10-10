@@ -98,6 +98,87 @@
               required
             />
           </div>
+          <!-- ✨ Minerva AI Tutor BYOK Settings Card -->
+          <div
+            class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200 mt-6"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <h3
+                class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2"
+              >
+                <span class="text-purple-500">✨</span> Minerva AI Tutor (BYOK)
+              </h3>
+              <span
+                class="text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full"
+                >Google Gemini API</span
+              >
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 mb-4">
+              Connect your personal Gemini API key to receive instant Socratic
+              hints and debugging guidance in the Code Playground. Your key is
+              stored locally on this machine and is never shared.
+            </p>
+
+            <form id="geminiKeyForm" class="space-y-4">
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label
+                    class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide"
+                    >Gemini API Key</label
+                  >
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-[11px] font-bold text-cyan-600 hover:text-cyan-700 hover:underline flex items-center gap-1"
+                  >
+                    Get Free Key ↗
+                  </a>
+                </div>
+                <div class="relative">
+                  <input
+                    type="password"
+                    id="geminiApiKeyInput"
+                    class="w-full rounded-md border border-slate-300 px-3 py-2 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono pr-16"
+                    placeholder="AIzaSy..."
+                    autocomplete="off"
+                  />
+                  <button
+                    type="button"
+                    id="toggleKeyVisibilityBtn"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 px-2 py-1"
+                  >
+                    Show
+                  </button>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">
+                  Keys are free via Google AI Studio with up to 15 requests per
+                  minute at no cost.
+                </p>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <button
+                  type="submit"
+                  id="saveKeyBtn"
+                  class="flex-1 bg-purple-600 text-white font-bold py-2.5 sm:py-2 px-4 rounded-md hover:bg-purple-700 transition shadow-sm text-sm"
+                >
+                  Save Key
+                </button>
+                <button
+                  type="button"
+                  id="removeKeyBtn"
+                  class="text-xs font-bold text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-md border border-rose-200 transition hidden"
+                >
+                  Remove
+                </button>
+              </div>
+              <p
+                id="apiKeyStatus"
+                class="text-xs sm:text-sm font-medium text-center hidden mt-2"
+              ></p>
+            </form>
+          </div>
 
           <button
             type="submit"
