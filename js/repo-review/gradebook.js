@@ -302,8 +302,9 @@ async function fetchGitHubStats(student, elementId) {
       Accept: "application/vnd.github+json",
     };
 
+    // Fetch ALL commits for the repo, just like repofetch.js does
     const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(author)}&per_page=100`,
+      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
       { headers },
     );
 
@@ -315,17 +316,38 @@ async function fetchGitHubStats(student, elementId) {
       throw new Error(`HTTP ${res.status}`);
     }
 
-    const commits = await res.json();
-    let totalCount = commits.length;
-    const linkHeader = res.headers.get("link");
-    if (linkHeader) {
-      const match = linkHeader.match(/page=(\d+)>; rel="last"/);
-      if (match) totalCount = parseInt(match[1], 10);
-    }
+    const allCommits = await res.json();
+
+    // Apply the exact same fuzzy matching algorithm from repofetch.js
+    const studentCommits = allCommits.filter((c) => {
+      const authorLogin = (c.author?.login || "").toLowerCase().trim();
+      const authorEmail = (c.commit?.author?.email || "").toLowerCase().trim();
+      const authorName = (c.commit?.author?.name || "").toLowerCase().trim();
+
+      const dbUser = author.toLowerCase();
+      const dbEmail = (student.email || "").toLowerCase().trim();
+      const dbName = (student.name || "").toLowerCase().trim();
+
+      // 1. Match by exact GitHub Username
+      if (dbUser && authorLogin === dbUser) return true;
+      // 2. Match by Email Address
+      if (dbEmail && authorEmail === dbEmail) return true;
+      // 3. Match by Real Name (Fallback)
+      if (
+        dbName &&
+        authorName &&
+        (dbName === authorName || authorName.includes(dbName.split(" ")[0]))
+      )
+        return true;
+
+      return false;
+    });
+
+    const totalCount = studentCommits.length;
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const recentCount = commits.filter((c) => {
+    const recentCount = studentCommits.filter((c) => {
       const commitDate = c.commit?.author?.date || c.commit?.committer?.date;
       return commitDate && new Date(commitDate) >= sevenDaysAgo;
     }).length;
