@@ -26,15 +26,10 @@ function wildcardToRegex(wildcardPath) {
     !wildcardPath ||
     wildcardPath.trim() === "" ||
     wildcardPath.trim() === "*"
-  ) {
+  )
     return new RegExp(".*");
-  }
   let path = wildcardPath.trim();
-
-  if (!path.match(/\.[a-zA-Z0-9]+$/)) {
-    path = path.replace(/\/$/, "") + "/*";
-  }
-
+  if (!path.match(/\.[a-zA-Z0-9]+$/)) path = path.replace(/\/$/, "") + "/*";
   let escaped = path.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
   const regexStr = escaped.replace(/\\\*/g, ".*");
   return new RegExp(regexStr, "i");
@@ -61,26 +56,24 @@ window.startAutoCheck = async function (
 
   const cardId = `task-card-${studentId}-${taskId}`;
   const taskCard = document.getElementById(cardId);
-  if (!taskCard) return;
 
-  const actionArea = taskCard.querySelector(".grade-action-area");
-  if (!actionArea) return;
+  // ✨ HEADLESS PATCH: We no longer abort if the modal is closed. We just skip updating the UI!
+  const actionArea = taskCard
+    ? taskCard.querySelector(".grade-action-area")
+    : null;
 
   const updateStatus = (message) => {
-    actionArea.innerHTML = `<span class="text-xs font-bold text-blue-500 flex items-center gap-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div> ${message}</span>`;
+    if (actionArea)
+      actionArea.innerHTML = `<span class="text-xs font-bold text-blue-500 flex items-center gap-2"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div> ${message}</span>`;
   };
 
   try {
     updateStatus("Fetching Context...");
-
-    // 1. Fetch BOTH the Task Rules and the specific Student's Info
     const taskSnap = await getDoc(doc(db, "assessments", taskId));
     const studentSnap = await getDoc(doc(db, "students", studentId));
 
     if (!taskSnap.exists()) throw new Error("Blueprint missing in database.");
     const taskData = taskSnap.data();
-
-    // If the student doc doesn't exist for some reason, fallback to generic so it doesn't crash
     const studentData = studentSnap.exists()
       ? studentSnap.data()
       : { name: "Unknown Student", githubUsername: "Unknown" };
@@ -138,10 +131,7 @@ window.startAutoCheck = async function (
             },
           },
         );
-        if (fileRes.ok) {
-          const text = await fileRes.text();
-          return { path: file.path, text: text };
-        }
+        if (fileRes.ok) return { path: file.path, text: await fileRes.text() };
         return null;
       });
 
@@ -156,12 +146,9 @@ window.startAutoCheck = async function (
       if (!combinedCode.trim())
         throw new Error("Files found, but contents were empty or unreadable.");
       fileRawText = combinedCode;
-
-      if (pathsFound.length > 1) {
+      if (pathsFound.length > 1)
         displayPathText = `${pathsFound[0]} (+${pathsFound.length - 1} files)`;
-      } else if (pathsFound.length === 1) {
-        displayPathText = pathsFound[0];
-      }
+      else if (pathsFound.length === 1) displayPathText = pathsFound[0];
     } else {
       updateStatus("Reading Code...");
       const fileRes = await fetch(
@@ -174,12 +161,10 @@ window.startAutoCheck = async function (
         },
       );
       if (!fileRes.ok) throw new Error("Could not read file contents.");
-      const text = await fileRes.text();
-      fileRawText = `\n\n--- FILE: ${targetFilePath} ---\n${text || ""}`;
+      fileRawText = `\n\n--- FILE: ${targetFilePath} ---\n${(await fileRes.text()) || ""}`;
       displayPathText = targetFilePath.split("/").pop();
     }
 
-    // Pass the objective rules to the AI instead of hard-failing locally
     updateStatus("Evaluating Code...");
     let rulesText = "No strict objective string rules applied.";
     if (taskData.rules && taskData.rules.length > 0) {
@@ -192,7 +177,6 @@ window.startAutoCheck = async function (
 
     const prompt = `
           ${taskData.systemPersona || "You are a strict code evaluator."}
-          
           Task Context: ${taskData.taskContext || "Evaluate general code quality."}
           Rubric: ${taskData.evalCriteria || "Score based on correctness and structure."}
           
@@ -203,8 +187,7 @@ window.startAutoCheck = async function (
 
           CRITICAL INSTRUCTION - FEEDBACK TONE & POINT OF VIEW:
           You MUST write the feedback DIRECTLY to the student. Use second-person pronouns ("you", "your work", "your code"). 
-          NEVER refer to the student by their name in the third person (e.g., NEVER say "${studentData.name} successfully met..." or "Her work demonstrates...").
-          Instead, you must say: "You successfully met..." or "Your work demonstrates...". Sound exactly like a teacher talking directly to their student.
+          NEVER refer to the student by their name in the third person. Sound exactly like a teacher talking directly to their student.
 
           ${rulesText}
           
@@ -233,13 +216,10 @@ window.startAutoCheck = async function (
       },
     );
 
-    if (!aiRes.ok) {
-      const errText = await aiRes.text();
-      console.error("[Auto-Check] Gemini API Error Details:", errText);
+    if (!aiRes.ok)
       throw new Error(
         "Automated engine failed to respond. (Check console for API details)",
       );
-    }
     const aiData = await aiRes.json();
 
     let cleanJson = aiData.candidates[0].content.parts[0].text;
@@ -268,28 +248,34 @@ window.startAutoCheck = async function (
       { merge: true },
     );
 
-    renderGradeResult(
-      actionArea,
-      finalScore,
-      finalFeedback,
-      displayPathText,
-      studentId,
-      owner,
-      repo,
-      taskId,
-      currentSha,
-    );
+    // ✨ HEADLESS PATCH: Only render if DOM elements exist
+    if (actionArea) {
+      renderGradeResult(
+        actionArea,
+        finalScore,
+        finalFeedback,
+        displayPathText,
+        studentId,
+        owner,
+        repo,
+        taskId,
+        currentSha,
+      );
+    }
   } catch (error) {
     console.error("[Auto-Check] Failed:", error);
-    actionArea.innerHTML = `
-        <div class="text-right flex flex-col items-end">
-            <span class="text-xs font-bold text-red-500">Check Failed</span>
-            <p class="text-[9px] text-gray-500 max-w-[200px] truncate" title="${escapeHTML(error.message)}">${escapeHTML(error.message)}</p>
-            <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="mt-0.5 text-[10px] font-bold text-blue-500 hover:underline">Retry Check</button>
-        </div>
-    `;
+    if (actionArea) {
+      actionArea.innerHTML = `
+          <div class="text-right flex flex-col items-end">
+              <span class="text-xs font-bold text-red-500">Check Failed</span>
+              <p class="text-[9px] text-gray-500 max-w-[200px] truncate" title="${escapeHTML(error.message)}">${escapeHTML(error.message)}</p>
+              <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="mt-0.5 text-[10px] font-bold text-blue-500 hover:underline">Retry Check</button>
+          </div>
+      `;
+    }
   }
 };
+
 function renderGradeResult(
   container,
   score,
@@ -312,7 +298,6 @@ function renderGradeResult(
                 <p class="text-[9px] font-mono text-gray-400 truncate mb-1" title="${escapeHTML(exactPath)}">File(s): ${escapeHTML(exactPath)}</p>
                 <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(feedback)}</div>
             </div>
-            
             <div class="flex flex-col items-center justify-center border-l border-gray-200 pl-2 shrink-0 w-12">
                 <span id="pub-lbl-${taskId}" class="text-[7px] font-bold text-gray-400 uppercase mb-1 tracking-wider">Hidden</span>
                 <label class="relative inline-flex items-center cursor-pointer">
@@ -320,7 +305,6 @@ function renderGradeResult(
                   <div class="w-6 h-3.5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-blue-500"></div>
                 </label>
             </div>
-            
             <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${taskId}', '${currentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0 border-l border-gray-200 pl-2 ml-1" title="Force Re-evaluate">🔄</button>
         </div>
     `;

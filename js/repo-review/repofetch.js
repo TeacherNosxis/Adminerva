@@ -278,7 +278,6 @@ window.fetchAndSyncRepos = async function () {
         group.apiError = "Network/Fetch Error";
         requiresUIRefresh = true;
       }
-
       processed++;
       window.showSubtleLoader(
         `Syncing GitHub... ${processed}/${groupKeys.length}`,
@@ -303,7 +302,6 @@ function renderGroupedUI(repoGroups) {
 
   Object.values(repoGroups).forEach((group, index) => {
     let membersHtml = "";
-
     group.members.forEach((student) => {
       const safeName = escapeHTML(student.name || "Unknown");
       const safeUser = escapeHTML(student.githubUsername || "");
@@ -318,10 +316,7 @@ function renderGroupedUI(repoGroups) {
             <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border-b last:border-0 hover:bg-gray-50 transition gap-4">
                 <div>
                     <div class="font-bold text-gray-800">${safeName}</div>
-                    <div class="text-xs text-gray-500">
-                      ${safeUser ? `@${safeUser}` : "No GitHub Linked"} &bull; 
-                      <span class="${commitCount > 0 ? "text-green-600 font-bold" : "text-red-500"}">${commitCount} Commits Found</span>
-                    </div>
+                    <div class="text-xs text-gray-500">${safeUser ? `@${safeUser}` : "No GitHub Linked"} &bull; <span class="${commitCount > 0 ? "text-green-600 font-bold" : "text-red-500"}">${commitCount} Commits Found</span></div>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <a href="${profileUrl}" target="_blank" class="${!safeUser ? "pointer-events-none opacity-50" : ""} bg-white text-gray-700 hover:bg-gray-100 border px-3 py-1.5 rounded text-xs font-bold transition shadow-sm">👤 Profile</a>
@@ -335,35 +330,28 @@ function renderGroupedUI(repoGroups) {
     const errorBadge = group.apiError
       ? `<span class="bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30 shrink-0">⚠️ ${escapeHTML(group.apiError)}</span>`
       : "";
-
     const accordionId = `group-content-${index}`;
     const isOpen = index === 0;
-    const displayClass = isOpen ? "flex" : "hidden flex-col";
+    const displayClass = isOpen ? "flex flex-col" : "hidden flex-col";
     const iconTransform = isOpen ? "rotate(180deg)" : "rotate(0deg)";
 
     const cardHtml = `
         <div class="bg-white border rounded-lg shadow-sm mb-4 overflow-hidden">
             <div class="bg-slate-800 p-4 flex justify-between items-center cursor-pointer hover:bg-slate-700 transition gap-4" onclick="toggleAccordion('${accordionId}')">
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-3 mb-1">
-                        <h3 class="font-bold text-white text-lg truncate">${escapeHTML(group.owner)} / ${escapeHTML(group.repo)}</h3>
-                        ${errorBadge}
-                    </div>
+                    <div class="flex items-center gap-3 mb-1"><h3 class="font-bold text-white text-lg truncate">${escapeHTML(group.owner)} / ${escapeHTML(group.repo)}</h3>${errorBadge}</div>
                     <a href="${group.cleanUrl}" target="_blank" class="text-xs text-cyan-400 hover:underline truncate block" onclick="event.stopPropagation()">${group.cleanUrl}</a>
                 </div>
                 <div class="accordion-icon text-slate-300 transform transition-transform duration-200 font-bold shrink-0" id="icon-${accordionId}" style="transform: ${iconTransform}">▼</div>
             </div>
-            <div id="${accordionId}" class="${displayClass} accordion-content">
-                ${membersHtml}
-            </div>
+            <div id="${accordionId}" class="${displayClass} accordion-content">${membersHtml}</div>
         </div>
     `;
     container.insertAdjacentHTML("beforeend", cardHtml);
   });
 
-  if (container.innerHTML === "") {
+  if (container.innerHTML === "")
     container.innerHTML = `<div class="py-8 text-center text-gray-500 font-bold">No repositories found for this section.</div>`;
-  }
 }
 
 window.toggleAccordion = function (id) {
@@ -373,16 +361,15 @@ window.toggleAccordion = function (id) {
 
   document.querySelectorAll(".accordion-content").forEach((content) => {
     content.classList.add("hidden");
-    content.classList.remove("flex");
+    content.classList.remove("flex", "flex-col");
   });
-
   document.querySelectorAll(".accordion-icon").forEach((icn) => {
     icn.style.transform = "rotate(0deg)";
   });
 
   if (isCurrentlyHidden) {
     el.classList.remove("hidden");
-    el.classList.add("flex");
+    el.classList.add("flex", "flex-col");
     icon.style.transform = "rotate(180deg)";
   }
 };
@@ -405,16 +392,27 @@ window.openGradingModal = async function (studentId, owner, repo) {
     let activeTasks = [];
     snap.forEach((doc) => {
       const data = doc.data();
-      const deployments = data.deployments || [];
-      const sectionDeployment = deployments.find(
-        (d) => d.section === currentClassSection,
-      );
-      if (sectionDeployment) {
-        activeTasks.push({
-          id: doc.id,
-          deployment: sectionDeployment,
-          ...data,
-        });
+      if (data.deployments && Array.isArray(data.deployments)) {
+        const sectionDeployment = data.deployments.find(
+          (d) => d.section === currentClassSection,
+        );
+        if (sectionDeployment)
+          activeTasks.push({
+            id: doc.id,
+            deployment: sectionDeployment,
+            ...data,
+          });
+      } else if (data.targetSections && Array.isArray(data.targetSections)) {
+        if (data.targetSections.includes(currentClassSection)) {
+          activeTasks.push({
+            id: doc.id,
+            deployment: {
+              section: currentClassSection,
+              deadline: data.dueDate || new Date().toISOString(),
+            },
+            ...data,
+          });
+        }
       }
     });
 
@@ -462,7 +460,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
                       <p class="text-[9px] font-bold text-gray-500 uppercase mb-1 tracking-wider">Up to Date</p>
                       <div class="text-[10px] text-gray-700 leading-relaxed max-h-24 overflow-y-auto pr-1 whitespace-pre-wrap">${escapeHTML(gradeRecord.feedback)}</div>
                   </div>
-                  
                   <div class="flex flex-col items-center justify-center border-l border-gray-200 pl-2 shrink-0 w-12">
                       <span id="pub-lbl-${task.id}" class="text-[7px] font-bold ${isPub ? "text-blue-600" : "text-gray-400"} uppercase mb-1 tracking-wider">${isPub ? "Visible" : "Hidden"}</span>
                       <label class="relative inline-flex items-center cursor-pointer">
@@ -470,7 +467,6 @@ window.openGradingModal = async function (studentId, owner, repo) {
                         <div class="w-6 h-3.5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                   </div>
-                  
                   <button onclick="window.startAutoCheck('${studentId}', '${owner}', '${repo}', '${task.id}', '${currentStudentSha}')" class="text-gray-400 hover:text-blue-500 transition px-1 shrink-0 border-l border-gray-200 pl-2 ml-1" title="Force Re-evaluate">🔄</button>
               </div>
           `;
@@ -492,9 +488,7 @@ window.openGradingModal = async function (studentId, owner, repo) {
                     <p class="text-[10px] text-gray-500 font-mono truncate">Target: ${escapeHTML(task.targetPath)}</p>
                     <p class="text-[10px] text-red-500 font-bold mt-1">Due: ${new Date(task.deployment.deadline).toLocaleDateString()}</p>
                 </div>
-                <div class="grade-action-area shrink-0">
-                    ${actionAreaHtml}
-                </div>
+                <div class="grade-action-area shrink-0">${actionAreaHtml}</div>
             </div>
         `;
       listContainer.insertAdjacentHTML("beforeend", cardHtml);
@@ -526,6 +520,102 @@ window.togglePublishGrade = async function (studentId, taskId, checkbox) {
   } catch (e) {
     console.error("Failed to publish grade", e);
     alert("Failed to update publish status. Check permissions.");
-    checkbox.checked = !checkbox.checked; // Revert visually
+    checkbox.checked = !checkbox.checked;
+  }
+};
+
+// ✨ NEW BULK GRADING FUNCTION
+window.bulkGradeAll = async function () {
+  if (!currentClassSection)
+    return alert("Please select a section and click 'Fetch & Sync' first.");
+
+  const studentsToGrade = Object.values(globalStudentsData).filter(
+    (s) => s.latestSha && s.repoUrl && s.repoUrl !== "unassigned",
+  );
+  if (studentsToGrade.length === 0)
+    return alert(
+      "No valid student repositories found to grade. Please fetch and sync first.",
+    );
+
+  if (
+    !confirm(
+      `Are you sure you want to run the Bulk Auto-Grader?\n\nThis will sequentially evaluate all new commits for all active assignments for ${studentsToGrade.length} students. It may take several minutes to complete. Do not close the window.`,
+    )
+  ) {
+    return;
+  }
+
+  window.showSubtleLoader("Preparing Bulk Auto-Grader...");
+
+  try {
+    const snap = await getDocs(collection(db, "assessments"));
+    let activeTasks = [];
+    snap.forEach((doc) => {
+      const data = doc.data();
+      if (data.deployments && Array.isArray(data.deployments)) {
+        if (data.deployments.some((d) => d.section === currentClassSection))
+          activeTasks.push({ id: doc.id, ...data });
+      } else if (data.targetSections && Array.isArray(data.targetSections)) {
+        if (data.targetSections.includes(currentClassSection))
+          activeTasks.push({ id: doc.id, ...data });
+      }
+    });
+
+    if (activeTasks.length === 0)
+      return alert(
+        `No active assignments found deployed to ${currentClassSection}.`,
+      );
+
+    let gradedCount = 0;
+    let skippedCount = 0;
+
+    for (let i = 0; i < studentsToGrade.length; i++) {
+      const student = studentsToGrade[i];
+      const repoInfo = parseRepoInfo(student.repoUrl);
+      if (!repoInfo) continue;
+
+      const gradesQuery = query(
+        collection(db, "student_grades"),
+        where("studentId", "==", student.id),
+      );
+      const gradesSnap = await getDocs(gradesQuery);
+      const existingGrades = {};
+      gradesSnap.forEach((doc) => {
+        existingGrades[doc.data().taskId] = doc.data();
+      });
+
+      for (const task of activeTasks) {
+        const gradeRecord = existingGrades[task.id];
+        const isUpToDate =
+          gradeRecord && gradeRecord.gradedSha === student.latestSha;
+
+        if (isUpToDate) {
+          skippedCount++;
+          continue;
+        }
+
+        window.showSubtleLoader(
+          `Grading Student ${i + 1} of ${studentsToGrade.length}<br><strong class="text-blue-200">${escapeHTML(student.name)}</strong><br><span class="text-[10px] opacity-75">${escapeHTML(task.title)}</span>`,
+        );
+
+        // Runs Auto-Check sequentially, waiting for Gemini to finish before moving to the next
+        await window.startAutoCheck(
+          student.id,
+          repoInfo.owner,
+          repoInfo.repo,
+          task.id,
+          student.latestSha,
+        );
+        gradedCount++;
+      }
+    }
+    alert(
+      `✅ Bulk Grading Complete!\n\nCommits Evaluated: ${gradedCount}\nUp-To-Date (Skipped): ${skippedCount}`,
+    );
+  } catch (e) {
+    console.error("Bulk Grading Error", e);
+    alert("An error occurred during bulk grading: " + e.message);
+  } finally {
+    window.hideSubtleLoader();
   }
 };
