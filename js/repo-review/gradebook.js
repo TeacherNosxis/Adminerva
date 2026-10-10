@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadFilters();
   document.getElementById("gbSection").addEventListener("change", loadGrid);
   document.getElementById("gbAssessment").addEventListener("change", loadGrid);
+  document.getElementById("gbSort").addEventListener("change", loadGrid);
 });
 
 async function loadFilters() {
@@ -92,21 +93,46 @@ async function loadGrid() {
     );
     const gradeMap = {};
     gradesSnap.forEach((d) => (gradeMap[d.data().studentId] = d.data()));
+    // Filter and Sort Students
+    const sortMode = document.getElementById("gbSort").value || "lastName";
 
-    // Filter the students down to just the selected section
     const classStudents = allStudents
       .filter((s) => s.section === section)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => {
+        // Sort by Needs Grading First
+        if (sortMode === "needsGrading") {
+          const gradeA = gradeMap[a.id];
+          const gradeB = gradeMap[b.id];
+          if (!gradeA && gradeB) return -1;
+          if (gradeA && !gradeB) return 1;
+        }
+
+        // Default: Sort by Last Name
+        const getLastName = (name) =>
+          name.trim().split(" ").pop().toLowerCase();
+        return getLastName(a.name).localeCompare(getLastName(b.name));
+      });
 
     tbody.innerHTML = "";
 
     classStudents.forEach((student) => {
       const grade = gradeMap[student.id];
 
-      // 1. Repository Link Format
+      // 1. Repository Link & Commit Stats Format
       let repoStatus = `<span class="text-[10px] bg-rose-50 text-rose-600 font-bold px-2 py-1 rounded border border-rose-200">No Repo Linked</span>`;
       if (student.repoUrl && student.repoUrl !== "unassigned") {
-        repoStatus = `<a href="${escapeHTML(student.repoUrl)}" target="_blank" class="text-blue-500 hover:text-blue-700 hover:underline text-xs font-mono bg-blue-50 px-2 py-1 rounded border border-blue-100 transition">View Repository</a>`;
+        // Redirect specifically to the student's commits
+        const commitUrl = `${student.repoUrl}/commits?author=${student.githubUsername}`;
+        repoStatus = `
+          <div class="flex flex-col gap-1 w-32">
+            <a href="${escapeHTML(commitUrl)}" target="_blank" class="text-blue-500 hover:text-blue-700 hover:underline text-center text-xs font-mono bg-blue-50 px-2 py-1 rounded border border-blue-100 transition">View Commits</a>
+            <div id="stats-${student.id}" class="text-[10px] text-slate-500 font-medium mt-1">
+               <span class="animate-pulse">Loading stats...</span>
+            </div>
+          </div>
+        `;
+        // Trigger async fetch for stats
+        fetchCommitStats(student, `stats-${student.id}`);
       }
 
       // 2. Score Badge Format
@@ -180,3 +206,68 @@ window.matrixTogglePub = async function (studentId, taskId, checkbox) {
     checkbox.checked = !checkbox.checked; // Revert switch if database fails
   }
 };
+
+async function fetchCommitStats(student, elementId) {
+  const statsContainer = document.getElementById(elementId);
+  if (!statsContainer) return;
+
+  try {
+    // Extract owner and repo from URL (e.g., https://github.com/owner/repo)
+    const urlParts = new URL(student.repoUrl).pathname
+      .split("/")
+      .filter(Boolean);
+    if (urlParts.length < 2) throw new Error("Invalid Repo URL");
+
+    const owner = urlParts[0];
+    const repo = urlParts[1];
+    const author = student.githubUsername;
+
+    // Calculate date for 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sinceDate = sevenDaysAgo.toISOString();
+
+    // Headers (Important: Add a PAT here later to avoid rate limits)
+    const headers = {
+      Accept: "application/vnd.github.v3+json",
+      // 'Authorization': 'token YOUR_GITHUB_PAT_HERE'
+    };
+
+    // Fetch Total Commits (per_page=1 to get total pages from headers)
+    const totalRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits?author=${author}&per_page=1`,
+      { headers },
+    );
+
+    // Fetch Recent Commits (last 7 days, max 100 for simplicity)
+    const recentRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits?author=${author}&since=${sinceDate}&per_page=100`,
+      { headers },
+    );
+
+    if (!totalRes.ok || !recentRes.ok) throw new Error("API Error");
+
+    const recentData = await recentRes.json();
+    const recentCount = recentData.length;
+
+    // Extract total count from the 'Link' header pagination
+    let totalCount = 0;
+    const linkHeader = totalRes.headers.get("link");
+    if (linkHeader) {
+      const match = linkHeader.match(/page=(\d+)>; rel="last"/);
+      totalCount = match ? parseInt(match[1]) : 1;
+    } else {
+      // If no link header, there is only 1 page (so 1 commit, or 0)
+      const totalData = await totalRes.clone().json();
+      totalCount = totalData.length;
+    }
+
+    statsContainer.innerHTML = `
+      <div>Total: <span class="font-bold text-slate-800">${totalCount}</span></div>
+      <div>7 Days: <span class="font-bold ${recentCount > 0 ? "text-emerald-600" : "text-rose-500"}">${recentCount}</span></div>
+    `;
+  } catch (error) {
+    statsContainer.innerHTML = `<span class="text-rose-500 italic">Stats unavailable</span>`;
+    console.error("Commit fetch error for", student.name, error);
+  }
+}

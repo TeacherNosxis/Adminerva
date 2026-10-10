@@ -10,7 +10,7 @@
     <!-- Sidebar Navigation -->
     <div id="adminerva-nav" data-module="repo" data-page="gradebook"></div>
 
-    <main class="flex-1 px-8 py-10 h-screen overflow-y-auto">
+    <main class="flex-1 px-8 pl-20 py-10 h-screen overflow-y-auto">
       <header class="mb-8">
         <h1
           class="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3"
@@ -46,6 +46,19 @@
             id="gbAssessment"
             class="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-slate-50 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition"
           ></select>
+        </div>
+        <div class="flex-1">
+          <label
+            class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2"
+            >Sort By</label
+          >
+          <select
+            id="gbSort"
+            class="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-slate-50 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          >
+            <option value="lastName">Last Name (A-Z)</option>
+            <option value="needsGrading">Needs Grading First</option>
+          </select>
         </div>
       </div>
 
