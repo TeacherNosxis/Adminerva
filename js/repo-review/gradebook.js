@@ -234,10 +234,12 @@ async function fetchCommitStats(student, elementId) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sinceDate = sevenDaysAgo.toISOString();
 
-    // Headers (Important: Add a PAT here later to avoid rate limits)
+    // Retrieve the token from localStorage just like you do in repofetch.js
+    const ghToken = localStorage.getItem("Adminerva_github_token");
+
     const headers = {
       Accept: "application/vnd.github.v3+json",
-      // 'Authorization': 'token YOUR_GITHUB_PAT_HERE'
+      ...(ghToken ? { Authorization: `Bearer ${ghToken}` } : {}),
     };
 
     // Fetch Total Commits (per_page=1 to get total pages from headers)

@@ -98,13 +98,13 @@ window.startAutoCheck = async function (
       !targetFilePath.match(/\.[a-zA-Z0-9]+$/)
     ) {
       const treeRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`,
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/${currentSha}?recursive=1`,
         { headers: { Authorization: `Bearer ${ghToken}` } },
       );
       const treeData = await treeRes.json();
       const matcher = wildcardToRegex(targetFilePath);
       const allowedExts =
-        /\.(java|xml|kt|dart|cs|js|ts|html|css|txt|json|sql|gradle|properties)$/i;
+        /\.(java|xml|kt|dart|cs|js|ts|html|css|txt|json|sql|gradle|properties|md|py|php|cpp)$/i;
       const matchedFiles = (treeData.tree || []).filter(
         (f) =>
           f.type === "blob" && matcher.test(f.path) && allowedExts.test(f.path),
@@ -123,7 +123,7 @@ window.startAutoCheck = async function (
 
       const filePromises = filesToProcess.map(async (file) => {
         const fileRes = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${defaultBranch}`,
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${currentSha}`,
           {
             headers: {
               Authorization: `Bearer ${ghToken}`,
@@ -152,7 +152,7 @@ window.startAutoCheck = async function (
     } else {
       updateStatus("Reading Code...");
       const fileRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/contents/${targetFilePath}?ref=${defaultBranch}`,
+        `https://api.github.com/repos/${owner}/${repo}/contents/${targetFilePath}?ref=${currentSha}`,
         {
           headers: {
             Authorization: `Bearer ${ghToken}`,
