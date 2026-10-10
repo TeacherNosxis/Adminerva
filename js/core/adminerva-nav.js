@@ -19,13 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
       ? "text-white border-b-2 border-cyan-400 pb-1.5 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] whitespace-nowrap"
       : "text-gray-400 hover:text-cyan-300 transition-colors duration-300 pb-1.5 whitespace-nowrap";
 
-  const adminDirLink = isSuperAdmin
-    ? `<a href="users.html" class="${getStyle("directory")}">Directory</a>`
-    : "";
-  const adminReportsLink = isSuperAdmin
-    ? `<a href="issues.html" class="${getStyle("issues")}">Reports</a>`
-    : "";
-
   const isSettingsPage = activePage === "settings";
   const settingsIconStyle = isSettingsPage
     ? "border-cyan-400 text-cyan-50 shadow-[0_0_15px_rgba(6,182,212,0.6)]"
@@ -35,6 +28,14 @@ document.addEventListener("DOMContentLoaded", () => {
         <a href="settings.html" class="bg-gray-800/80 border ${settingsIconStyle} p-2 sm:p-2 rounded transition-all duration-300 flex items-center justify-center mr-2 sm:mr-4" title="Global Settings">
             <span class="text-lg sm:text-xl leading-none">⚙️</span>
         </a>`;
+
+  // Conditionally add the Admin Hub link to the dropdown if the user is a super admin
+  const adminDropdownLink = isSuperAdmin
+    ? `
+      <a href="users.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 transition-all flex items-center gap-2">
+          <span class="text-cyan-500">🛡️</span> Admin Hub
+      </a>`
+    : "";
 
   const adminLogoBlock = `
         <div class="relative group cursor-pointer py-1">
@@ -49,9 +50,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     <a href="reporeviewDashboard.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 border-b border-gray-800 transition-all flex items-center gap-2">
                         <span class="text-cyan-500">💻</span> Educator Hub
                     </a>
-                    <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 transition-all flex items-center gap-2">
+                    <a href="lesson-planner.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 border-b border-gray-800 transition-all flex items-center gap-2">
                         <span class="text-cyan-500">📘</span> Lesson Planner
                     </a>
+                    ${adminDropdownLink}
                 </div>
             </div>
         </div>
@@ -74,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
   }
-  // ✨ Gradebook cleanly grouped into the Repo/Educator layout
+  // Standard Educator Hub (Admin links removed)
   else if (
     activeModule === "educator" ||
     activeModule === "repo" ||
@@ -87,7 +89,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="repofetch.html" class="${getStyle("repofetch")}">RepoFetch</a>
             <a href="assessment-studio.html" class="${getStyle("studio")}">Assessment Studio</a>
             <a href="gradebook.html" class="${getStyle("gradebook")}">Gradebook</a>
-            ${adminDirLink}${adminReportsLink}
         `;
     rightSide = `
             <div class="flex items-center">
@@ -99,7 +100,27 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
     logoBlock = adminLogoBlock;
-  } else if (activeModule === "lesson") {
+  }
+  // NEW: Dedicated Admin Hub
+  else if (activeModule === "admin") {
+    centerLinks = `
+            <a href="users.html" class="${getStyle("directory")}">Directory</a>
+            <a href="issues.html" class="${getStyle("issues")}">Reports</a>
+        `;
+    rightSide = `
+            <div class="flex items-center">
+                ${settingsIcon}
+                <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
+                    <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
+                    <!-- Dynamically check role instead of hardcoding -->
+                    <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
+                </div>
+            </div>
+        `;
+    logoBlock = adminLogoBlock;
+  }
+  // Lesson Planner Logic
+  else if (activeModule === "lesson") {
     centerLinks = `
             <a href="lesson-planner.html" class="${getStyle("planner")}">Curriculum Planner</a>
             <a href="presentation.html" class="${getStyle("presentation")}">Slide Editor</a>
