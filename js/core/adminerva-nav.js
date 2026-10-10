@@ -29,6 +29,12 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="text-lg sm:text-xl leading-none">⚙️</span>
         </a>`;
 
+  // ✨ NEW: Global Report Issue Icon
+  const reportIcon = `
+        <button onclick="document.getElementById('bug-modal').classList.remove('hidden')" class="bg-gray-800/80 border border-gray-700 hover:border-rose-400 text-gray-400 hover:text-rose-400 p-2 sm:p-2 rounded transition-all duration-300 flex items-center justify-center mr-2 sm:mr-4" title="Report Issue">
+            <span class="text-lg sm:text-xl leading-none">🐞</span>
+        </button>`;
+
   // Conditionally add the Admin Hub link to the dropdown if the user is a super admin
   const adminDropdownLink = isSuperAdmin
     ? `
@@ -89,24 +95,30 @@ document.addEventListener("DOMContentLoaded", () => {
             <a href="student-settings.html" class="${getStyle("settings")}">Settings</a>
         `;
     rightSide = `
-            <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
-            <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+            <div class="flex items-center">
+                ${reportIcon}
+                <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
+                <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+            </div>
         `;
     logoBlock = studentLogoBlock;
   }
-  // ✨ NEW: Student Code Playground Module
+  // Student Code Playground Module
   else if (activeModule === "student-playground") {
     centerLinks = `
             <a href="student-playground.html" class="${getStyle("ide")}">Live Editor</a>
             <a href="student-xml-sim.html" class="${getStyle("xml")}">Mobile XML Sim</a>
         `;
     rightSide = `
-            <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
-            <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+            <div class="flex items-center">
+                ${reportIcon}
+                <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
+                <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+            </div>
         `;
     logoBlock = studentLogoBlock;
   }
-  // Standard Educator Hub (Admin links removed)
+  // Standard Educator Hub
   else if (
     activeModule === "educator" ||
     activeModule === "repo" ||
@@ -122,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     rightSide = `
             <div class="flex items-center">
-                ${settingsIcon}
+                ${reportIcon}${settingsIcon}
                 <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
                     <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
                     <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
@@ -139,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     rightSide = `
             <div class="flex items-center">
-                ${settingsIcon}
+                ${reportIcon}${settingsIcon}
                 <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
                     <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
                     <!-- Dynamically check role instead of hardcoding -->
@@ -159,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     rightSide = `
             <div class="flex items-center">
-                ${settingsIcon}
+                ${reportIcon}${settingsIcon}
                 <div class="flex flex-col items-end justify-center border-l border-gray-700 pl-3 sm:pl-4 h-10">
                     <button id="signOutBtn" class="text-xs sm:text-sm text-gray-300 hover:text-white font-bold transition leading-none py-1 cursor-pointer">Sign Out</button>
                     <span class="text-[8px] sm:text-[10px] font-bold text-cyan-500 uppercase tracking-wider mt-1 leading-none">${isSuperAdmin ? "Super Admin" : "Teacher"}</span>
@@ -177,6 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
     centerLinks = ``;
     rightSide = `
             <div class="flex items-center">
+                ${reportIcon}
                 <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
             </div>
     `;

@@ -1,35 +1,35 @@
 // js/student/playground.js
 
-// 1. Language Configurations & Templates
+// 1. Language Configurations & Templates (Updated to Judge0 IDs)
 const languageConfig = {
   java: {
     monaco: "java",
-    pistonLang: "java",
+    judge0Id: 62, // Java (OpenJDK 13.0.1)
     filename: "Main.java",
   },
   python: {
     monaco: "python",
-    pistonLang: "python",
+    judge0Id: 71, // Python (3.8.1)
     filename: "script.py",
   },
   web: {
     monaco: "html",
-    pistonLang: "none", // Executed in browser
+    judge0Id: null, // Executed in browser
     filename: "index.html",
   },
   csharp: {
     monaco: "csharp",
-    pistonLang: "csharp",
+    judge0Id: 51, // C# (Mono 6.6.0.161)
     filename: "Program.cs",
   },
   cpp: {
     monaco: "cpp",
-    pistonLang: "cpp",
+    judge0Id: 54, // C++ (GCC 9.2.0)
     filename: "main.cpp",
   },
   dart: {
     monaco: "dart",
-    pistonLang: "dart",
+    judge0Id: 64, // Dart (2.19.x)
     filename: "main.dart",
   },
 };
@@ -190,7 +190,7 @@ function handleTemplateChange(tempKey) {
   editorInstance.setValue(code);
 }
 
-// 6. Execution Engine
+// 6. Execution Engine (Powered by Judge0)
 async function executeCode() {
   const langKey = document.getElementById("languageSelect").value;
   const code = editorInstance.getValue();
@@ -210,7 +210,7 @@ async function executeCode() {
     return;
   }
 
-  // Backend language execution via Piston API
+  // Backend language execution via Judge0 API
   const config = languageConfig[langKey];
   const consoleOutput = document.getElementById("consoleOutput");
   const overlay = document.getElementById("executionOverlay");
@@ -219,41 +219,45 @@ async function executeCode() {
   consoleOutput.textContent = "";
 
   try {
-    const payload = {
-      language: config.pistonLang,
-      version: "*", // Automatically uses the latest supported version on Piston
-      files: [
-        {
-          name: config.filename,
-          content: code,
-        },
-      ],
-    };
+    const response = await fetch(
+      "https://ce.judge0.com/submissions?base64_encoded=false&wait=true",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source_code: code,
+          language_id: config.judge0Id,
+        }),
+      },
+    );
 
-    const response = await fetch("https://emkc.org/api/v2/piston/execute", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    if (!response.ok) {
+      throw new Error(
+        `HTTP Error: ${response.status} - The compiler server might be busy.`,
+      );
+    }
 
     const result = await response.json();
 
-    if (result.message) {
-      // API error (e.g., rate limit)
-      consoleOutput.textContent = `Error: ${result.message}`;
+    if (result.error) {
+      // Internal API structural error
+      consoleOutput.textContent = `API Error: ${result.error}`;
       consoleOutput.classList.add("text-rose-400");
     } else {
-      // Success or Compilation Error
       consoleOutput.classList.remove("text-rose-400");
-      if (result.run.stderr) {
-        consoleOutput.innerHTML = `<span class="text-rose-400">${escapeHTML(result.run.stderr)}</span>\n${escapeHTML(result.run.stdout)}`;
+
+      // Check for compilation errors or runtime standard errors
+      if (result.stderr || result.compile_output) {
+        const errorMsg = result.stderr || result.compile_output;
+        consoleOutput.innerHTML = `<span class="text-rose-400">${escapeHTML(errorMsg)}</span>\n${escapeHTML(result.stdout || "")}`;
       } else {
+        // Successful execution output
         consoleOutput.textContent =
-          result.run.stdout || "Program exited with no output.";
+          result.stdout || "Program exited with no output.";
       }
     }
   } catch (error) {
-    consoleOutput.textContent = `Network Error: Failed to reach execution server.\n${error.message}`;
+    consoleOutput.textContent = `Execution Error: Failed to reach the Judge0 compiler server.\n${error.message}`;
     consoleOutput.classList.add("text-rose-400");
   } finally {
     overlay.classList.add("hidden");

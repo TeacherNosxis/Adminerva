@@ -8,11 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
             </svg>
             <span id="subtleLoaderText" class="text-sm font-bold text-slate-200 tracking-wide">Fetching data...</span>
         </div>
-
-        <!-- Sticky Edge Ribbon -->
-        <button onclick="document.getElementById('bug-modal').classList.remove('hidden')" class="fixed top-28 left-0 bg-slate-800 text-cyan-400 border border-l-0 border-cyan-900 px-2 py-4 rounded-r-lg shadow-[4px_0_10px_rgba(6,182,212,0.2)] hover:bg-slate-700 hover:text-cyan-300 transition-all z-40" style="writing-mode: vertical-rl;">
-            <span class="text-sm font-bold tracking-widest uppercase">Report Issue</span>
-        </button>
         
         <!-- Bug Modal -->
         <div id="bug-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
