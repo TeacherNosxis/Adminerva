@@ -6,6 +6,7 @@ import {
   where,
   doc,
   setDoc,
+  getDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 function escapeHTML(str) {
@@ -185,10 +186,11 @@ async function loadGrid() {
       tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium italic">No students found in this section.</td></tr>`;
     }
 
-    // 2. Fire the fetches NOW that the DOM elements exist
-    pendingStats.forEach((student) => {
-      fetchCommitStats(student, `stats-${student.id}`);
-    });
+    // Process sequentially with a slight delay to prevent GitHub concurrency throttling
+    for (const student of pendingStats) {
+      await fetchCommitStats(student, `stats-${student.id}`);
+      await new Promise((r) => setTimeout(r, 60)); // 60ms pause between students
+    }
   } catch (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500 font-bold border border-red-200 bg-red-50">Failed to load matrix. Check permissions.</td></tr>`;
@@ -216,66 +218,113 @@ async function fetchCommitStats(student, elementId) {
   const statsContainer = document.getElementById(elementId);
   if (!statsContainer) return;
 
+  const cacheRef = doc(db, "github_stats_cache", student.id);
+
   try {
-    // Extract owner and repo from URL (e.g., https://github.com/owner/repo)
-    const urlParts = new URL(student.repoUrl).pathname
-      .split("/")
-      .filter(Boolean);
-    if (urlParts.length < 2) throw new Error("Invalid Repo URL");
+    // 1. Check Database Cache First
+    const cacheSnap = await getDoc(cacheRef);
+    if (cacheSnap.exists()) {
+      const cacheData = cacheSnap.data();
+      const cacheAgeHours =
+        (Date.now() - cacheData.lastUpdated) / (1000 * 60 * 60);
 
-    const owner = urlParts[0];
-    const repo = urlParts[1];
-    const author = student.githubUsername;
+      // If cache is less than 4 hours old, use it immediately and skip GitHub API
+      if (cacheAgeHours < 4) {
+        statsContainer.innerHTML = `
+          <div>Total: <span class="font-bold text-slate-800">${cacheData.totalCount}</span></div>
+          <div>Recent: <span class="font-bold ${cacheData.recentCount > 0 ? "text-emerald-600" : "text-rose-500"}">${cacheData.recentCount}</span></div>
+        `;
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("Cache read error for", student.name, e);
+  }
 
-    // Calculate date for 7 days ago
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sinceDate = sevenDaysAgo.toISOString();
+  // 2. Fallback: Fetch fresh data if cache is missing or expired
+  const ghToken = localStorage.getItem("Adminerva_github_token");
+  if (!ghToken) {
+    statsContainer.innerHTML = `<span class="text-amber-500 italic text-[10px]">No PAT Configured</span>`;
+    return;
+  }
 
-    // Retrieve the token from localStorage just like you do in repofetch.js
-    const ghToken = localStorage.getItem("Adminerva_github_token");
+  try {
+    const cleanUrl = (student.repoUrl || "")
+      .trim()
+      .replace(/\/$/, "")
+      .replace(/\.git$/, "");
+    const urlParts = cleanUrl.split("/").filter(Boolean);
+    if (urlParts.length < 2) throw new Error("Invalid URL");
 
-    const headers = {
-      Accept: "application/vnd.github.v3+json",
-      ...(ghToken ? { Authorization: `Bearer ${ghToken}` } : {}),
-    };
+    const repo = urlParts.pop();
+    const owner = urlParts.pop();
+    const author = (student.githubUsername || "").replace(/^@/, "").trim();
 
-    // Fetch Total Commits (per_page=1 to get total pages from headers)
-    const totalRes = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?author=${author}&per_page=1`,
-      { headers },
-    );
-
-    // Fetch Recent Commits (last 7 days, max 100 for simplicity)
-    const recentRes = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?author=${author}&since=${sinceDate}&per_page=100`,
-      { headers },
-    );
-
-    if (!totalRes.ok || !recentRes.ok) throw new Error("API Error");
-
-    const recentData = await recentRes.json();
-    const recentCount = recentData.length;
-
-    // Extract total count from the 'Link' header pagination
-    let totalCount = 0;
-    const linkHeader = totalRes.headers.get("link");
-    if (linkHeader) {
-      const match = linkHeader.match(/page=(\d+)>; rel="last"/);
-      totalCount = match ? parseInt(match[1]) : 1;
-    } else {
-      // If no link header, there is only 1 page (so 1 commit, or 0)
-      const totalData = await totalRes.clone().json();
-      totalCount = totalData.length;
+    if (!author || author === "unassigned" || author === "unlinked") {
+      statsContainer.innerHTML = `<span class="text-slate-400 italic text-[10px]">Unlinked Account</span>`;
+      return;
     }
 
+    const headers = {
+      Authorization: `Bearer ${ghToken}`,
+      Accept: "application/vnd.github+json",
+    };
+
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits?author=${encodeURIComponent(author)}&per_page=100`,
+      { headers },
+    );
+
+    if (!res.ok) {
+      if (res.status === 409) {
+        statsContainer.innerHTML = `
+          <div>Total: <span class="font-bold text-slate-800">0</span></div>
+          <div>Recent: <span class="font-bold text-rose-500">0</span></div>
+        `;
+        return;
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const commits = await res.json();
+
+    let totalCount = commits.length;
+    const linkHeader = res.headers.get("link");
+    if (linkHeader) {
+      const match = linkHeader.match(/page=(\d+)>; rel="last"/);
+      if (match) totalCount = parseInt(match[1], 10);
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentCount = commits.filter((c) => {
+      const commitDate = c.commit?.author?.date || c.commit?.committer?.date;
+      return commitDate && new Date(commitDate) >= sevenDaysAgo;
+    }).length;
+
+    // Update UI
     statsContainer.innerHTML = `
       <div>Total: <span class="font-bold text-slate-800">${totalCount}</span></div>
-      <div>7 Days: <span class="font-bold ${recentCount > 0 ? "text-emerald-600" : "text-rose-500"}">${recentCount}</span></div>
+      <div>Recent: <span class="font-bold ${recentCount > 0 ? "text-emerald-600" : "text-rose-500"}">${recentCount}</span></div>
     `;
+
+    // 3. Save new stats back to Database Cache
+    try {
+      await setDoc(
+        cacheRef,
+        {
+          totalCount: totalCount,
+          recentCount: recentCount,
+          lastUpdated: Date.now(),
+        },
+        { merge: true },
+      );
+    } catch (e) {
+      console.warn("Failed to update cache for", student.name, e);
+    }
   } catch (error) {
-    statsContainer.innerHTML = `<span class="text-rose-500 italic">Stats unavailable</span>`;
-    console.error("Commit fetch error for", student.name, error);
+    statsContainer.innerHTML = `<span class="text-rose-500 italic text-[10px]">Stats unavailable</span>`;
+    console.warn(`Commit check failed for ${student.name}:`, error.message);
   }
 }
 
