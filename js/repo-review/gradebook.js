@@ -123,7 +123,16 @@ async function loadGrid() {
       // 1. Repository Link & Commit Stats Format
       let repoStatus = `<span class="text-[10px] bg-rose-50 text-rose-600 font-bold px-2 py-1 rounded border border-rose-200">No Repo Linked</span>`;
       if (student.repoUrl && student.repoUrl !== "unassigned") {
-        const commitUrl = `${student.repoUrl}/commits?author=${student.githubUsername}`;
+        const cleanRepoUrl = student.repoUrl
+          .trim()
+          .replace(/\/$/, "")
+          .replace(/\.git$/, "");
+        // Clean the username (remove @) so GitHub search works properly
+        const cleanUsername = (student.githubUsername || "")
+          .replace(/^@/, "")
+          .trim();
+
+        const commitUrl = `${cleanRepoUrl}/commits?author=${cleanUsername}`;
         repoStatus = `
           <div class="flex flex-col gap-1 w-32">
             <a href="${escapeHTML(commitUrl)}" target="_blank" class="text-blue-500 hover:text-blue-700 hover:underline text-center text-xs font-mono bg-blue-50 px-2 py-1 rounded border border-blue-100 transition">View Commits</a>

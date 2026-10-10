@@ -130,7 +130,8 @@ window.fetchAndSyncRepos = async function () {
     let requiresUIRefresh = false;
     let processed = 0;
 
-    const syncPromises = groupKeys.map(async (groupId) => {
+    // 1. Wrap the existing fetch logic into a reusable helper function
+    const syncGroup = async (groupId) => {
       const group = repoGroups[groupId];
       try {
         let actualOwner = group.owner;
@@ -208,6 +209,7 @@ window.fetchAndSyncRepos = async function () {
         group.members.forEach((m) => {
           m.latestSha = commits[0].sha;
         });
+
         if (group.latestSha === commits[0].sha) {
           processed++;
           window.showSubtleLoader(
@@ -282,9 +284,21 @@ window.fetchAndSyncRepos = async function () {
       window.showSubtleLoader(
         `Syncing GitHub... ${processed}/${groupKeys.length}`,
       );
-    });
+    };
 
-    await Promise.all(syncPromises);
+    // 2. Execute the sync safely using Chunking / Batches
+    const batchSize = 3;
+    for (let i = 0; i < groupKeys.length; i += batchSize) {
+      const batch = groupKeys.slice(i, i + batchSize);
+
+      // Sync 3 repos at the same time
+      await Promise.all(batch.map((groupId) => syncGroup(groupId)));
+
+      // Pause for 300ms before hitting GitHub with the next batch
+      if (i + batchSize < groupKeys.length) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    }
     if (requiresUIRefresh) {
       window.showSubtleLoader("Applying fresh updates to view...");
       renderGroupedUI(repoGroups);
