@@ -58,9 +58,8 @@
         <a
           href="student-settings.html"
           class="inline-flex justify-center items-center w-full sm:w-auto gap-2 text-base sm:text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-4 py-3 sm:py-2 rounded-lg border border-blue-100 transition sm:hidden"
+          >⚙️ Open Settings</a
         >
-          ⚙️ Open Settings
-        </a>
       </header>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -88,7 +87,6 @@
             </div>
 
             <div class="relative h-56 sm:h-64 w-full">
-              <!-- GitHub Auth Overlay -->
               <div
                 id="githubAuthOverlay"
                 class="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg hidden border border-slate-200 shadow-inner p-4 text-center"
@@ -138,7 +136,6 @@
         </div>
 
         <div class="space-y-6">
-          <!-- ✨ NEW: Active Assignments Widget -->
           <div
             class="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-slate-200"
           >
@@ -151,7 +148,6 @@
               id="studentAssessmentsContainer"
               class="space-y-3 max-h-64 overflow-y-auto pr-2"
             >
-              <!-- Loading Skeleton -->
               <div class="animate-pulse flex space-x-4">
                 <div class="flex-1 space-y-3 py-1">
                   <div class="h-3 bg-slate-200 rounded w-3/4"></div>
@@ -215,7 +211,7 @@
       </div>
     </main>
 
-    <!-- ✨ NEW: Assessment Details Modal (Insert just above your scripts) -->
+    <!-- Assessment Details Modal -->
     <div
       id="assessmentModal"
       class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4"
@@ -245,6 +241,28 @@
           </button>
         </div>
         <div class="p-6 overflow-y-auto flex-1 space-y-4 bg-slate-50">
+          <!-- ✨ NEW: Score Area in Modal -->
+          <div
+            id="modalScoreArea"
+            class="hidden bg-emerald-50 p-4 rounded border border-emerald-200 shadow-sm flex items-start gap-4"
+          >
+            <div
+              id="modalScoreValue"
+              class="text-3xl font-extrabold text-emerald-600 bg-white px-3 py-2 rounded-lg shadow-sm border border-emerald-100 min-w-[70px] text-center"
+            ></div>
+            <div class="flex-1 min-w-0">
+              <h4
+                class="font-bold text-emerald-800 text-sm mb-1 uppercase tracking-wider text-[10px]"
+              >
+                Instructor Feedback
+              </h4>
+              <p
+                id="modalScoreFeedback"
+                class="text-xs text-emerald-700 whitespace-pre-wrap leading-relaxed pr-2"
+              ></p>
+            </div>
+          </div>
+
           <div class="bg-white p-4 rounded border border-slate-200 shadow-sm">
             <h3
               class="font-bold text-sm text-indigo-800 mb-2 uppercase tracking-wider text-[10px]"

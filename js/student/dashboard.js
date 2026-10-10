@@ -22,15 +22,21 @@ let currentChart = null;
 let currentStudentProfile = null;
 let cachedCommitsData = [];
 let currentSectionAssessments = [];
+let myPublishedGrades = {}; // ✨ Global grade dictionary
 
 function escapeHTML(str) {
   if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return String(str).replace(
+    /[&<>"']/g,
+    (m) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      })[m],
+  );
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -41,27 +47,21 @@ onAuthStateChanged(auth, async (user) => {
   const targetEmail = impersonateEmail
     ? impersonateEmail.toLowerCase()
     : user.email.toLowerCase();
-
   const emailDisplay = document.getElementById("userEmailDisplay");
   if (emailDisplay)
     emailDisplay.textContent =
       targetEmail + (impersonateEmail ? " (Impersonating)" : "");
 
   if (impersonateEmail && !document.getElementById("impersonateBanner")) {
-    const nav = document.getElementById("adminerva-nav");
-    nav.insertAdjacentHTML(
+    document.getElementById("adminerva-nav").insertAdjacentHTML(
       "afterend",
       `
-          <div id="impersonateBanner" class="bg-amber-400 text-amber-900 px-6 py-2.5 font-bold text-sm flex justify-between items-center shadow-sm border-b border-amber-500 w-full relative z-[100]">
-              <div class="flex items-center gap-2">
-                  <span class="text-xl">👁️</span>
-                  <span><strong>IMPERSONATION MODE:</strong> Viewing workspace exactly as <u>${escapeHTML(targetEmail)}</u> experiences it.</span>
-              </div>
-              <button onclick="window.exitImpersonation()" class="bg-amber-900 text-amber-50 px-4 py-1.5 rounded hover:bg-amber-950 transition shadow-sm text-xs tracking-wide">Exit & Return</button>
-          </div>
-      `,
+      <div id="impersonateBanner" class="bg-amber-400 text-amber-900 px-6 py-2.5 font-bold text-sm flex justify-between items-center shadow-sm border-b border-amber-500 w-full relative z-[100]">
+          <div class="flex items-center gap-2"><span class="text-xl">👁️</span><span><strong>IMPERSONATION MODE:</strong> Viewing workspace exactly as <u>${escapeHTML(targetEmail)}</u> experiences it.</span></div>
+          <button onclick="window.exitImpersonation()" class="bg-amber-900 text-amber-50 px-4 py-1.5 rounded hover:bg-amber-950 transition shadow-sm text-xs tracking-wide">Exit & Return</button>
+      </div>
+    `,
     );
-
     window.exitImpersonation = function () {
       localStorage.removeItem("Adminerva_Impersonate");
       localStorage.removeItem("Adminerva_Mock_Role");
@@ -108,7 +108,6 @@ onAuthStateChanged(auth, async (user) => {
     userProfiles = [];
     let masterToken = null;
     let masterUsername = null;
-
     snap.forEach((d) => {
       const data = d.data();
       if (data.githubToken) masterToken = data.githubToken;
@@ -127,12 +126,12 @@ onAuthStateChanged(auth, async (user) => {
       if (userProfiles.length > 1) {
         selector.classList.remove("hidden");
         selector.innerHTML = "";
-        userProfiles.forEach((profile, index) => {
+        userProfiles.forEach((profile, index) =>
           selector.insertAdjacentHTML(
             "beforeend",
             `<option value="${index}">${escapeHTML(profile.section)}</option>`,
-          );
-        });
+          ),
+        );
         selector.addEventListener("change", (e) =>
           loadDashboardProfile(userProfiles[e.target.value]),
         );
@@ -140,7 +139,6 @@ onAuthStateChanged(auth, async (user) => {
         selector.classList.add("hidden");
       }
     }
-
     loadDashboardProfile(userProfiles[0]);
   } catch (error) {
     console.error("Dashboard Load Error:", error);
@@ -152,18 +150,18 @@ async function loadDashboardProfile(studentData) {
   const subtitle = document.getElementById("repoSubtitle");
   const container = document.getElementById("commitListContainer");
   const overlay = document.getElementById("githubAuthOverlay");
+  const gradeContainer = document.getElementById("latestGradeContainer");
 
   verifyStudentSetup(studentData);
   overlay.classList.add("hidden");
-  loadStudentAssessments(studentData.section);
 
   if (currentChart) {
     currentChart.destroy();
     currentChart = null;
   }
 
-  // ✨ FETCH LATEST PUBLISHED GRADE (Filtered in JS for index safety)
-  const gradeContainer = document.getElementById("latestGradeContainer");
+  // ✨ FETCH GRADES (Filtered in JS for Index safety)
+  myPublishedGrades = {};
   if (gradeContainer) {
     try {
       const gradeQuery = query(
@@ -176,13 +174,24 @@ async function loadDashboardProfile(studentData) {
       gradeSnap.forEach((d) => {
         if (d.data().published === true) {
           publishedGrades.push(d.data());
+          myPublishedGrades[d.data().taskId] = d.data();
         }
       });
+      console.log("Dashboard Published Grades:", myPublishedGrades);
 
       if (publishedGrades.length > 0) {
-        publishedGrades.sort(
-          (a, b) => b.gradedAt.toDate() - a.gradedAt.toDate(),
-        );
+        // Safe Date Sorting (Prevents crash if gradedAt is missing)
+        publishedGrades.sort((a, b) => {
+          const timeA =
+            a.gradedAt && typeof a.gradedAt.toDate === "function"
+              ? a.gradedAt.toDate().getTime()
+              : 0;
+          const timeB =
+            b.gradedAt && typeof b.gradedAt.toDate === "function"
+              ? b.gradedAt.toDate().getTime()
+              : 0;
+          return timeB - timeA;
+        });
         const latest = publishedGrades[0];
 
         let scoreColor = "text-emerald-600";
@@ -191,33 +200,34 @@ async function loadDashboardProfile(studentData) {
           scoreColor = "text-amber-500";
 
         gradeContainer.innerHTML = `
-                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-4 shadow-inner">
-                    <div class="text-3xl font-extrabold ${scoreColor} bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-100 min-w-[70px] text-center">${latest.score}</div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="font-bold text-slate-800 text-sm mb-1 uppercase tracking-wider text-[10px]">Score Breakdown</h4>
-                        <p class="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto pr-2">${escapeHTML(latest.feedback)}</p>
-                    </div>
-                </div>
-              `;
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-4 shadow-inner">
+              <div class="text-3xl font-extrabold ${scoreColor} bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-100 min-w-[70px] text-center">${latest.score}</div>
+              <div class="flex-1 min-w-0">
+                  <h4 class="font-bold text-slate-800 text-sm mb-1 uppercase tracking-wider text-[10px]">Score Breakdown</h4>
+                  <p class="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto pr-2">${escapeHTML(latest.feedback)}</p>
+              </div>
+          </div>
+        `;
       } else {
         gradeContainer.innerHTML = `
-                <div class="p-5 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center">
-                  <span class="text-3xl block mb-2 opacity-50">📬</span>
-                  <p class="text-sm text-slate-500 font-medium">No evaluations have been published for this repository yet.</p>
-                </div>
-              `;
+          <div class="p-5 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-center">
+            <span class="text-3xl block mb-2 opacity-50">📬</span><p class="text-sm text-slate-500 font-medium">No evaluations have been published for this repository yet.</p>
+          </div>
+        `;
       }
     } catch (err) {
       console.error("Failed to load grades", err);
     }
   }
 
+  // Load assessments AFTER grades so the mini-widget can attach the scores
+  loadStudentAssessments(studentData.section);
+
   if (!studentData.repoUrl || !studentData.githubUsername) {
-    if (!studentData.repoUrl && studentData.githubUsername) {
+    if (!studentData.repoUrl && studentData.githubUsername)
       subtitle.innerHTML = `<strong class="text-amber-700">${escapeHTML(studentData.section)}:</strong> <span class='text-amber-600'>Please set your Repository URL for this section in Settings.</span>`;
-    } else {
+    else
       subtitle.innerHTML = `<strong class="text-amber-700">${escapeHTML(studentData.section)}:</strong> <span class='text-amber-600'>Please set your Repository URL and Username in Settings.</span>`;
-    }
     container.innerHTML =
       "<p class='text-sm text-amber-600 font-bold'>Awaiting GitHub configuration...</p>";
     renderChart([], "7d");
@@ -226,7 +236,6 @@ async function loadDashboardProfile(studentData) {
   }
 
   subtitle.innerHTML = `<strong>${escapeHTML(studentData.section)}:</strong> Tracking <span class="font-mono text-xs text-slate-800">${escapeHTML(studentData.githubUsername)}</span> on <a href="${escapeHTML(studentData.repoUrl)}" target="_blank" class="text-blue-500 hover:underline font-mono text-xs">${escapeHTML(studentData.repoUrl)}</a>`;
-
   const defaultFilter = document.getElementById("timeFilter")?.value || "7d";
   const cacheRef = doc(db, "student_dashboard_cache", studentData.docId);
 
@@ -238,16 +247,13 @@ async function loadDashboardProfile(studentData) {
       renderChart(cachedCommitsData, defaultFilter);
     }
   } catch (error) {
-    console.warn(
-      "Database read bypassed (Likely missing permissions). Continuing to UI load.",
-    );
+    console.warn("Database read bypassed. Continuing to UI load.");
   }
 
   if (!studentData.githubToken) {
     overlay.classList.remove("hidden");
     return;
   }
-
   syncGitHubData(
     studentData.repoUrl,
     studentData.githubUsername,
@@ -326,25 +332,21 @@ async function linkGithubAccount() {
   const provider = new GithubAuthProvider();
   provider.addScope("repo");
   provider.addScope("read:user");
-
   const currentUser = auth.currentUser;
   if (!currentUser) return;
 
   const isAlreadyGithub = currentUser.providerData.some(
     (p) => p.providerId === "github.com",
   );
-
   let result;
   try {
-    if (isAlreadyGithub) {
+    if (isAlreadyGithub)
       result = await reauthenticateWithPopup(currentUser, provider);
-    } else {
-      result = await linkWithPopup(currentUser, provider);
-    }
+    else result = await linkWithPopup(currentUser, provider);
   } catch (error) {
-    if (error.code === "auth/credential-already-in-use") {
+    if (error.code === "auth/credential-already-in-use")
       result = await signInWithPopup(auth, provider);
-    } else {
+    else {
       alert("GitHub Connection Failed: " + error.message);
       return;
     }
@@ -362,13 +364,11 @@ async function linkGithubAccount() {
   if (token && userProfiles.length > 0) {
     const updateData = { githubToken: token };
     if (verifiedUsername) updateData.githubUsername = verifiedUsername;
-
     const updatePromises = userProfiles.map((p) => {
       p.githubToken = token;
       if (verifiedUsername) p.githubUsername = verifiedUsername;
       return setDoc(doc(db, "students", p.docId), updateData, { merge: true });
     });
-
     await Promise.all(updatePromises);
     const overlay = document.getElementById("githubAuthOverlay");
     if (overlay) overlay.classList.add("hidden");
@@ -383,7 +383,6 @@ function renderCommits(commits, filter) {
       "<p class='text-sm text-slate-500 font-bold'>No commits found in this timeframe.</p>";
     return;
   }
-
   container.innerHTML = "";
   commits.slice(0, 7).forEach((c) => {
     const date = new Date(c.commit.author.date).toLocaleDateString(undefined, {
@@ -394,7 +393,6 @@ function renderCommits(commits, filter) {
     const safeSha = escapeHTML(c.sha.substring(0, 7));
     const safeMsg = escapeHTML(c.commit.message);
     const safeDate = escapeHTML(date);
-
     container.insertAdjacentHTML(
       "beforeend",
       `
@@ -414,7 +412,6 @@ function renderChart(commits, filter) {
   const now = new Date();
   const labels = [];
   const dataMap = {};
-
   if (filter === "24h") {
     for (let i = 23; i >= 0; i--) {
       let d = new Date(now.getTime() - i * 60 * 60 * 1000);
@@ -436,7 +433,6 @@ function renderChart(commits, filter) {
       dataMap[key] = 0;
     }
   }
-
   const hasData = commits && commits.length > 0;
   if (hasData) {
     commits.forEach((c) => {
@@ -450,23 +446,19 @@ function renderChart(commits, filter) {
       else if (filter === "7d") cutoff.setDate(now.getDate() - 7);
       else if (filter === "30d") cutoff.setMonth(now.getMonth() - 1);
       else if (filter === "90d") cutoff.setMonth(now.getMonth() - 3);
-
       if (cd >= cutoff && dataMap[key] !== undefined) dataMap[key]++;
     });
   }
 
   const displayLabels = labels.map((l) => l.label);
   const dataPoints = labels.map((l) => dataMap[l.key]);
-
   let pointRadius = filter === "90d" ? 1 : filter === "30d" ? 3 : 5;
   let pointHoverRadius = filter === "90d" ? 4 : 7;
   let maxTicks =
     filter === "24h" ? 24 : filter === "7d" ? 7 : filter === "30d" ? 15 : 12;
   let lineTension = filter === "90d" ? 0.1 : filter === "30d" ? 0.2 : 0.4;
-
   const ctx = document.getElementById("commitChart").getContext("2d");
   if (currentChart) currentChart.destroy();
-
   currentChart = new Chart(ctx, {
     type: "line",
     data: {
@@ -537,43 +529,37 @@ async function verifyStudentSetup(studentData) {
   const banner = document.getElementById("studentWarningBanner");
   const title = document.getElementById("warningTitle");
   const msg = document.getElementById("warningMessage");
-
   if (!banner || !studentData) return;
-
   const triggerWarning = (colorClass, header, message) => {
     banner.className = `mb-6 p-4 rounded-lg border shadow-sm flex items-start gap-3 ${colorClass}`;
     title.textContent = header;
     msg.innerHTML = message;
     banner.classList.remove("hidden");
   };
-
-  if (!studentData.repoUrl && !studentData.githubUsername) {
+  if (!studentData.repoUrl && !studentData.githubUsername)
     return triggerWarning(
       "bg-amber-50 border-amber-200 text-amber-800",
       "Missing Configuration",
       "You must configure your <strong>GitHub Username</strong> and <strong>Repository URL</strong> in your Settings to track your progress.",
     );
-  } else if (!studentData.repoUrl) {
+  else if (!studentData.repoUrl)
     return triggerWarning(
       "bg-amber-50 border-amber-200 text-amber-800",
       "Missing Repository URL",
       `You must configure the <strong>Repository URL</strong> for <strong>${escapeHTML(studentData.section)}</strong> in your Settings.`,
     );
-  } else if (!studentData.githubUsername) {
+  else if (!studentData.githubUsername)
     return triggerWarning(
       "bg-amber-50 border-amber-200 text-amber-800",
       "Missing GitHub Username",
       "You must configure your <strong>GitHub Username</strong> in your Settings to track your progress.",
     );
-  }
-
-  if (!studentData.githubToken) {
+  if (!studentData.githubToken)
     return triggerWarning(
       "bg-blue-50 border-blue-200 text-blue-800",
       "GitHub Disconnected",
       "Please connect your GitHub account via the prompt in your analytics panel to sync your data.",
     );
-  }
 
   try {
     let owner, repo;
@@ -583,7 +569,6 @@ async function verifyStudentSetup(studentData) {
       .split("/");
     repo = urlParts.pop();
     owner = urlParts.pop();
-
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100`,
       {
@@ -593,7 +578,6 @@ async function verifyStudentSetup(studentData) {
         },
       },
     );
-
     if (res.status === 401) {
       const overlay = document.getElementById("githubAuthOverlay");
       if (overlay) overlay.classList.remove("hidden");
@@ -621,7 +605,6 @@ async function verifyStudentSetup(studentData) {
         "Empty Repository",
         "Your repository is linked, but it is completely empty.",
       );
-
     if (res.ok) {
       const commits = await res.json();
       const ghUsername = (studentData.githubUsername || "")
@@ -629,18 +612,15 @@ async function verifyStudentSetup(studentData) {
         .trim();
       const stuEmail = (studentData.email || "").toLowerCase().trim();
       const stuName = (studentData.name || "").toLowerCase().trim();
-
       const hasCommit = commits.some((c) => {
         const login = (c.author?.login || "").toLowerCase().trim();
         const commitEmail = (c.commit?.author?.email || "")
           .toLowerCase()
           .trim();
         const commitName = (c.commit?.author?.name || "").toLowerCase().trim();
-
         if (ghUsername && login === ghUsername) return true;
         if (stuEmail && commitEmail === stuEmail) return true;
         if (stuName && commitName === stuName) return true;
-
         const nameParts = stuName.split(" ").filter((w) => w.length > 2);
         if (commitName && nameParts.length > 0) {
           const matches = nameParts.filter((part) => commitName.includes(part));
@@ -652,15 +632,12 @@ async function verifyStudentSetup(studentData) {
         }
         return false;
       });
-
-      if (!hasCommit && commits.length > 0) {
+      if (!hasCommit && commits.length > 0)
         return triggerWarning(
           "bg-amber-50 border-amber-200 text-amber-800",
           "Identity Mismatch Detected",
           `We checked the last 100 commits, but none match your linked GitHub account (<strong>@${escapeHTML(studentData.githubUsername)}</strong>). Are you pushing code using a different local Git name?`,
         );
-      }
-
       banner.classList.add("hidden");
     }
   } catch (e) {
@@ -675,13 +652,11 @@ async function loadStudentAssessments(studentSection) {
   try {
     const q = query(collection(db, "assessments"));
     const snap = await getDocs(q);
-
     currentSectionAssessments = [];
 
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       let isAssignedToStudent = false;
-
       if (data.deployments && Array.isArray(data.deployments)) {
         if (data.deployments.some((d) => d.section === studentSection))
           isAssignedToStudent = true;
@@ -689,10 +664,8 @@ async function loadStudentAssessments(studentSection) {
         if (data.targetSections.includes(studentSection))
           isAssignedToStudent = true;
       }
-
-      if (isAssignedToStudent) {
+      if (isAssignedToStudent)
         currentSectionAssessments.push({ id: docSnap.id, ...data });
-      }
     });
 
     if (currentSectionAssessments.length === 0) {
@@ -709,10 +682,16 @@ async function loadStudentAssessments(studentSection) {
             ? "bg-green-100 text-green-700 border-green-200"
             : "bg-blue-100 text-blue-700 border-blue-200";
 
+      // ✨ ADD BADGE TO MINI WIDGET
+      const myGrade = myPublishedGrades[data.id];
+      const badgeHtml = myGrade
+        ? `<span class="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 ml-2">✅ ${myGrade.score}</span>`
+        : "";
+
       const card = `
         <div class="p-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition group cursor-pointer" onclick="viewAssessmentDetails('${data.id}')">
             <div class="flex justify-between items-start mb-1">
-                <h4 class="font-bold text-sm text-slate-800 line-clamp-1 pr-2 group-hover:text-indigo-600 transition">${escapeHTML(data.title)}</h4>
+                <h4 class="font-bold text-sm text-slate-800 line-clamp-1 pr-2 group-hover:text-indigo-600 transition flex items-center">${escapeHTML(data.title)} ${badgeHtml}</h4>
                 <span class="${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider whitespace-nowrap">${escapeHTML(data.type)}</span>
             </div>
             <p class="text-xs text-slate-500 line-clamp-2 mt-1">${escapeHTML(data.taskContext || "No context provided.")}</p>
@@ -736,7 +715,6 @@ window.viewAssessmentDetails = function (id) {
       : ass.type === "Formative"
         ? "bg-green-500/20 text-green-300 border-green-500/30"
         : "bg-blue-500/20 text-blue-300 border-blue-500/30";
-
   document.getElementById("modalAssType").className =
     `${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider mb-2 inline-block`;
   document.getElementById("modalAssType").textContent = ass.type;
@@ -747,5 +725,18 @@ window.viewAssessmentDetails = function (id) {
     ass.taskContext || "No instructions provided.";
   document.getElementById("modalAssRubric").textContent =
     ass.evalCriteria || "No specific criteria provided.";
+
+  // ✨ INJECT SCORE INTO MODAL
+  const scoreArea = document.getElementById("modalScoreArea");
+  const myGrade = myPublishedGrades[id];
+  if (myGrade) {
+    document.getElementById("modalScoreValue").textContent = myGrade.score;
+    document.getElementById("modalScoreFeedback").textContent =
+      myGrade.feedback || "No feedback provided.";
+    scoreArea.classList.remove("hidden");
+  } else {
+    scoreArea.classList.add("hidden");
+  }
+
   document.getElementById("assessmentModal").classList.remove("hidden");
 };

@@ -10,7 +10,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/f
 let allAssessments = [];
 let userProfiles = [];
 let currentSection = "";
-let myGrades = {}; // ✨ Global grades object
+let myGrades = {};
 
 function escapeHTML(str) {
   if (!str) return "";
@@ -44,7 +44,6 @@ onAuthStateChanged(auth, async (user) => {
       snap.forEach((d) => userProfiles.push({ id: d.id, ...d.data() }));
 
       const selector = document.getElementById("sectionSelectorAssessments");
-
       if (userProfiles.length > 1 && selector) {
         selector.classList.remove("hidden");
         selector.innerHTML = "";
@@ -54,7 +53,6 @@ onAuthStateChanged(auth, async (user) => {
             `<option value="${index}">${escapeHTML(profile.section)}</option>`,
           );
         });
-
         selector.addEventListener("change", (e) => {
           currentSection = userProfiles[e.target.value].section;
           fetchAssessments();
@@ -72,7 +70,6 @@ onAuthStateChanged(auth, async (user) => {
 async function fetchAssessments() {
   if (!currentSection) return;
   const container = document.getElementById("assignmentsFeed");
-
   container.innerHTML = `
     <div class="animate-pulse bg-white p-5 rounded-xl border border-slate-200">
       <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
@@ -81,7 +78,6 @@ async function fetchAssessments() {
     </div>
   `;
 
-  // ✨ FETCH GRADES FIRST (Filtered in JS to avoid Firebase Index errors)
   const studentProfile = userProfiles.find((p) => p.section === currentSection);
   const studentId = studentProfile ? studentProfile.id : null;
 
@@ -96,12 +92,14 @@ async function fetchAssessments() {
       );
       gradeSnap.forEach((d) => {
         const data = d.data();
-        if (data.published === true) {
-          myGrades[data.taskId] = data;
-        }
+        if (data.published === true) myGrades[data.taskId] = data;
       });
+      console.log("Assignments Page Loaded Grades:", myGrades);
     } catch (e) {
-      console.warn("Could not fetch grades", e);
+      console.warn(
+        "Could not fetch grades - Check your Firestore Security Rules!",
+        e,
+      );
     }
   }
 
@@ -147,7 +145,6 @@ async function fetchAssessments() {
         const isUrgent = activeDeadline
           ? new Date(activeDeadline) < new Date()
           : new Date() - activePostDate > 7 * 24 * 60 * 60 * 1000;
-
         allAssessments.push({
           id: docSnap.id,
           isUrgent: isUrgent,
@@ -160,7 +157,7 @@ async function fetchAssessments() {
 
     renderAssessments();
   } catch (error) {
-    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments.</div>`;
+    container.innerHTML = `<div class="p-5 text-center text-red-500 font-bold border border-red-200 bg-red-50 rounded-xl">Failed to load assignments. Check console.</div>`;
     console.error("Fetch Error:", error);
   }
 }
@@ -208,7 +205,6 @@ function renderAssessments() {
           ? "bg-green-100 text-green-700 border-green-200"
           : "bg-blue-100 text-blue-700 border-blue-200";
 
-    // ✨ THE SCORING BADGE LOGIC
     const myGrade = myGrades[ass.id];
     let urgencyBadge = "";
 
@@ -267,7 +263,6 @@ window.viewAssessmentDetails = function (id) {
       : ass.type === "Formative"
         ? "bg-green-500/20 text-green-300 border-green-500/30"
         : "bg-blue-500/20 text-blue-300 border-blue-500/30";
-
   document.getElementById("modalAssType").className =
     `${typeColor} text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider mb-2 inline-block`;
   document.getElementById("modalAssType").textContent = ass.type;
@@ -278,5 +273,18 @@ window.viewAssessmentDetails = function (id) {
     ass.taskContext || "No instructions provided.";
   document.getElementById("modalAssRubric").textContent =
     ass.evalCriteria || "No specific criteria provided.";
+
+  // ✨ INJECT SCORE INTO MODAL
+  const scoreArea = document.getElementById("modalScoreArea");
+  const myGrade = myGrades[id];
+  if (myGrade) {
+    document.getElementById("modalScoreValue").textContent = myGrade.score;
+    document.getElementById("modalScoreFeedback").textContent =
+      myGrade.feedback || "No feedback provided.";
+    scoreArea.classList.remove("hidden");
+  } else {
+    scoreArea.classList.add("hidden");
+  }
+
   document.getElementById("assessmentModal").classList.remove("hidden");
 };
