@@ -59,6 +59,29 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
     `;
 
+  // ✨ NEW: Student Interactive Dropdown Block
+  const studentLogoBlock = `
+        <div class="relative group cursor-pointer py-1">
+            <div class="flex items-center gap-2 sm:gap-3 font-bold transition">
+                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-8 sm:h-10 w-auto object-contain mix-blend-lighten hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                <span class="tracking-widest font-extrabold text-lg sm:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
+                <span class="text-[10px] text-cyan-500 ml-1 opacity-70 group-hover:opacity-100 transition-opacity hidden sm:inline">▼</span>
+            </div>
+            <div class="absolute left-0 top-full w-56 sm:w-64 hidden group-hover:block z-[100] pt-3">
+                <div class="bg-gray-900/95 backdrop-blur-xl rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.8)] border border-cyan-900/50 overflow-hidden">
+                    <div class="px-4 py-2 bg-gray-800/50 border-b border-gray-700/50 text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Student Modules</div>
+                    <a href="student-dashboard.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 border-b border-gray-800 transition-all flex items-center gap-2">
+                        <span class="text-cyan-500">📂</span> Project Hub
+                    </a>
+                    <a href="student-playground.html" class="block px-4 py-3 text-sm font-bold text-gray-300 hover:bg-cyan-900/30 hover:text-cyan-300 transition-all flex items-center gap-2">
+                        <span class="text-cyan-500">⚡</span> Code Playground
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
+
+  // Student Default Project Hub
   if (activeModule === "student") {
     centerLinks = `
             <a href="student-dashboard.html" class="${getStyle("dashboard")}">Dashboard</a>
@@ -69,12 +92,19 @@ document.addEventListener("DOMContentLoaded", () => {
             <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
             <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
         `;
-    logoBlock = `
-            <div class="flex items-center gap-2 sm:gap-3 font-bold">
-                <img src="assets/New Adminerva logo.png" alt="Adminerva Logo" class="h-8 sm:h-10 w-auto object-contain mix-blend-lighten drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                <span class="tracking-widest font-extrabold text-lg sm:text-2xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-md">ADMINERVA</span>
-            </div>
+    logoBlock = studentLogoBlock;
+  }
+  // ✨ NEW: Student Code Playground Module
+  else if (activeModule === "student-playground") {
+    centerLinks = `
+            <a href="student-playground.html" class="${getStyle("ide")}">Live Editor</a>
+            <a href="student-xml-sim.html" class="${getStyle("xml")}">Mobile XML Sim</a>
         `;
+    rightSide = `
+            <span id="userEmailDisplay" class="text-sm font-medium text-slate-300 hidden sm:block mr-4 truncate max-w-[150px]"></span>
+            <button id="signOutBtn" class="text-xs sm:text-sm px-3 py-2 sm:py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-bold rounded transition border border-red-500/20 cursor-pointer">Sign Out</button>
+        `;
+    logoBlock = studentLogoBlock;
   }
   // Standard Educator Hub (Admin links removed)
   else if (
@@ -101,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     logoBlock = adminLogoBlock;
   }
-  // NEW: Dedicated Admin Hub
+  // Dedicated Admin Hub
   else if (activeModule === "admin") {
     centerLinks = `
             <a href="users.html" class="${getStyle("directory")}">Directory</a>

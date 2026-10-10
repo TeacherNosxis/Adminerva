@@ -266,19 +266,23 @@ window.startAutoCheck = async function (
             
             CRITICAL INSTRUCTION - TARGET STUDENT ISOLATION:
             You are grading ONLY the individual work of student: ${studentData.name} (GitHub username: @${studentData.githubUsername || "unlinked"}).
-            The codebase below contains files from multiple group members. You MUST identify which files or code blocks belong to this specific student by checking file names (e.g. files named after them) or internal code comments. 
-            DO NOT deduct points from ${studentData.name} for errors, bad logic, or missing requirements found in files clearly belonging to other students. Base your score and feedback strictly on ${studentData.name}'s specific contributions.
+            The codebase below contains files from multiple group members. You MUST identify which files or code blocks belong to this specific student. DO NOT deduct points for errors found in files clearly belonging to other students.
 
-            MANDATORY PENALTY & FALLBACK RUBRIC:
-            You are an automated grading script. Evaluate the provided code against the rubric, but you MUST apply the following mandatory deductions:
-            ${autoPenalties.length > 0 ? `* Administrative Penalties: The system detected these errors: [${autoPenalties.join(", ")}]. Deduct 3 points for each from the evaluated code quality.` : ""}
-            * Syntax Errors: Deduct up to 5 points based on severity. Add "Syntax Error" to penalty_tags.
-            * Wrong Paradigm / Invalid File Format: If the student submitted Android UI code instead of Console code (or vice-versa), or mixed XML and Java inappropriately, cap their maximum score at 10/20. Add "Paradigm Mismatch" or "Invalid Format" to penalty_tags.
-            * Minimum Score: The final score must NEVER drop below 4. If the code is completely broken or logic is hardcoded to bypass testing, assign a 4 and add "Logic Bypass" to penalty_tags.
+            MANDATORY PENALTY & TIERED DIAGNOSTIC RUBRIC:
+            You are an automated grading script. Evaluate the code, calculate the score out of 20, and then apply deductions and tags based on these strict thresholds:
+            ${autoPenalties.length > 0 ? `* Administrative Penalties: The system detected these errors: [${autoPenalties.join(", ")}]. Deduct 3 points for each.` : ""}
+            
+            * TIER 1 (Score 15-20 / Above 75%): Code is mostly functional. Penalty tags are optional for minor syntax issues.
+            * TIER 2 (Score 10-14 / 50%-75%): The code has structural/logic issues. You MUST append specific diagnostic tags (e.g., "Syntax Error", "Missing Logic", "Incomplete Feature"). Combine feedback to explain what to fix.
+            * TIER 3 (Score 4-9 / Below 50%): Critical failure. You MUST deeply analyze WHY it failed and apply severe tags:
+                - If they submitted Android UI code instead of Console code (or vice-versa), assign "Paradigm Mismatch".
+                - If the file is mostly empty or just an auto-generated scaffold, assign "Empty Submission" (Score = 4).
+                - If logic is hardcoded to bypass requirements, assign "Logic Bypass" (Score = 4).
+                Combine all feedback into a clear explanation of their fatal error.
 
             CRITICAL JSON OUTPUT FORMAT:
-            You MUST return your evaluation strictly as a JSON object with NO markdown formatting, NO backticks, and NO conversational text. Format EXACTLY like this:
-            {"score": <number>, "penalty_tags": ["<tag1>", "<tag2>"], "teacher_note": "<2 to 4 sentences of specific feedback addressed directly to the student explaining the score and any penalties>"}
+            You MUST return your evaluation strictly as a JSON object with NO markdown formatting. Format EXACTLY like this:
+            {"score": <number>, "penalty_tags": ["<tag1>", "<tag2>"], "teacher_note": "<2 to 4 sentences addressed directly to the student explaining the score and penalties>"}
             
             ${rulesText}
             

@@ -622,13 +622,8 @@ window.executeBulkGrade = async function () {
       const gradeSnap = await getDoc(gradeDocRef);
 
       let shouldSkip = false;
-      if (gradeSnap.exists()) {
-        const gradeData = gradeSnap.data();
-        if (skipGraded) {
-          shouldSkip = true;
-        } else if (gradeData.gradedSha === student.latestSha) {
-          shouldSkip = true;
-        }
+      if (gradeSnap.exists() && skipGraded) {
+        shouldSkip = true; // Only skips if the checkbox is checked
       }
 
       if (shouldSkip) {
