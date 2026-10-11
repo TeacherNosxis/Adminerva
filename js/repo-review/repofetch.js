@@ -495,6 +495,12 @@ window.openGradingModal = async function (studentId, owner, repo) {
               </button>
           `;
       }
+      const pathsArray =
+        task.targetPaths || (task.targetPath ? [task.targetPath] : []);
+      const formattedTargets =
+        pathsArray.length > 0
+          ? `Target(s): ${pathsArray.join(", ")}`
+          : "Target: Entire Repository";
 
       const cardHtml = `
             <div id="${taskCardId}" class="p-4 bg-white border ${gradeRecord && !isUpToDate ? "border-amber-400 bg-amber-50/30" : "border-gray-200"} rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-blue-300 transition">
@@ -503,7 +509,7 @@ window.openGradingModal = async function (studentId, owner, repo) {
                         <span class="bg-blue-50 text-blue-600 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${escapeHTML(task.type)}</span>
                         <h4 class="font-bold text-sm text-gray-800">${escapeHTML(task.title)}</h4>
                     </div>
-                    <p class="text-[10px] text-gray-500 font-mono truncate">Target: ${escapeHTML(task.targetPath)}</p>
+                    <p class="text-[10px] text-gray-500 font-mono truncate" title="${escapeHTML(formattedTargets)}">${escapeHTML(formattedTargets)}</p>
                     <p class="text-[10px] text-red-500 font-bold mt-1">Due: ${new Date(task.deployment.deadline).toLocaleDateString()}</p>
                 </div>
                 <div class="grade-action-area shrink-0">${actionAreaHtml}</div>

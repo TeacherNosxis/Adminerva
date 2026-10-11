@@ -55,7 +55,7 @@ const languageConfig = {
 let editorInstance = null;
 let currentLang = "java";
 let workspaceFiles = {};
-let fileOrder = []; // Tracks tab order for drag & drop
+let fileOrder = [];
 let activeFilename = "";
 let draggedTabIndex = -1;
 
@@ -63,7 +63,7 @@ let draggedTabIndex = -1;
 // 2. INITIALIZATION
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
-  document.getElementById("pageBody").classList.remove("hidden");
+  document.getElementById("pageBody")?.classList.remove("hidden");
 
   require.config({
     paths: {
@@ -102,18 +102,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       },
     );
 
-    document.getElementById("editorLoading").classList.add("hidden");
+    document.getElementById("editorLoading")?.classList.add("hidden");
 
     bindUIEvents();
     initResizer();
     setupWebConsoleHook();
-
-    // Global click listener to close tab dropdown menus
-    document.addEventListener("click", () => {
-      document
-        .querySelectorAll(".tab-dropdown")
-        .forEach((menu) => menu.classList.add("hidden"));
-    });
 
     const urlParams = new URLSearchParams(window.location.search);
     const snapshotId = urlParams.get("id");
@@ -128,7 +121,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ==========================================
 function createWorkspace(lang, initialFiles, initialOrder) {
   currentLang = lang;
-  document.getElementById("languageSelect").value = lang;
+  const langSelect = document.getElementById("languageSelect");
+  if (langSelect) langSelect.value = lang;
 
   Object.values(workspaceFiles).forEach((f) => f.model.dispose());
   workspaceFiles = {};
@@ -138,7 +132,6 @@ function createWorkspace(lang, initialFiles, initialOrder) {
     [languageConfig[lang].defaultFile]: languageConfig[lang].defaultCode,
   };
 
-  // Reconstruct order if provided, otherwise default to Object keys
   const orderToUse = initialOrder || Object.keys(filesToCreate);
 
   orderToUse.forEach((filename) => {
@@ -147,7 +140,7 @@ function createWorkspace(lang, initialFiles, initialOrder) {
     }
   });
 
-  switchTab(fileOrder[0]);
+  if (fileOrder.length > 0) switchTab(fileOrder[0]);
   updateOutputView();
 }
 
@@ -182,22 +175,19 @@ function switchTab(filename) {
 // ------------------------------------------
 // 3B. RENAME & DELETE LOGIC
 // ------------------------------------------
-function renameFile(oldName) {
+window.renameFile = function (oldName) {
   const newName = prompt(`Rename ${oldName} to:`, oldName);
   if (!newName || newName.trim() === "" || newName === oldName) return;
   if (workspaceFiles[newName])
     return alert("A file with that name already exists!");
 
-  // Extract content and dispose old model
   const content = workspaceFiles[oldName].model.getValue();
   workspaceFiles[oldName].model.dispose();
   delete workspaceFiles[oldName];
 
-  // Update tracking array
   const idx = fileOrder.indexOf(oldName);
   fileOrder.splice(idx, 1);
 
-  // Re-inject file with exact new syntax and exact original position
   let syntax = languageConfig[currentLang].monaco;
   if (newName.endsWith(".css")) syntax = "css";
   if (newName.endsWith(".js")) syntax = "javascript";
@@ -215,9 +205,9 @@ function renameFile(oldName) {
   if (activeFilename === oldName) activeFilename = newName;
   switchTab(activeFilename);
   triggerAutoSave();
-}
+};
 
-function deleteFile(filename) {
+window.deleteFile = function (filename) {
   if (confirm(`Are you sure you want to delete ${filename}?`)) {
     workspaceFiles[filename].model.dispose();
     delete workspaceFiles[filename];
@@ -225,18 +215,25 @@ function deleteFile(filename) {
     const idx = fileOrder.indexOf(filename);
     fileOrder.splice(idx, 1);
 
-    if (activeFilename === filename) switchTab(fileOrder[0]);
+    if (activeFilename === filename && fileOrder.length > 0)
+      switchTab(fileOrder[0]);
     else renderTabs();
 
     triggerAutoSave();
   }
-}
+};
+
+window.promptNewFile = function () {
+  const name = prompt("Enter file name (e.g., Student.java, style.css):");
+  if (name && name.trim()) addFile(name.trim());
+};
 
 // ------------------------------------------
 // 3C. TAB RENDERING & DRAG/DROP
 // ------------------------------------------
 function renderTabs() {
   const container = document.getElementById("fileTabsContainer");
+  if (!container) return;
   container.innerHTML = "";
 
   fileOrder.forEach((filename, index) => {
@@ -245,19 +242,14 @@ function renderTabs() {
       ? "bg-[#0f172a] text-cyan-400 border-t-2 border-cyan-400"
       : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border-t-2 border-transparent";
 
+    // Replaced dropdown with VS Code style hover-delete and double-click rename
     const tabHTML = `
-      <div class="px-4 py-2 cursor-pointer flex items-center gap-1 text-xs font-bold transition relative group tab-element ${tabClass}" 
-           draggable="true" data-index="${index}" data-filename="${escapeHTML(filename)}">
-        <span class="pointer-events-none tracking-wide">${escapeHTML(filename)}</span>
+      <div class="px-4 py-2 cursor-pointer flex items-center gap-2 text-xs font-bold transition relative group tab-element ${tabClass}" 
+           draggable="true" data-index="${index}" data-filename="${escapeHTML(filename)}"
+           ondblclick="window.renameFile('${escapeHTML(filename)}')">
+        <span class="pointer-events-none tracking-wide" title="Double-click to rename">${escapeHTML(filename)}</span>
         
-        <!-- 3 Dots Context Menu -->
-        <div class="relative ml-1">
-           <button class="menu-btn opacity-0 group-hover:opacity-100 px-1 pb-1 hover:text-white transition-opacity">⋮</button>
-           <div class="tab-dropdown absolute left-0 top-full mt-1 bg-slate-800 border border-slate-600 rounded shadow-xl hidden flex-col z-[100] w-24 overflow-hidden">
-               <button class="rename-btn text-left px-3 py-1.5 text-[10px] hover:bg-slate-700 text-slate-200 border-b border-slate-700 uppercase tracking-widest">Rename</button>
-               ${fileOrder.length > 1 ? `<button class="delete-btn text-left px-3 py-1.5 text-[10px] hover:bg-rose-900/80 text-rose-300 uppercase tracking-widest">Delete</button>` : ""}
-           </div>
-        </div>
+        ${fileOrder.length > 1 ? `<button class="opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-opacity ml-1" onclick="event.stopPropagation(); window.deleteFile('${escapeHTML(filename)}')">✕</button>` : ""}
       </div>
     `;
     container.insertAdjacentHTML("beforeend", tabHTML);
@@ -266,7 +258,7 @@ function renderTabs() {
   container.insertAdjacentHTML(
     "beforeend",
     `
-    <button id="addFileBtn" class="text-slate-400 hover:text-white px-4 h-full flex items-center justify-center font-bold text-lg hover:bg-slate-800 transition shrink-0" title="Add new file">+</button>
+    <button onclick="window.promptNewFile()" class="text-slate-400 hover:text-white px-4 h-full flex items-center justify-center font-bold text-lg hover:bg-slate-800 transition shrink-0" title="Add new file">+</button>
   `,
   );
 
@@ -275,55 +267,13 @@ function renderTabs() {
 
 function attachTabEvents() {
   const container = document.getElementById("fileTabsContainer");
-
-  // Add File Button
-  container.querySelector("#addFileBtn").onclick = () => {
-    const name = prompt("Enter file name (e.g., Student.java, style.css):");
-    if (name && name.trim()) addFile(name.trim());
-  };
+  if (!container) return;
 
   container.querySelectorAll(".tab-element").forEach((tab) => {
     const filename = tab.getAttribute("data-filename");
     const index = parseInt(tab.getAttribute("data-index"));
 
-    // Switch Tab
-    tab.addEventListener("click", (e) => {
-      // Ignore click if clicking the menu or dropdown options
-      if (e.target.closest(".menu-btn") || e.target.closest(".tab-dropdown"))
-        return;
-      switchTab(filename);
-    });
-
-    // Dropdown Toggling
-    const menuBtn = tab.querySelector(".menu-btn");
-    const dropdown = tab.querySelector(".tab-dropdown");
-    if (menuBtn && dropdown) {
-      menuBtn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Prevent tab switch
-        // Close all other dropdowns
-        document.querySelectorAll(".tab-dropdown").forEach((m) => {
-          if (m !== dropdown) m.classList.add("hidden");
-        });
-        dropdown.classList.toggle("hidden");
-      });
-    }
-
-    // Rename / Delete
-    const renameBtn = tab.querySelector(".rename-btn");
-    if (renameBtn)
-      renameBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        dropdown.classList.add("hidden");
-        renameFile(filename);
-      });
-
-    const deleteBtn = tab.querySelector(".delete-btn");
-    if (deleteBtn)
-      deleteBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        dropdown.classList.add("hidden");
-        deleteFile(filename);
-      });
+    tab.addEventListener("click", () => switchTab(filename));
 
     // Drag & Drop
     tab.addEventListener("dragstart", (e) => {
@@ -378,8 +328,10 @@ function triggerAutoSave() {
     );
 
     const indicator = document.getElementById("autoSaveIndicator");
-    indicator.classList.remove("opacity-0");
-    setTimeout(() => indicator.classList.add("opacity-0"), 2000);
+    if (indicator) {
+      indicator.classList.remove("opacity-0");
+      setTimeout(() => indicator.classList.add("opacity-0"), 2000);
+    }
   }, 1000);
 }
 
@@ -395,6 +347,7 @@ function loadLocalWorkspace() {
 
 async function exportZIP() {
   const btn = document.getElementById("exportZipBtn");
+  if (!btn) return;
   btn.innerHTML = `<span class="animate-spin">↻</span> Packing...`;
   try {
     const zip = new JSZip();
@@ -416,6 +369,7 @@ async function exportZIP() {
 
 async function shareSnapshot() {
   const btn = document.getElementById("snapshotBtn");
+  if (!btn) return;
   btn.innerHTML = `<span class="animate-spin">↻</span> Generating...`;
   const state = {
     lang: currentLang,
@@ -462,24 +416,30 @@ async function executeCode() {
   const overlay = document.getElementById("executionOverlay");
   const consoleOut = document.getElementById("consoleOutput");
 
-  runBtn.disabled = true;
-  runBtn.classList.add("opacity-50");
-  overlay.classList.remove("hidden");
+  if (runBtn) {
+    runBtn.disabled = true;
+    runBtn.classList.add("opacity-50");
+  }
+  if (overlay) overlay.classList.remove("hidden");
 
   Object.values(workspaceFiles).forEach((f) =>
     monaco.editor.setModelMarkers(f.model, "judge0", []),
   );
 
   if (currentLang === "web") {
-    consoleOut.textContent = "Web Preview Running...\n\n--- Console Logs ---\n";
+    if (consoleOut)
+      consoleOut.textContent =
+        "Web Preview Running...\n\n--- Console Logs ---\n";
     executeWebPreview();
-    runBtn.disabled = false;
-    runBtn.classList.remove("opacity-50");
-    overlay.classList.add("hidden");
+    if (runBtn) {
+      runBtn.disabled = false;
+      runBtn.classList.remove("opacity-50");
+    }
+    if (overlay) overlay.classList.add("hidden");
     return;
   }
 
-  consoleOut.textContent = "";
+  if (consoleOut) consoleOut.textContent = "";
   try {
     const config = languageConfig[currentLang];
     let mainContent =
@@ -499,7 +459,7 @@ async function executeCode() {
     const payload = {
       source_code: mainContent,
       language_id: config.judge0Id,
-      stdin: document.getElementById("stdinInput").value,
+      stdin: document.getElementById("stdinInput")?.value || "",
     };
     if (base64Zip) payload.additional_files = base64Zip;
 
@@ -513,20 +473,25 @@ async function executeCode() {
     );
     const result = await res.json();
 
-    if (result.stderr || result.compile_output) {
-      const errText = result.stderr || result.compile_output;
-      consoleOut.innerHTML = `<span class="text-rose-400">${escapeHTML(errText)}</span>\n${escapeHTML(result.stdout || "")}`;
-      applyVisualDiagnostics(errText, config.defaultFile);
-    } else {
-      consoleOut.textContent =
-        result.stdout || "Program exited with no output.";
+    if (consoleOut) {
+      if (result.stderr || result.compile_output) {
+        const errText = result.stderr || result.compile_output;
+        consoleOut.innerHTML = `<span class="text-rose-400">${escapeHTML(errText)}</span>\n${escapeHTML(result.stdout || "")}`;
+        applyVisualDiagnostics(errText, config.defaultFile);
+      } else {
+        consoleOut.textContent =
+          result.stdout || "Program exited with no output.";
+      }
     }
   } catch (error) {
-    consoleOut.innerHTML = `<span class="text-rose-400">Execution Error: ${error.message}</span>`;
+    if (consoleOut)
+      consoleOut.innerHTML = `<span class="text-rose-400">Execution Error: ${error.message}</span>`;
   } finally {
-    overlay.classList.add("hidden");
-    runBtn.disabled = false;
-    runBtn.classList.remove("opacity-50");
+    if (overlay) overlay.classList.add("hidden");
+    if (runBtn) {
+      runBtn.disabled = false;
+      runBtn.classList.remove("opacity-50");
+    }
   }
 }
 
@@ -601,13 +566,15 @@ function executeWebPreview() {
   if (html.includes("</body>")) html = html.replace("</body>", js + "</body>");
   else html += js;
 
-  document.getElementById("webPreviewFrame").srcdoc = html;
+  const iframe = document.getElementById("webPreviewFrame");
+  if (iframe) iframe.srcdoc = html;
 }
 
 function setupWebConsoleHook() {
   window.addEventListener("message", function (e) {
     if (e.data && e.data.type === "console") {
       const consoleOut = document.getElementById("consoleOutput");
+      if (!consoleOut) return;
       let colorClass = "text-slate-300";
       if (e.data.method === "warn") colorClass = "text-amber-400";
       if (e.data.method === "error") colorClass = "text-rose-400";
@@ -636,14 +603,14 @@ async function askMinerva() {
   const btn = document.getElementById("aiTutorBtn");
   const consoleOut = document.getElementById("consoleOutput");
 
-  document.getElementById("consoleTab").click();
-  btn.innerHTML = `<span class="animate-spin">✨</span> Thinking...`;
+  document.getElementById("consoleTab")?.click();
+  if (btn) btn.innerHTML = `<span class="animate-spin">✨</span> Thinking...`;
 
   let context = `I am a student learning to program in ${currentLang}.\nHere are my files:\n`;
   for (const [name, file] of Object.entries(workspaceFiles)) {
     context += `\n--- ${name} ---\n${file.model.getValue()}\n`;
   }
-  const errorText = consoleOut.textContent;
+  const errorText = consoleOut ? consoleOut.textContent : "";
   if (errorText.includes("error") || errorText.includes("Exception")) {
     context += `\n\nI just got this error output:\n${errorText}`;
   }
@@ -664,12 +631,14 @@ async function askMinerva() {
     const data = await res.json();
     const reply = data.candidates[0].content.parts[0].text;
 
-    consoleOut.innerHTML += `\n\n<span class="text-purple-400 font-bold">--- ✨ Minerva Tutor ---</span>\n<span class="text-purple-300">${escapeHTML(reply)}</span>\n\n`;
-    consoleOut.scrollTop = consoleOut.scrollHeight;
+    if (consoleOut) {
+      consoleOut.innerHTML += `\n\n<span class="text-purple-400 font-bold">--- ✨ Minerva Tutor ---</span>\n<span class="text-purple-300">${escapeHTML(reply)}</span>\n\n`;
+      consoleOut.scrollTop = consoleOut.scrollHeight;
+    }
   } catch (error) {
     alert("Minerva Error: " + error.message);
   } finally {
-    btn.innerHTML = `✨ Ask Minerva`;
+    if (btn) btn.innerHTML = `✨ Ask Minerva`;
   }
 }
 
@@ -677,85 +646,85 @@ async function askMinerva() {
 // 7. UI BINDINGS & RESIZER LOGIC
 // ==========================================
 function bindUIEvents() {
+  // Using optional chaining (?.) so missing buttons don't crash the script
   document
     .getElementById("languageSelect")
-    .addEventListener("change", (e) => createWorkspace(e.target.value));
-  document.getElementById("runBtn").addEventListener("click", executeCode);
-  document.getElementById("exportZipBtn").addEventListener("click", exportZIP);
-  document.getElementById("saveProjectBtn").addEventListener("click", () => {
+    ?.addEventListener("change", (e) => createWorkspace(e.target.value));
+  document.getElementById("runBtn")?.addEventListener("click", executeCode);
+  document.getElementById("exportZipBtn")?.addEventListener("click", exportZIP);
+  document.getElementById("saveProjectBtn")?.addEventListener("click", () => {
     triggerAutoSave();
     alert("Workspace Saved Locally!");
   });
   document
     .getElementById("loadProjectBtn")
-    .addEventListener("click", loadLocalWorkspace);
+    ?.addEventListener("click", loadLocalWorkspace);
   document
     .getElementById("snapshotBtn")
-    .addEventListener("click", shareSnapshot);
-  document.getElementById("aiTutorBtn").addEventListener("click", askMinerva);
+    ?.addEventListener("click", shareSnapshot);
+  document.getElementById("aiTutorBtn")?.addEventListener("click", askMinerva);
 
-  document.getElementById("formatBtn").addEventListener("click", () => {
+  document.getElementById("formatBtn")?.addEventListener("click", () => {
     editorInstance.getAction("editor.action.formatDocument").run();
   });
 
-  document.getElementById("resetBtn").addEventListener("click", () => {
+  // Re-added reset logic for safety if you decide to put the button back later
+  document.getElementById("resetBtn")?.addEventListener("click", () => {
     if (confirm("Wipe all files and reset workspace?"))
       createWorkspace(currentLang);
   });
 
-  document
-    .getElementById("clearConsoleBtn")
-    .addEventListener(
-      "click",
-      () => (document.getElementById("consoleOutput").textContent = ""),
-    );
-
-  document.getElementById("consoleTab").addEventListener("click", () => {
-    document.getElementById("consoleOutput").classList.remove("hidden");
-    document.getElementById("webPreviewContainer").classList.add("hidden");
-    document
-      .getElementById("consoleTab")
-      .classList.add("text-cyan-400", "border-cyan-400");
-    document
-      .getElementById("consoleTab")
-      .classList.remove("text-slate-500", "border-transparent");
-    document
-      .getElementById("previewTab")
-      .classList.add("text-slate-500", "border-transparent");
-    document
-      .getElementById("previewTab")
-      .classList.remove("text-cyan-400", "border-cyan-400");
+  document.getElementById("clearConsoleBtn")?.addEventListener("click", () => {
+    const cout = document.getElementById("consoleOutput");
+    if (cout) cout.textContent = "";
   });
 
-  document.getElementById("previewTab").addEventListener("click", () => {
-    document.getElementById("consoleOutput").classList.add("hidden");
-    document.getElementById("webPreviewContainer").classList.remove("hidden");
-    document
-      .getElementById("previewTab")
-      .classList.add("text-cyan-400", "border-cyan-400");
-    document
-      .getElementById("previewTab")
-      .classList.remove("text-slate-500", "border-transparent");
+  document.getElementById("consoleTab")?.addEventListener("click", () => {
+    document.getElementById("consoleOutput")?.classList.remove("hidden");
+    document.getElementById("webPreviewContainer")?.classList.add("hidden");
     document
       .getElementById("consoleTab")
-      .classList.add("text-slate-500", "border-transparent");
+      ?.classList.add("text-cyan-400", "border-cyan-400");
     document
       .getElementById("consoleTab")
-      .classList.remove("text-cyan-400", "border-cyan-400");
+      ?.classList.remove("text-slate-500", "border-transparent");
+    document
+      .getElementById("previewTab")
+      ?.classList.add("text-slate-500", "border-transparent");
+    document
+      .getElementById("previewTab")
+      ?.classList.remove("text-cyan-400", "border-cyan-400");
+  });
+
+  document.getElementById("previewTab")?.addEventListener("click", () => {
+    document.getElementById("consoleOutput")?.classList.add("hidden");
+    document.getElementById("webPreviewContainer")?.classList.remove("hidden");
+    document
+      .getElementById("previewTab")
+      ?.classList.add("text-cyan-400", "border-cyan-400");
+    document
+      .getElementById("previewTab")
+      ?.classList.remove("text-slate-500", "border-transparent");
+    document
+      .getElementById("consoleTab")
+      ?.classList.add("text-slate-500", "border-transparent");
+    document
+      .getElementById("consoleTab")
+      ?.classList.remove("text-cyan-400", "border-cyan-400");
   });
 }
 
 function updateOutputView() {
   if (currentLang === "web") {
-    document.getElementById("consoleTab").classList.remove("hidden");
-    document.getElementById("previewTab").classList.remove("hidden");
-    document.getElementById("previewTab").click();
-    document.getElementById("stdinContainer").classList.add("hidden");
+    document.getElementById("consoleTab")?.classList.remove("hidden");
+    document.getElementById("previewTab")?.classList.remove("hidden");
+    document.getElementById("previewTab")?.click();
+    document.getElementById("stdinContainer")?.classList.add("hidden");
   } else {
-    document.getElementById("consoleTab").classList.remove("hidden");
-    document.getElementById("previewTab").classList.add("hidden");
-    document.getElementById("consoleTab").click();
-    document.getElementById("stdinContainer").classList.remove("hidden");
+    document.getElementById("consoleTab")?.classList.remove("hidden");
+    document.getElementById("previewTab")?.classList.add("hidden");
+    document.getElementById("consoleTab")?.click();
+    document.getElementById("stdinContainer")?.classList.remove("hidden");
   }
 }
 
@@ -766,11 +735,13 @@ function initResizer() {
   const container = document.getElementById("workspaceContainer");
   let isDragging = false;
 
+  if (!resizer) return;
+
   resizer.addEventListener("mousedown", () => {
     isDragging = true;
     document.body.style.cursor = "col-resize";
     if (currentLang === "web")
-      document.getElementById("executionOverlay").classList.remove("hidden");
+      document.getElementById("executionOverlay")?.classList.remove("hidden");
   });
 
   document.addEventListener("mousemove", (e) => {
@@ -792,7 +763,7 @@ function initResizer() {
       isDragging = false;
       document.body.style.cursor = "default";
       if (currentLang === "web")
-        document.getElementById("executionOverlay").classList.add("hidden");
+        document.getElementById("executionOverlay")?.classList.add("hidden");
     }
   });
 }
