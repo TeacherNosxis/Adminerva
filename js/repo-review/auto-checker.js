@@ -54,6 +54,8 @@ window.startAutoCheck = async function (
     return;
   }
 
+  const checkStartTime = performance.now();
+
   const cardId = `task-card-${studentId}-${taskId}`;
   const taskCard = document.getElementById(cardId);
 
@@ -329,11 +331,15 @@ window.startAutoCheck = async function (
       else if (typeof parsed.penalty_tags === "string")
         aiTags = [parsed.penalty_tags];
 
-      finalTags = [...new Set([...autoPenalties, ...aiTags])]; // Merge and deduplicate tags
+      finalTags = [...new Set([...autoPenalties, ...aiTags])];
     }
 
     updateStatus("Saving Grade...");
     const gradeDocId = `${studentId}_${taskId}`;
+
+    // ✨ CALCULATE LATENCY HERE BEFORE SAVING
+    const durationMs = Math.round(performance.now() - checkStartTime);
+
     await setDoc(
       doc(db, "student_grades", gradeDocId),
       {
@@ -343,6 +349,7 @@ window.startAutoCheck = async function (
         feedback: finalFeedback,
         penaltyTags: finalTags,
         targetPath: displayPathText,
+        gradingDurationMs: durationMs, // Passed successfully to the database
         gradedSha: currentSha,
         gradedAt: serverTimestamp(),
       },

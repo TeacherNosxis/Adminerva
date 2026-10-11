@@ -612,6 +612,9 @@ window.executeBulkGrade = async function () {
   let skippedList = [];
   let failedList = [];
 
+  // ✨ NEW: Start the master timer for the entire bulk run
+  const bulkStartTime = performance.now();
+
   try {
     for (let i = 0; i < studentsToGrade.length; i++) {
       const student = studentsToGrade[i];
@@ -623,7 +626,7 @@ window.executeBulkGrade = async function () {
 
       let shouldSkip = false;
       if (gradeSnap.exists() && skipGraded) {
-        shouldSkip = true; // Only skips if the checkbox is checked
+        shouldSkip = true;
       }
 
       if (shouldSkip) {
@@ -655,8 +658,22 @@ window.executeBulkGrade = async function () {
       await new Promise((resolve) => setTimeout(resolve, 15000));
     }
 
+    // ✨ NEW: Calculate total elapsed time and average speed
+    const totalSeconds = Math.round((performance.now() - bulkStartTime) / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+    // Only calculate average if we actually graded someone
+    const attempts = gradedList.length + failedList.length;
+    const avgPerStudent =
+      attempts > 0
+        ? (totalSeconds / attempts).toFixed(1) + "s / student"
+        : "N/A";
+
     console.log("============= BULK GRADE REPORT =============");
     console.log("🎯 Assessment:", taskName);
+    console.log(`⏱️ Elapsed Time: ${timeString} (${avgPerStudent})`);
     console.log(`✅ Graded (${gradedList.length}):`, gradedList);
     console.log(`⏭️ Skipped (${skippedList.length}):`, skippedList);
     console.log(`❌ Failed (${failedList.length}):`, failedList);
@@ -665,6 +682,17 @@ window.executeBulkGrade = async function () {
     document.getElementById("resGradedCount").textContent = gradedList.length;
     document.getElementById("resSkippedCount").textContent = skippedList.length;
     document.getElementById("resFailedCount").textContent = failedList.length;
+
+    const taskNameEl = document.getElementById("resTaskName");
+    if (taskNameEl) {
+      taskNameEl.textContent = `Target: ${taskName}`;
+    }
+
+    // ✨ NEW: Inject the elapsed time into the UI modal
+    const elapsedTimeEl = document.getElementById("resElapsedTime");
+    if (elapsedTimeEl) {
+      elapsedTimeEl.textContent = `⏱️ Run Time: ${timeString} (Avg: ${avgPerStudent})`;
+    }
 
     const failedContainer = document.getElementById("resFailedSection");
     const failedUl = document.getElementById("resFailedList");
