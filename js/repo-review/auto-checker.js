@@ -30,7 +30,8 @@ function wildcardToRegex(wildcardPath) {
     return new RegExp(".*");
   let path = wildcardPath.trim();
   if (!path.match(/\.[a-zA-Z0-9]+$/)) path = path.replace(/\/$/, "") + "/*";
-  let escaped = path.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  // The asterisk is now properly escaped here:
+  let escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regexStr = escaped.replace(/\\\*/g, ".*");
   return new RegExp(regexStr, "i");
 }
@@ -80,11 +81,16 @@ window.startAutoCheck = async function (
       : { name: "Unknown Student", githubUsername: "Unknown" };
 
     updateStatus("Scanning Repo...");
-    let targetFilePath = taskData.targetPath || "";
-    let fileRawText = "";
-    let displayPathText = targetFilePath || "Entire Repository";
 
-    // NEW: Triage & Fallback Tracking
+    // Support new array or fallback to old string
+    let pathsToScan =
+      taskData.targetPaths ||
+      (taskData.targetPath ? [taskData.targetPath] : []);
+    if (pathsToScan.length === 0) pathsToScan = ["*"];
+
+    let fileRawText = "";
+    let displayPathText = pathsToScan.join(", ") || "Entire Repository";
+
     let autoPenalties = [];
     let forceFail = false;
     let failMessage = "";
@@ -98,149 +104,121 @@ window.startAutoCheck = async function (
     const defaultBranch = repoData.default_branch;
     if (!defaultBranch) throw new Error("Repository is empty.");
 
-    if (
-      targetFilePath === "" ||
-      targetFilePath.includes("*") ||
-      !targetFilePath.match(/\.[a-zA-Z0-9]+$/)
-    ) {
-      // WILDCARD / FOLDER SEARCH LOGIC
-      const treeRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${currentSha}?recursive=1`,
-        { headers: { Authorization: `Bearer ${ghToken}` } },
-      );
-      const treeData = await treeRes.json();
-      const matcher = wildcardToRegex(targetFilePath);
-      const allowedExts =
-        /\.(java|xml|kt|dart|cs|js|ts|html|css|txt|json|sql|gradle|properties|md|py|php|cpp)$/i;
-      const matchedFiles = (treeData.tree || []).filter(
-        (f) =>
-          f.type === "blob" && matcher.test(f.path) && allowedExts.test(f.path),
-      );
+    // Fetch the entire tree ONCE for efficiency
+    const treeRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/trees/${currentSha}?recursive=1`,
+      { headers: { Authorization: `Bearer ${ghToken}` } },
+    );
+    const treeData = await treeRes.json();
+    const allBlobs = (treeData.tree || []).filter((f) => f.type === "blob");
+    const allowedExts =
+      /\.(java|xml|kt|dart|cs|js|ts|html|css|txt|json|sql|gradle|properties|md|py|php|cpp)$/i;
 
-      if (matchedFiles.length === 0) {
-        forceFail = true;
-        failMessage = `No code files found in path: ${targetFilePath || "repository"}. Please ensure you committed your work.`;
-        autoPenalties.push("Empty Submission");
-      } else {
-        const filesToProcess = matchedFiles.slice(0, 40);
-        updateStatus(`Reading ${filesToProcess.length} File(s)...`);
+    let matchedFilesMap = new Map();
 
-        let combinedCode = "";
-        let pathsFound = [];
-
-        const filePromises = filesToProcess.map(async (file) => {
-          const fileRes = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${currentSha}`,
-            {
-              headers: {
-                Authorization: `Bearer ${ghToken}`,
-                Accept: "application/vnd.github.v3.raw",
-              },
-            },
-          );
-          if (fileRes.ok)
-            return { path: file.path, text: await fileRes.text() };
-          return null;
-        });
-
-        const fetchedFiles = await Promise.all(filePromises);
-        fetchedFiles.forEach((fileObj) => {
-          if (fileObj && fileObj.text.trim()) {
-            combinedCode += `\n\n--- FILE: ${fileObj.path} ---\n${fileObj.text}`;
-            pathsFound.push(fileObj.path.split("/").pop());
+    // Check each target path against the single GitHub tree
+    pathsToScan.forEach((targetPath) => {
+      if (targetPath === "*" || !targetPath.match(/\.[a-zA-Z0-9]+$/)) {
+        // It's a folder/wildcard
+        const matcher = wildcardToRegex(targetPath);
+        allBlobs.forEach((f) => {
+          if (matcher.test(f.path) && allowedExts.test(f.path)) {
+            matchedFilesMap.set(f.path, f); // Using Map prevents duplicate file injections
           }
         });
+      } else {
+        // It's an exact file
+        let foundExact = false;
+        for (let f of allBlobs) {
+          if (f.path === targetPath) {
+            matchedFilesMap.set(f.path, f);
+            foundExact = true;
+            break;
+          }
+        }
+        // Tier 2 Fallback: If exact file is missing, look for misspelled folders
+        if (!foundExact) {
+          const expectedFileName = targetPath.split("/").pop();
+          const expectedBaseName = expectedFileName.replace(
+            /\.[a-zA-Z0-9]+$/,
+            "",
+          );
+          const expectedDir = targetPath
+            .replace(expectedFileName, "")
+            .replace(/\/$/, "");
 
-        if (!combinedCode.trim()) {
-          forceFail = true;
-          failMessage = "Files found, but contents were empty or unreadable.";
-          autoPenalties.push("Empty Submission");
-        } else {
-          fileRawText = combinedCode;
-          if (pathsFound.length > 1)
-            displayPathText = `${pathsFound[0]} (+${pathsFound.length - 1} files)`;
-          else if (pathsFound.length === 1) displayPathText = pathsFound[0];
+          let bestMatch = null;
+          for (let f of allBlobs) {
+            const fName = f.path.split("/").pop();
+            const fBase = fName.replace(/\.[a-zA-Z0-9]+$/, "");
+            const fDir = f.path.replace(fName, "").replace(/\/$/, "");
+
+            if (fName === expectedFileName) {
+              bestMatch = f;
+              autoPenalties.push(`Wrong Folder: ${expectedFileName}`);
+              break;
+            }
+            if (fBase === expectedBaseName) {
+              bestMatch = f;
+              if (fDir === expectedDir) {
+                autoPenalties.push(`Missing Extension: ${expectedFileName}`);
+              } else {
+                autoPenalties.push(`Wrong Folder & Ext: ${expectedBaseName}`);
+              }
+              break;
+            }
+          }
+          if (bestMatch) matchedFilesMap.set(bestMatch.path, bestMatch);
         }
       }
+    });
+
+    const matchedFiles = Array.from(matchedFilesMap.values());
+
+    if (matchedFiles.length === 0) {
+      forceFail = true;
+      failMessage = `No code files found matching your target paths. Please ensure you committed your work.`;
+      autoPenalties.push("Empty Submission");
     } else {
-      // EXACT TARGET PATH LOGIC (With Tier-2 Fallback)
-      updateStatus("Reading Code...");
-      const fileRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/contents/${targetFilePath}?ref=${currentSha}`,
-        {
-          headers: {
-            Authorization: `Bearer ${ghToken}`,
-            Accept: "application/vnd.github.v3.raw",
-          },
-        },
-      );
+      const filesToProcess = matchedFiles.slice(0, 40);
+      updateStatus(`Reading ${filesToProcess.length} File(s)...`);
 
-      if (fileRes.ok) {
-        fileRawText = `\n\n--- FILE: ${targetFilePath} ---\n${(await fileRes.text()) || ""}`;
-        displayPathText = targetFilePath.split("/").pop();
-      } else {
-        // FALLBACK INITIATED: File not found at exact path
-        updateStatus("File missing! Scanning repository...");
+      let combinedCode = "";
+      let pathsFound = [];
 
-        const treeRes = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/git/trees/${currentSha}?recursive=1`,
-          { headers: { Authorization: `Bearer ${ghToken}` } },
-        );
-        const treeData = await treeRes.json();
-
-        const expectedFileName = targetFilePath.split("/").pop();
-        const expectedBaseName = expectedFileName.replace(
-          /\.[a-zA-Z0-9]+$/,
-          "",
-        );
-        const expectedDir = targetFilePath
-          .replace(expectedFileName, "")
-          .replace(/\/$/, "");
-
-        let bestMatch = null;
-        for (let f of treeData.tree || []) {
-          if (f.type !== "blob") continue;
-
-          const fName = f.path.split("/").pop();
-          const fBase = fName.replace(/\.[a-zA-Z0-9]+$/, "");
-          const fDir = f.path.replace(fName, "").replace(/\/$/, "");
-
-          // 1. Exact name, wrong folder
-          if (fName === expectedFileName) {
-            bestMatch = f;
-            autoPenalties.push("Wrong Folder");
-            break;
-          }
-          // 2. Missing extension (basename matches)
-          if (fBase === expectedBaseName) {
-            bestMatch = f;
-            if (fDir === expectedDir) {
-              autoPenalties.push("Missing Extension");
-            } else {
-              autoPenalties.push("Wrong Folder");
-              autoPenalties.push("Missing Extension");
-            }
-            break;
-          }
-        }
-
-        if (bestMatch) {
-          const fallbackRes = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/contents/${bestMatch.path}?ref=${currentSha}`,
-            {
-              headers: {
-                Authorization: `Bearer ${ghToken}`,
-                Accept: "application/vnd.github.v3.raw",
-              },
+      // Fetch raw code for all matches
+      const filePromises = filesToProcess.map(async (file) => {
+        const fileRes = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${currentSha}`,
+          {
+            headers: {
+              Authorization: `Bearer ${ghToken}`,
+              Accept: "application/vnd.github.v3.raw",
             },
-          );
-          fileRawText = `\n\n--- FILE: ${bestMatch.path} ---\n${(await fallbackRes.text()) || ""}`;
-          displayPathText = bestMatch.path;
-        } else {
-          forceFail = true;
-          failMessage =
-            "No matching source code was found. Please ensure you committed your file with the correct name.";
-          autoPenalties.push("Empty Submission");
+          },
+        );
+        if (fileRes.ok) return { path: file.path, text: await fileRes.text() };
+        return null;
+      });
+
+      const fetchedFiles = await Promise.all(filePromises);
+      fetchedFiles.forEach((fileObj) => {
+        if (fileObj && fileObj.text.trim()) {
+          combinedCode += `\n\n--- FILE: ${fileObj.path} ---\n${fileObj.text}`;
+          pathsFound.push(fileObj.path.split("/").pop());
+        }
+      });
+
+      if (!combinedCode.trim()) {
+        forceFail = true;
+        failMessage = "Files found, but contents were empty or unreadable.";
+        autoPenalties.push("Empty Submission");
+      } else {
+        fileRawText = combinedCode;
+        if (pathsFound.length > 1) {
+          displayPathText = `${pathsFound[0]} (+${pathsFound.length - 1} files)`;
+        } else if (pathsFound.length === 1) {
+          displayPathText = pathsFound[0];
         }
       }
     }

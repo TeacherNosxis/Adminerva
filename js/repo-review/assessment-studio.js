@@ -10,7 +10,7 @@ import {
   orderBy,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
+let targetPaths = [];
 let allSections = [];
 let objectiveRules = [];
 let assessments = [];
@@ -172,18 +172,18 @@ window.openCreateModal = function () {
 
   document.getElementById("assessTitle").value = "";
   document.getElementById("assessType").value = "Mini PETA";
-  document.getElementById("assessPath").value = "";
   document.getElementById("systemPersona").value =
     "You are a strict Java high school programming teacher grading a student's code.";
   document.getElementById("taskContext").value = "";
   document.getElementById("evalCriteria").value = "";
 
   objectiveRules = [];
+  targetPaths = []; // Clear array
   renderRules();
+  renderTargets(); // Render UI
 
   document.getElementById("createModal").classList.remove("hidden");
 };
-
 window.openEditModal = function () {
   const item = assessments.find((a) => a.id === currentAssessmentId);
   if (!item) return;
@@ -193,18 +193,24 @@ window.openEditModal = function () {
 
   document.getElementById("assessTitle").value = item.title || "";
   document.getElementById("assessType").value = item.type || "Mini PETA";
-  document.getElementById("assessPath").value = item.targetPath || "";
   document.getElementById("systemPersona").value = item.systemPersona || "";
   document.getElementById("taskContext").value = item.taskContext || "";
   document.getElementById("evalCriteria").value = item.evalCriteria || "";
 
   objectiveRules = [...(item.rules || [])];
+  // Load array, or fallback to the old single string if it exists
+  targetPaths = [
+    ...(item.targetPaths || (item.targetPath ? [item.targetPath] : [])),
+  ];
+
   renderRules();
+  renderTargets(); // Render UI
 
   document.getElementById("viewModal").classList.add("hidden");
   document.getElementById("createModal").classList.remove("hidden");
 };
 
+// 5. UPDATE saveAssessment to save the array instead of a string
 window.saveAssessment = async function () {
   const title = document.getElementById("assessTitle").value.trim();
   if (!title) return alert("Please enter an Assessment Title.");
@@ -212,7 +218,7 @@ window.saveAssessment = async function () {
   const payload = {
     title: title,
     type: document.getElementById("assessType").value,
-    targetPath: document.getElementById("assessPath").value.trim(),
+    targetPaths: targetPaths, // Save the array to Firebase
     systemPersona: document.getElementById("systemPersona").value.trim(),
     taskContext: document.getElementById("taskContext").value.trim(),
     evalCriteria: document.getElementById("evalCriteria").value.trim(),
@@ -264,9 +270,13 @@ window.openViewModal = function (id) {
 
   currentAssessmentId = id;
   document.getElementById("viewTitle").textContent = item.title || "Untitled";
-  document.getElementById("viewTargetPath").textContent = item.targetPath
-    ? `Target: ${item.targetPath}`
-    : "Target: No specific path set";
+
+  // Format array for viewing
+  const paths = item.targetPaths || (item.targetPath ? [item.targetPath] : []);
+  document.getElementById("viewTargetPath").textContent =
+    paths.length > 0
+      ? `Targets: ${paths.join(" OR ")}`
+      : "Target: Entire Repository";
   document.getElementById("viewTaskContext").textContent =
     item.taskContext || "No context provided.";
   document.getElementById("viewEvalCriteria").textContent =
@@ -581,6 +591,38 @@ function renderRules() {
                 <button onclick="window.removeObjectiveRule(${index})" class="text-gray-400 hover:text-red-600 font-bold">&times;</button>
             </div>
         `,
+    );
+  });
+}
+window.addTarget = function () {
+  const val = document.getElementById("newTargetPath").value.trim();
+  if (!val) return;
+  targetPaths.push(val);
+  document.getElementById("newTargetPath").value = "";
+  renderTargets();
+};
+
+window.removeTarget = function (index) {
+  targetPaths.splice(index, 1);
+  renderTargets();
+};
+
+function renderTargets() {
+  const container = document.getElementById("targetsContainer");
+  container.innerHTML = "";
+  if (targetPaths.length === 0) {
+    container.innerHTML = `<div class="text-xs text-gray-400 italic">No specific paths set. (Will scan entire repository)</div>`;
+    return;
+  }
+  targetPaths.forEach((path, index) => {
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+      <div class="flex justify-between items-center p-2 rounded border border-blue-200 bg-blue-50 text-blue-700 text-sm font-mono shadow-sm">
+          <div>${escapeHTML(path)}</div>
+          <button type="button" onclick="window.removeTarget(${index})" class="text-blue-400 hover:text-red-600 font-bold text-lg leading-none">&times;</button>
+      </div>
+      `,
     );
   });
 }
