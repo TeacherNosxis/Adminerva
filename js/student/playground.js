@@ -10,18 +10,54 @@ import {
 // 1. CONFIGURATION & STATE
 // ==========================================
 const languageConfig = {
-  java: { monaco: "java", judge0Id: 62, defaultFile: "Main.java" },
-  python: { monaco: "python", judge0Id: 71, defaultFile: "main.py" },
-  web: { monaco: "html", judge0Id: null, defaultFile: "index.html" },
-  csharp: { monaco: "csharp", judge0Id: 51, defaultFile: "Program.cs" },
-  cpp: { monaco: "cpp", judge0Id: 54, defaultFile: "main.cpp" },
-  dart: { monaco: "dart", judge0Id: 64, defaultFile: "main.dart" },
+  java: {
+    monaco: "java",
+    judge0Id: 62,
+    defaultFile: "Main.java",
+    defaultCode:
+      'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, Adminerva!");\n    }\n}',
+  },
+  python: {
+    monaco: "python",
+    judge0Id: 71,
+    defaultFile: "main.py",
+    defaultCode: 'print("Hello, Adminerva!")',
+  },
+  web: {
+    monaco: "html",
+    judge0Id: null,
+    defaultFile: "index.html",
+    defaultCode:
+      '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <style>\n    body { background-color: #0f172a; color: #22d3ee; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }\n  </style>\n</head>\n<body>\n  <h1>Hello, Adminerva Web!</h1>\n</body>\n</html>',
+  },
+  csharp: {
+    monaco: "csharp",
+    judge0Id: 51,
+    defaultFile: "Program.cs",
+    defaultCode:
+      'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, Adminerva!");\n    }\n}',
+  },
+  cpp: {
+    monaco: "cpp",
+    judge0Id: 54,
+    defaultFile: "main.cpp",
+    defaultCode:
+      '#include <iostream>\n\nint main() {\n    std::cout << "Hello, Adminerva!" << std::endl;\n    return 0;\n}',
+  },
+  dart: {
+    monaco: "dart",
+    judge0Id: 64,
+    defaultFile: "main.dart",
+    defaultCode: "void main() {\n  print('Hello, Adminerva!');\n}",
+  },
 };
 
 let editorInstance = null;
 let currentLang = "java";
 let workspaceFiles = {};
+let fileOrder = []; // Tracks tab order for drag & drop
 let activeFilename = "";
+let draggedTabIndex = -1;
 
 // ==========================================
 // 2. INITIALIZATION
@@ -72,6 +108,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     initResizer();
     setupWebConsoleHook();
 
+    // Global click listener to close tab dropdown menus
+    document.addEventListener("click", () => {
+      document
+        .querySelectorAll(".tab-dropdown")
+        .forEach((menu) => menu.classList.add("hidden"));
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const snapshotId = urlParams.get("id");
 
@@ -83,22 +126,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ==========================================
 // 3. WORKSPACE & FILE MANAGEMENT
 // ==========================================
-function createWorkspace(lang, initialFiles) {
+function createWorkspace(lang, initialFiles, initialOrder) {
   currentLang = lang;
   document.getElementById("languageSelect").value = lang;
 
   Object.values(workspaceFiles).forEach((f) => f.model.dispose());
   workspaceFiles = {};
+  fileOrder = [];
 
   const filesToCreate = initialFiles || {
-    [languageConfig[lang].defaultFile]: "// Write your code here...",
+    [languageConfig[lang].defaultFile]: languageConfig[lang].defaultCode,
   };
 
-  Object.entries(filesToCreate).forEach(([filename, content]) => {
-    addFile(filename, content, false);
+  // Reconstruct order if provided, otherwise default to Object keys
+  const orderToUse = initialOrder || Object.keys(filesToCreate);
+
+  orderToUse.forEach((filename) => {
+    if (filesToCreate[filename] !== undefined) {
+      addFile(filename, filesToCreate[filename], false);
+    }
   });
 
-  switchTab(Object.keys(workspaceFiles)[0]);
+  switchTab(fileOrder[0]);
   updateOutputView();
 }
 
@@ -112,15 +161,15 @@ function addFile(filename, content = "", autoSwitch = true) {
 
   const model = monaco.editor.createModel(content, syntax);
   workspaceFiles[filename] = { model };
+  fileOrder.push(filename);
 
   model.onDidChangeContent(() => {
     triggerAutoSave();
-    // Clear Visual Error Squiggles when user edits code
     monaco.editor.setModelMarkers(model, "judge0", []);
   });
 
-  renderTabs();
   if (autoSwitch) switchTab(filename);
+  else renderTabs();
 }
 
 function switchTab(filename) {
@@ -130,49 +179,187 @@ function switchTab(filename) {
   renderTabs();
 }
 
+// ------------------------------------------
+// 3B. RENAME & DELETE LOGIC
+// ------------------------------------------
+function renameFile(oldName) {
+  const newName = prompt(`Rename ${oldName} to:`, oldName);
+  if (!newName || newName.trim() === "" || newName === oldName) return;
+  if (workspaceFiles[newName])
+    return alert("A file with that name already exists!");
+
+  // Extract content and dispose old model
+  const content = workspaceFiles[oldName].model.getValue();
+  workspaceFiles[oldName].model.dispose();
+  delete workspaceFiles[oldName];
+
+  // Update tracking array
+  const idx = fileOrder.indexOf(oldName);
+  fileOrder.splice(idx, 1);
+
+  // Re-inject file with exact new syntax and exact original position
+  let syntax = languageConfig[currentLang].monaco;
+  if (newName.endsWith(".css")) syntax = "css";
+  if (newName.endsWith(".js")) syntax = "javascript";
+  if (newName.endsWith(".html")) syntax = "html";
+
+  const model = monaco.editor.createModel(content, syntax);
+  workspaceFiles[newName] = { model };
+  fileOrder.splice(idx, 0, newName);
+
+  model.onDidChangeContent(() => {
+    triggerAutoSave();
+    monaco.editor.setModelMarkers(model, "judge0", []);
+  });
+
+  if (activeFilename === oldName) activeFilename = newName;
+  switchTab(activeFilename);
+  triggerAutoSave();
+}
+
+function deleteFile(filename) {
+  if (confirm(`Are you sure you want to delete ${filename}?`)) {
+    workspaceFiles[filename].model.dispose();
+    delete workspaceFiles[filename];
+
+    const idx = fileOrder.indexOf(filename);
+    fileOrder.splice(idx, 1);
+
+    if (activeFilename === filename) switchTab(fileOrder[0]);
+    else renderTabs();
+
+    triggerAutoSave();
+  }
+}
+
+// ------------------------------------------
+// 3C. TAB RENDERING & DRAG/DROP
+// ------------------------------------------
 function renderTabs() {
   const container = document.getElementById("fileTabsContainer");
   container.innerHTML = "";
 
-  Object.keys(workspaceFiles).forEach((filename) => {
+  fileOrder.forEach((filename, index) => {
     const isActive = filename === activeFilename;
     const tabClass = isActive
       ? "bg-[#0f172a] text-cyan-400 border-t-2 border-cyan-400"
       : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border-t-2 border-transparent";
 
-    container.insertAdjacentHTML(
-      "beforeend",
-      `
-      <div class="px-4 py-2 cursor-pointer flex items-center gap-2 text-xs font-bold transition ${tabClass}" onclick="window.switchTab('${filename}')">
-        <span>${escapeHTML(filename)}</span>
-        ${Object.keys(workspaceFiles).length > 1 ? `<span class="hover:text-rose-400 ml-2" onclick="event.stopPropagation(); window.deleteFile('${filename}')">✕</span>` : ""}
+    const tabHTML = `
+      <div class="px-4 py-2 cursor-pointer flex items-center gap-1 text-xs font-bold transition relative group tab-element ${tabClass}" 
+           draggable="true" data-index="${index}" data-filename="${escapeHTML(filename)}">
+        <span class="pointer-events-none tracking-wide">${escapeHTML(filename)}</span>
+        
+        <!-- 3 Dots Context Menu -->
+        <div class="relative ml-1">
+           <button class="menu-btn opacity-0 group-hover:opacity-100 px-1 pb-1 hover:text-white transition-opacity">⋮</button>
+           <div class="tab-dropdown absolute left-0 top-full mt-1 bg-slate-800 border border-slate-600 rounded shadow-xl hidden flex-col z-[100] w-24 overflow-hidden">
+               <button class="rename-btn text-left px-3 py-1.5 text-[10px] hover:bg-slate-700 text-slate-200 border-b border-slate-700 uppercase tracking-widest">Rename</button>
+               ${fileOrder.length > 1 ? `<button class="delete-btn text-left px-3 py-1.5 text-[10px] hover:bg-rose-900/80 text-rose-300 uppercase tracking-widest">Delete</button>` : ""}
+           </div>
+        </div>
       </div>
-    `,
-    );
+    `;
+    container.insertAdjacentHTML("beforeend", tabHTML);
   });
 
   container.insertAdjacentHTML(
     "beforeend",
     `
-    <button onclick="window.promptNewFile()" class="text-slate-400 hover:text-white px-4 h-full flex items-center justify-center font-bold text-lg hover:bg-slate-800 transition shrink-0" title="Add new file">+</button>
+    <button id="addFileBtn" class="text-slate-400 hover:text-white px-4 h-full flex items-center justify-center font-bold text-lg hover:bg-slate-800 transition shrink-0" title="Add new file">+</button>
   `,
   );
+
+  attachTabEvents();
 }
 
-window.switchTab = switchTab;
-window.deleteFile = function (filename) {
-  if (confirm(`Delete ${filename}?`)) {
-    workspaceFiles[filename].model.dispose();
-    delete workspaceFiles[filename];
-    if (activeFilename === filename) switchTab(Object.keys(workspaceFiles)[0]);
-    else renderTabs();
-    triggerAutoSave();
-  }
-};
-window.promptNewFile = function () {
-  const name = prompt("Enter file name (e.g., Student.java, style.css):");
-  if (name && name.trim()) addFile(name.trim());
-};
+function attachTabEvents() {
+  const container = document.getElementById("fileTabsContainer");
+
+  // Add File Button
+  container.querySelector("#addFileBtn").onclick = () => {
+    const name = prompt("Enter file name (e.g., Student.java, style.css):");
+    if (name && name.trim()) addFile(name.trim());
+  };
+
+  container.querySelectorAll(".tab-element").forEach((tab) => {
+    const filename = tab.getAttribute("data-filename");
+    const index = parseInt(tab.getAttribute("data-index"));
+
+    // Switch Tab
+    tab.addEventListener("click", (e) => {
+      // Ignore click if clicking the menu or dropdown options
+      if (e.target.closest(".menu-btn") || e.target.closest(".tab-dropdown"))
+        return;
+      switchTab(filename);
+    });
+
+    // Dropdown Toggling
+    const menuBtn = tab.querySelector(".menu-btn");
+    const dropdown = tab.querySelector(".tab-dropdown");
+    if (menuBtn && dropdown) {
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent tab switch
+        // Close all other dropdowns
+        document.querySelectorAll(".tab-dropdown").forEach((m) => {
+          if (m !== dropdown) m.classList.add("hidden");
+        });
+        dropdown.classList.toggle("hidden");
+      });
+    }
+
+    // Rename / Delete
+    const renameBtn = tab.querySelector(".rename-btn");
+    if (renameBtn)
+      renameBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.classList.add("hidden");
+        renameFile(filename);
+      });
+
+    const deleteBtn = tab.querySelector(".delete-btn");
+    if (deleteBtn)
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.classList.add("hidden");
+        deleteFile(filename);
+      });
+
+    // Drag & Drop
+    tab.addEventListener("dragstart", (e) => {
+      draggedTabIndex = index;
+      e.dataTransfer.effectAllowed = "move";
+      setTimeout(() => tab.classList.add("opacity-50"), 0);
+    });
+
+    tab.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      tab.classList.add("bg-slate-600");
+    });
+
+    tab.addEventListener("dragleave", () =>
+      tab.classList.remove("bg-slate-600"),
+    );
+
+    tab.addEventListener("drop", (e) => {
+      e.preventDefault();
+      tab.classList.remove("bg-slate-600");
+      const targetIndex = index;
+
+      if (draggedTabIndex !== -1 && draggedTabIndex !== targetIndex) {
+        const movedItem = fileOrder.splice(draggedTabIndex, 1)[0];
+        fileOrder.splice(targetIndex, 0, movedItem);
+        renderTabs();
+        triggerAutoSave();
+      }
+    });
+
+    tab.addEventListener("dragend", () => {
+      tab.classList.remove("opacity-50");
+      draggedTabIndex = -1;
+    });
+  });
+}
 
 // ==========================================
 // 4. STORAGE, ZIP, & SNAPSHOTS
@@ -181,7 +368,7 @@ let autoSaveTimeout;
 function triggerAutoSave() {
   clearTimeout(autoSaveTimeout);
   autoSaveTimeout = setTimeout(() => {
-    const state = { lang: currentLang, files: {} };
+    const state = { lang: currentLang, files: {}, fileOrder: fileOrder };
     for (const [name, file] of Object.entries(workspaceFiles)) {
       state.files[name] = file.model.getValue();
     }
@@ -200,7 +387,7 @@ function loadLocalWorkspace() {
   const saved = localStorage.getItem("Adminerva_Playground_Workspace");
   if (saved) {
     const state = JSON.parse(saved);
-    createWorkspace(state.lang, state.files);
+    createWorkspace(state.lang, state.files, state.fileOrder);
   } else {
     createWorkspace("java");
   }
@@ -233,6 +420,7 @@ async function shareSnapshot() {
   const state = {
     lang: currentLang,
     files: {},
+    fileOrder: fileOrder,
     timestamp: new Date().toISOString(),
   };
   for (const [name, file] of Object.entries(workspaceFiles))
@@ -253,7 +441,8 @@ async function loadSnapshot(id) {
   try {
     const docSnap = await getDoc(doc(db, "playground_snapshots", id));
     if (docSnap.exists()) {
-      createWorkspace(docSnap.data().lang, docSnap.data().files);
+      const data = docSnap.data();
+      createWorkspace(data.lang, data.files, data.fileOrder);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
       alert("Snapshot not found.");
@@ -277,7 +466,6 @@ async function executeCode() {
   runBtn.classList.add("opacity-50");
   overlay.classList.remove("hidden");
 
-  // Clear squiggles on new run
   Object.values(workspaceFiles).forEach((f) =>
     monaco.editor.setModelMarkers(f.model, "judge0", []),
   );
@@ -342,11 +530,9 @@ async function executeCode() {
   }
 }
 
-// 🪄 VISUAL DIAGNOSTICS: Map Compiler Errors to Red Squiggles
 function applyVisualDiagnostics(errorText, defaultFile) {
   const markers = [];
   const lines = errorText.split("\n");
-  // Simple Regex to catch typical "filename:line_number:" Java/C++ errors
   const lineRegex = new RegExp(`${defaultFile.replace(".", "\\.")}:(\\d+):`);
 
   lines.forEach((line) => {
@@ -357,7 +543,7 @@ function applyVisualDiagnostics(errorText, defaultFile) {
         startLineNumber: lineNum,
         startColumn: 1,
         endLineNumber: lineNum,
-        endColumn: 100, // Stretch squiggle across line
+        endColumn: 100,
         message: line.trim(),
         severity: monaco.MarkerSeverity.Error,
       });
@@ -373,7 +559,6 @@ function applyVisualDiagnostics(errorText, defaultFile) {
   }
 }
 
-// 🕸️ WEB PREVIEW: Compile HTML/CSS/JS, Inject Timeout Guard & Console Hooks
 function executeWebPreview() {
   let html = workspaceFiles["index.html"]?.model.getValue() || "";
   let css = "",
@@ -382,7 +567,6 @@ function executeWebPreview() {
   for (const [name, file] of Object.entries(workspaceFiles)) {
     if (name.endsWith(".css")) css += `<style>${file.model.getValue()}</style>`;
     if (name.endsWith(".js")) {
-      // TIMEOUT GUARD: Inject infinite loop protection (2000ms max)
       let guardedJS =
         `window.__adminerva_loop_start = Date.now();\n` +
         file.model
@@ -400,7 +584,6 @@ function executeWebPreview() {
     }
   }
 
-  // CONSOLE HOOK: Pipe iframe console.logs back to our Terminal
   const consoleHook = `
     <script>
       const _log = console.log, _warn = console.warn, _err = console.error;
@@ -421,7 +604,6 @@ function executeWebPreview() {
   document.getElementById("webPreviewFrame").srcdoc = html;
 }
 
-// Receive messages from iframe console hook
 function setupWebConsoleHook() {
   window.addEventListener("message", function (e) {
     if (e.data && e.data.type === "console") {
@@ -454,7 +636,6 @@ async function askMinerva() {
   const btn = document.getElementById("aiTutorBtn");
   const consoleOut = document.getElementById("consoleOutput");
 
-  // Force open terminal to see the AI response
   document.getElementById("consoleTab").click();
   btn.innerHTML = `<span class="animate-spin">✨</span> Thinking...`;
 
@@ -513,7 +694,6 @@ function bindUIEvents() {
     .addEventListener("click", shareSnapshot);
   document.getElementById("aiTutorBtn").addEventListener("click", askMinerva);
 
-  // 🪄 Code Formatter Action
   document.getElementById("formatBtn").addEventListener("click", () => {
     editorInstance.getAction("editor.action.formatDocument").run();
   });
@@ -567,7 +747,7 @@ function bindUIEvents() {
 
 function updateOutputView() {
   if (currentLang === "web") {
-    document.getElementById("consoleTab").classList.remove("hidden"); // Kept visible so they can view intercepted console logs
+    document.getElementById("consoleTab").classList.remove("hidden");
     document.getElementById("previewTab").classList.remove("hidden");
     document.getElementById("previewTab").click();
     document.getElementById("stdinContainer").classList.add("hidden");

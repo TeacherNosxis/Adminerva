@@ -7,6 +7,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 function escapeHTML(str) {
@@ -413,25 +414,49 @@ window.bulkPublishCurrentGrid = async function () {
   }
 
   window.showSubtleLoader("Publishing Grades...");
-  let publishedCount = 0;
 
   try {
-    const sectionStudents = allStudents.filter((s) => s.section === section);
+    // 1. Get the list of student IDs for this section
+    const sectionStudentIds = new Set(
+      allStudents.filter((s) => s.section === section).map((s) => s.id),
+    );
 
-    for (const student of sectionStudents) {
-      const gradeDocRef = doc(db, "student_grades", `${student.id}_${taskId}`);
-      const gradeSnap = await getDoc(gradeDocRef);
+    if (sectionStudentIds.size === 0) {
+      alert("No students found in this section.");
+      return;
+    }
 
-      if (gradeSnap.exists()) {
-        await setDoc(gradeDocRef, { published: true }, { merge: true });
+    // 2. ONE network call: Fetch all existing grades for this task
+    const gradesSnap = await getDocs(
+      query(collection(db, "student_grades"), where("taskId", "==", taskId)),
+    );
+
+    // 3. Prepare the Firestore batch
+    const batch = writeBatch(db);
+    let publishedCount = 0;
+
+    gradesSnap.forEach((gradeDoc) => {
+      const data = gradeDoc.data();
+      // Only publish if the grade belongs to a student in this section
+      if (sectionStudentIds.has(data.studentId)) {
+        batch.update(gradeDoc.ref, { published: true });
         publishedCount++;
       }
+    });
+
+    if (publishedCount === 0) {
+      alert("No existing grades found to publish for this task.");
+      return;
     }
+
+    // 4. ONE network call: Commit all updates simultaneously
+    await batch.commit();
 
     alert(
       `📢 Publish Complete!\n\nSuccessfully made ${publishedCount} grades visible to students for "${taskName}".`,
     );
 
+    // Refresh UI matrix to reflect visible status
     await loadGrid();
   } catch (e) {
     console.error("Bulk Publish Error", e);
